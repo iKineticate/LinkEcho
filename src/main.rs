@@ -5,13 +5,11 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::os::windows::process::CommandExt;
 use std::collections::HashMap;
-use std::borrow::Cow;
 use core::cmp::Ordering;
 use glob::glob;
 use rfd::FileDialog;
 use parselnk::Lnk;
 
-#[derive(Debug)]
 struct LinkInfo {
     link_path:  String,
     link_target_path: String,
@@ -21,11 +19,17 @@ struct LinkInfo {
 
 
 fn main() {
+    // 获取管理员权限
+
     // 存储快捷方式的属性
     let mut link_map: HashMap<(String, String), LinkInfo> = HashMap::new();     // Rc<RefCell<HashMap>>: 适于多函数修改，相对而言可避免不必要的复杂性和潜在的错误
 
     // 获取当前用户的"桌面文件夹"的完整路径
     let users_desktop_path = dirs::desktop_dir().expect("Failed to get desktop directory");
+
+    // 获取公共用户的"桌面文件夹"的完整路径
+    const PUBLIC_PATH: &str = r"C:\Users\Public\Desktop";
+    let public_desktop_path = get_path_from_env("PUBLIC", PUBLIC_PATH);    // PathBuf
 
     // 获取当前用户的"开始菜单"的完整路径
     let users_start_menu_path = if let Some(user_profile) = env::var_os("APPDATA") {
@@ -38,10 +42,6 @@ fn main() {
     } else {
         panic!("Unable to determine APPDATA environment variable.");
     };
-
-    // 获取公共用户的"桌面文件夹"的完整路径
-    const PUBLIC_PATH: &str = r"C:\Users\Public\Desktop";
-    let public_desktop_path = get_path_from_env("PUBLIC", PUBLIC_PATH);    // PathBuf
 
     // 获取公共用户的"开始菜单"的完整路径
     const PROGRAMDATA_PATH: &str = r"C:\ProgramData\Microsoft\Windows\Start Menu";
@@ -56,24 +56,23 @@ fn main() {
     println!("");
     find_link_files(&public_desktop_path, &mut link_map);
 
-    // println!("当前用户的开始菜单快捷方式: {}", users_start_menu_path.display());
-    // println!("");
-    // find_link_files(&users_start_menu_path, &mut link_map);
+    println!("当前用户的开始菜单快捷方式: {}", users_start_menu_path.display());
+    println!("");
+    find_link_files(&users_start_menu_path, &mut link_map);
 
-    // println!("公共用户的开始菜单快捷方式: {}", pubilc_start_menu_path.display());
-    // println!("");
-    // find_link_files(&pubilc_start_menu_path, &mut link_map);
+    println!("公共用户的开始菜单快捷方式: {}", pubilc_start_menu_path.display());
+    println!("");
+    find_link_files(&pubilc_start_menu_path, &mut link_map);
 
 
-    // 一键更换图标
+    // 更换所有图标
     // match change_all_shortcuts_icons(&mut link_map) {
     //     Ok(yes) => println!("{}", yes),
     //     Err(error) => println!("{}", error),
     // }
 }
 
-
-// 获取环境变量路径，排除主盘非 C盘 情况
+// 获取环境变量路径，排除主盘非C盘的情况
 fn get_path_from_env(var_name: &str, default_path: &str) -> PathBuf {
     let default_path = PathBuf::from(default_path);
     if default_path.is_dir() {
@@ -97,8 +96,6 @@ fn get_path_from_env(var_name: &str, default_path: &str) -> PathBuf {
     }
 }
 
-
-// 获取 link 信息
 fn get_link_info(path_buf: &PathBuf) -> (String, String, String, String, String, String, String) {
     let link_name = path_buf.file_stem()      //  Option<&OsStr> -> OsStr -> Option<&str> -> &string
         .map_or_else(|| "unnamed_file".to_string()
@@ -110,15 +107,28 @@ fn get_link_info(path_buf: &PathBuf) -> (String, String, String, String, String,
 
     let link_working_dir = objlnk.working_dir().unwrap_or_else(|| PathBuf::new()).to_string_lossy().into_owned();     // Option<PathBuf> -> PathBuf -> Cow<str> ->  String ( to_string_lossy : 任何非 Unicode 序列都将替换为 �)
 
-    let link_target_path = objlnk.link_info.local_base_path.unwrap_or_else(|| "".to_string());    // LinkInfo -> Option<String> ->  String
-    
+    // 解决 parselnk 库不能获取 link_target_path 的问题
+    let mut link_target_path = String::new();
+    if let Some(have_string) = objlnk.link_info.local_base_path {
+        link_target_path = have_string;
+    } else if let Some(path_buf) = objlnk.relative_path() {
+        link_target_path = link_working_dir.clone();
+        for component in path_buf.components() {
+            let _string = component.as_os_str().to_string_lossy().into_owned();
+            if !_string.is_empty() && _string != ".." && !link_working_dir.contains(&_string) {
+                link_target_path.push_str("\\");
+                link_target_path.push_str(&_string.trim_start_matches('.'));
+            }
+        }
+    } else {
+        link_target_path = link_working_dir.clone();
+    }
+
     let link_working_dir = if link_working_dir.is_empty() {
         Path::new(&link_target_path).parent().unwrap_or_else(|| Path::new("")).to_string_lossy().into_owned()    // Option<&OsStr> -> OsStr -> Cow<str> ->  String
     } else {
         link_working_dir
     };
-
-    // let link_relative
 
     let link_icon_location = objlnk.string_data.icon_location.unwrap_or_else(|| PathBuf::new()).to_string_lossy().into_owned();     // Option<PathBuf> -> PathBuf -> Cow<str> ->  String ( to_string_lossy : 任何非 Unicode 序列都将替换为 �)
     
@@ -129,14 +139,12 @@ fn get_link_info(path_buf: &PathBuf) -> (String, String, String, String, String,
             .map_or_else(|| "".to_string()
             , |os_str| os_str.to_string_lossy().into_owned().trim().to_lowercase())    // Option<&OsStr> -> OsStr -> Cow<str> ->  String
     } else {
-        String::from("库还不支持读取目标路径来获取扩展名")
+        String::from("uwp/app")
     };
 
     (link_name, link_path, link_working_dir, link_target_path, link_icon_location, icon_index.to_string(), link_ext)
 }
 
-
-/// 在指定目录中查找并解析所有的 .lnk 文件，将相关信息存储到 link_map 中
 fn find_link_files(directory: &Path, link_map: &mut HashMap<(String, String), LinkInfo>) {
     let directory_pattern = format!(r"{}\**\*.lnk", directory.to_string_lossy());
 
