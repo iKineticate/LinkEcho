@@ -6,16 +6,17 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::os::windows::process::CommandExt;
 use std::collections::HashMap;
-use core::cmp::Ordering;
 use glob::glob;
 use rfd::FileDialog;
 use parselnk::Lnk;
 
+mod modify;
 struct LinkInfo {
-    link_path:  String,
+    link_path: String,
     link_target_path: String,
     link_target_dir: String,
     link_icon_location: String,
+    link_has_been_changed: String,
 }
 fn main() {
     // 获取管理员权限
@@ -49,23 +50,24 @@ fn main() {
 
     println!{"当前用户桌面快捷方式: {}", users_desktop_path.display()};
     println!("");
-    find_link_files(&users_desktop_path, &mut link_map);
+    collect_link_info_in_folder(&users_desktop_path, &mut link_map);
 
     println!("公共用户桌面快捷方式: {}", public_desktop_path.display());
     println!("");
-    find_link_files(&public_desktop_path, &mut link_map);
+    collect_link_info_in_folder(&public_desktop_path, &mut link_map);
 
     println!("当前用户的开始菜单快捷方式: {}", users_start_menu_path.display());
     println!("");
-    find_link_files(&users_start_menu_path, &mut link_map);
+    collect_link_info_in_folder(&users_start_menu_path, &mut link_map);
 
     println!("公共用户的开始菜单快捷方式: {}", pubilc_start_menu_path.display());
     println!("");
-    find_link_files(&pubilc_start_menu_path, &mut link_map);
+    collect_link_info_in_folder(&pubilc_start_menu_path, &mut link_map);
 
+    // clear_thumbnails()
 
     // 更换所有图标
-    // match change_all_shortcuts_icons(&mut link_map) {
+    // match modify::change_all_links_icons(&mut link_map) {
     //     Ok(yes) => println!("{}", yes),
     //     Err(error) => println!("{}", error),
     // }
@@ -95,39 +97,59 @@ fn get_path_from_env(var_name: &str, default_path: &str) -> PathBuf {
     }
 }
 
-fn get_link_info(path_buf: &PathBuf) -> (String, String, String, String, String, String, String) {
+fn get_link_info(path_buf: &PathBuf) -> (String, String, String, String, String, String, String, String) {
     let link_name = path_buf.file_stem()      //  Option<&OsStr> -> OsStr -> Option<&str> -> &string
-        .map_or_else(|| "unnamed_file".to_string()
-        , |no_extension| no_extension.to_string_lossy().into_owned().trim().to_lowercase());
+        .map_or_else(|| String::from("unnamed_file")
+        , |no_ext| no_ext.to_string_lossy().into_owned());
     // 快捷方式实际路径
-    let link_path = path_buf.to_string_lossy().into_owned();      //  PathBuf -> Cow<str> -> String ( to_string_lossy : 任何非 Unicode 序列都将替换为 �)
+    let link_path = path_buf.to_string_lossy().into_owned();      // to_string_lossy : 任何非 Unicode 序列都将替换为 �
     // 引用 parselnk 库
     let objlnk = Lnk::try_from(path_buf.as_path()).unwrap();
-    // 快捷方式目标目录
-    let mut link_working_dir = objlnk.working_dir().unwrap_or_else(|| PathBuf::new()).to_string_lossy().into_owned();     // Option<PathBuf> -> PathBuf -> Cow<str> ->  String ( to_string_lossy : 任何非 Unicode 序列都将替换为 �)
-    // 快捷方式目标路径
+    // 快捷方式目标目录和目标路径
+    let mut link_working_dir = String::new();
     let mut link_target_path = String::new();
-    // 解决 parselnk 库不能获取 link_target_path 的问题
-    if let Some(have_string) = objlnk.link_info.local_base_path {
-        link_target_path = have_string;
-    } else if let Some(path_buf) = objlnk.relative_path() {
-        link_target_path = link_working_dir.clone();
-        for component in path_buf.components() {
-            let _string = component.as_os_str().to_string_lossy().into_owned();
-            if !_string.is_empty() && _string != ".." && !link_working_dir.contains(&_string) {
-                link_target_path.push_str("\\");
-                link_target_path.push_str(&_string.trim_start_matches('.'));
+    match (objlnk.working_dir(), objlnk.relative_path(), objlnk.link_info.local_base_path) {
+        (Some(work_buf), _, Some(base_buf)) => {
+            link_working_dir = work_buf.to_string_lossy().into_owned();
+            link_target_path = base_buf;
+        },
+        (None, _, Some(base_buf)) => {
+            link_working_dir = Path::new(&base_buf).parent().unwrap().to_string_lossy().into_owned();
+            link_target_path = base_buf;
+        },
+        (Some(work_buf), Some(relative_buf), None) => {
+            link_working_dir = work_buf.to_string_lossy().into_owned();
+            // 排除目标目录末端是 "\" 的情况
+            if link_working_dir.ends_with("\\") {
+                link_working_dir = link_working_dir.trim_end_matches("\\").to_string()
             }
-        }
-    } else {
-        link_target_path = link_working_dir.clone();
-    }
-    // 解决目标目录为空的情况
-    if link_working_dir.is_empty() {
-        link_working_dir = Path::new(&link_target_path).parent().unwrap_or_else(|| Path::new("")).to_string_lossy().into_owned()    // Option<&OsStr> -> OsStr -> Cow<str> ->  String
+            link_target_path = link_working_dir.clone();
+            for component in relative_buf.components() {
+                let _string = component.as_os_str().to_string_lossy().into_owned();
+                if !_string.is_empty() && _string != ".." && !link_working_dir.contains(&_string) {
+                    link_target_path.push_str("\\");
+                    link_target_path.push_str(&_string.trim_start_matches('.'));
+                }
+            }
+        },
+        _ => {},
     };
-    // 快捷方式图标路径
-    let link_icon_location = objlnk.string_data.icon_location.unwrap_or_else(|| PathBuf::new()).to_string_lossy().into_owned();     // Option<PathBuf> -> PathBuf -> Cow<str> ->  String ( to_string_lossy : 任何非 Unicode 序列都将替换为 �)
+    // 快捷方式图标路径、是否被更换    
+    let mut link_icon_location = String::new();
+    let mut link_has_been_changed = String::new();
+    match objlnk.string_data.icon_location {
+        Some(path_buf) => {
+            link_icon_location = path_buf.to_string_lossy().into_owned();
+            if path_buf.is_file()
+            && link_icon_location != link_target_path
+            && !link_icon_location.contains("WindowsSubsystemForAndroid")
+            && path_buf.parent().unwrap() != Path::new(&link_working_dir)   // 父目
+            {
+                link_has_been_changed = String::from("√");
+            };
+        }, 
+        None => {},
+    };
     // 快捷方式图标索引号
     let icon_index = objlnk.header.icon_index;      // u32，返回值不太对，比如ahk返回-108，它返回4294967188
     // 快捷方式目标扩展名
@@ -157,18 +179,21 @@ fn get_link_info(path_buf: &PathBuf) -> (String, String, String, String, String,
         }
     };
 
-    (link_name, link_path, link_working_dir, link_target_path, link_icon_location, icon_index.to_string(), link_target_ext)
+    (link_name, link_path, link_working_dir, link_target_path, link_target_ext, link_icon_location, icon_index.to_string(), link_has_been_changed)
 }
 
-fn find_link_files(directory: &Path, link_map: &mut HashMap<(String, String), LinkInfo>) {
+fn collect_link_info_in_folder(directory: &Path, link_map: &mut HashMap<(String, String), LinkInfo>) {
     let directory_pattern = format!(r"{}\**\*.lnk", directory.to_string_lossy());
 
     for path_buf in glob(&directory_pattern).unwrap().filter_map(Result::ok) {
-        let (link_name, link_path, link_working_dir, link_target_path, link_icon_location, icon_index, link_target_ext) = get_link_info(&path_buf);
+        let (link_name, link_path, link_working_dir, link_target_path, link_target_ext, link_icon_location, icon_index, link_has_been_changed) = get_link_info(&path_buf);
 
-        println!("名称：{}, 扩展名：{}", link_name, link_target_ext);println!("{}", link_path);
-        println!("目标目录：{}", link_working_dir);println!("目标位置：{}", link_target_path);
-        println!("图标位置：{}", link_icon_location);println!("图标索引：{}", icon_index);println!("");
+        // println!("名称：{}, 扩展名：{}", link_name, link_target_ext);
+        // println!("{}", link_has_been_changed);
+        // println!("{}", link_path);
+        // println!("目标目录：{}", link_working_dir);println!("目标位置：{}", link_target_path);
+        // println!("图标位置：{}", link_icon_location);println!("图标索引：{}", icon_index)
+        // ;println!("");
 
         // 排除重复项目
         if link_map.contains_key(&(link_name.clone(), link_target_ext.clone())) {
@@ -183,104 +208,36 @@ fn find_link_files(directory: &Path, link_map: &mut HashMap<(String, String), Li
             link_target_path: link_target_path,
             link_target_dir: link_working_dir,
             link_icon_location: link_icon_location,
+            link_has_been_changed: link_has_been_changed,
         });
     }
 }
 
-fn change_single_shortcut_icon(link_path: String, icon_path: String) -> Result<&'static str, String> {
-    let command = String::from(&format!(
-        r#"
-        $shell = New-Object -ComObject WScript.Shell
-        $shortcut = $shell.CreateShortcut("{link_path}")
-        $shortcut.IconLocation = "{icon_path}"
-        $shortcut.Save()
-        "#,
-        link_path = link_path,
-        icon_path = icon_path,
-    ));
 
-    Command::new("powershell")
-        .creation_flags(0x08000000)     // 隐藏控制台
-        .args(&["-Command", &command])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .output()
-        .expect("Failed to execute PowerShell command");
 
-    Ok("已更换图标")
-}
 
-fn change_all_shortcuts_icons(link_map: &mut HashMap<(String, String), LinkInfo>) -> Result<&'static str, String> {
-    // 存储 PowerShell 命令
-    let mut command = String::from(r#"$shell = New-Object -ComObject WScript.Shell"#);
-    // 存储已匹配对象
-    let mut match_same_vec = vec![];
-    // 选择图标文件夹
-    let select_icons_folder_path: String = match FileDialog::new()
-        .set_title("请选择存放图标(.ico)的文件夹")
-        .pick_folder() 
-    {
-        Some(path_buf) => path_buf.to_string_lossy().into_owned(),
-        None =>  return Err("未选择文件夹".to_string()),
-    };
-    let select_icons_folder_path = format!(r"{}\**\*.ico", select_icons_folder_path);
-    // 遍历文件夹图标
-    for path_buf in glob(&select_icons_folder_path).unwrap().filter_map(Result::ok) {
-        // 获取图标名称路径
-        let icon_path = path_buf.to_string_lossy().into_owned();    // to_string_lossy：无非法符返回Cow::Borrowed(&str)，有非法符号返回Cow::Owned(String)
-        let icno_name: String = match path_buf.file_stem() {
-            Some(name) => name.to_string_lossy().into_owned().trim().to_lowercase(),
-            None => return Err(format!("获取{}的图标名称失败", icon_path)),
-        };
-        let icno_name_len = icno_name.len();
-        // 遍历 HashMap
-        for (link_name, link_target_ext) in link_map.keys() {
-            // 跳过已匹配对象
-            if match_same_vec.contains(&(link_name, link_target_ext)) {
-                continue;
-            }
-            // 匹配图标与lnk名称之间的包含关系
-            match (link_name.len().cmp(&icno_name_len), link_name.cmp(&icno_name)) {
-                (Ordering::Equal, Ordering::Equal) => match_same_vec.push((link_name, link_target_ext)),
-                (Ordering::Greater, _)  if link_name.contains(&icno_name) => {},
-                (Ordering::Less, _)  if icno_name.contains(&*link_name) => {},
-                _ => continue,
-            }
-            // 跳过存在包含关系但已为使用图标情况
-            if link_map.get(&(link_name.to_string(), link_target_ext.to_string())).unwrap().link_icon_location == icon_path {
-                continue;
-            };
-            // 追加 PowerShell 命令
-            let link_path = &link_map.get(&(link_name.to_string(), link_target_ext.to_string())).unwrap().link_path;
-            command.push_str(&format!(
-                r#"
-                $shortcut = $shell.CreateShortcut("{link_path}")
-                $shortcut.IconLocation = "{icon_path}"
-                $shortcut.Save()
-                "#,
-                link_path = link_path,
-                icon_path = icon_path
-            ));
-            println!("{}", link_name);
-            println!("{}", icno_name);
-            println!("");
-        }
-    }
-    // 执行 Powershell 命令: 更换图标
-    let output = Command::new("powershell")
-        .creation_flags(0x08000000)     // 隐藏控制台
-        .args(&["-Command", &command])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .output()
-        .expect("Failed to execute PowerShell command");
-    // 刷新图标
-    // 日志记录
-    // 刷新桌面
-    // ...
-    Ok("已更换桌面所有图标")
-}
+
+
 
 fn clear_date(link_map: &mut HashMap<(String, String), LinkInfo>) {
     link_map.clear();
+}
+
+fn clear_thumbnails() {
+    // https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/cleanmgr
+    Command::new("cmd")
+        .creation_flags(0x08000000)     // 隐藏控制台
+        .args(&["/c", r#"cleanmgr"#])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .output()
+        .expect("cmd exec error!");
+
+    // Choose C: and press OK.
+    // 请选择C盘，并点击OK.
+
+    // 选择缩略图选项，取消其他所有选项，然后点击OK并确认删除
+    // Uncheck all the entries except Thumbnails. Click OK and click Delete Files to confirm
+
+    // 重启资源管理器
 }
