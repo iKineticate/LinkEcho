@@ -1,7 +1,7 @@
-use crate::{HashMap, Path, PathBuf, env, ShowInfo, LinkInfo, glob};
+use crate::{HashMap, Path, PathBuf, env, LinkInfo, ShowInfo, glob};
 use parselnk::Lnk;
 
-
+#[allow(unused)]
 // 获取环境变量路径，排除主盘非C盘的情况
 pub fn get_path_from_env(name: &str) -> PathBuf {
     let mut default_path = PathBuf::new();
@@ -37,8 +37,8 @@ pub fn get_path_from_env(name: &str) -> PathBuf {
 }
 
 
-pub fn get_link_info(path_buf: &PathBuf) -> (String, String, String, String, String, String, String, String) {
-    let link_name = path_buf.file_stem()      //  Option<&OsStr> -> OsStr -> Option<&str> -> &string
+fn get_link_info(path_buf: &PathBuf) -> (String, String, String, String, String, String, String, String) {
+    let link_name = path_buf.file_stem()      //  Option<&OsStr> -> OsStr -> Cow<str> -> String
         .map_or_else(|| String::from("unnamed_file")
         , |no_ext| no_ext.to_string_lossy().into_owned());
     // 快捷方式实际路径
@@ -67,8 +67,7 @@ pub fn get_link_info(path_buf: &PathBuf) -> (String, String, String, String, Str
             for component in relative_buf.components() {
                 let _string = component.as_os_str().to_string_lossy().into_owned();
                 if !_string.is_empty() && _string != ".." && !link_working_dir.contains(&_string) {
-                    link_target_path.push_str("\\");
-                    link_target_path.push_str(&_string.trim_start_matches('.'));
+                    link_target_path = format!("{}\\{}", link_target_path, _string);
                 }
             }
         },
@@ -80,10 +79,10 @@ pub fn get_link_info(path_buf: &PathBuf) -> (String, String, String, String, Str
     match objlnk.string_data.icon_location {
         Some(path_buf) => {
             link_icon_location = path_buf.to_string_lossy().into_owned();
-            if path_buf.is_file()
-            && link_icon_location != link_target_path
-            && !link_icon_location.contains("WindowsSubsystemForAndroid")
-            && path_buf.parent().unwrap() != Path::new(&link_working_dir)   // 父目
+            if path_buf.is_file() && (link_target_path.is_empty()    // 排除UWP|APP情况
+            || (link_icon_location != link_target_path    // 排除图标源于目标
+            && !link_icon_location.contains("WindowsSubsystemForAndroid")    // WSA应用
+            && !link_icon_location.contains(&link_working_dir)))    // 图标位于工作目录下
             {
                 link_has_been_changed = String::from("√");
             };
@@ -110,10 +109,10 @@ pub fn get_link_info(path_buf: &PathBuf) -> (String, String, String, String, Str
             "mstsc.exe"      => {link_target_ext = String::from("mstsc")},    // 远程连接
             "control.exe"    => {link_target_ext = String::from("control")},  // 控制面板
             _ => {
-                match &target_extension {
-                    None => {},
-                    Some(_) if link_target_path.contains("WindowsSubsystemForAndroid") => {link_target_ext = String::from("app")},
-                    Some(os_str) => {link_target_ext = os_str.to_string_lossy().into_owned().to_lowercase()},
+                match (&target_extension, link_target_path.contains("WindowsSubsystemForAndroid")) {
+                    (None, _) => {},
+                    (Some(_), true) => {link_target_ext = String::from("app")},
+                    (Some(os_str), false) => {link_target_ext = os_str.to_string_lossy().into_owned().to_lowercase()},
                 }
             }
         }
@@ -122,20 +121,23 @@ pub fn get_link_info(path_buf: &PathBuf) -> (String, String, String, String, Str
     (link_name, link_path, link_working_dir, link_target_path, link_target_ext, link_icon_location, icon_index.to_string(), link_has_been_changed)
 }
 
+// #[allow(unused)]
 pub fn collect_link_info_in_folder(directory: &Path, link_map: &mut HashMap<(String, String), LinkInfo>, show_info: &mut Vec<ShowInfo>) {
     let directory_pattern = format!(r"{}\**\*.lnk", directory.to_string_lossy());
 
     for path_buf in glob(&directory_pattern).unwrap().filter_map(Result::ok) {
         let (link_name, link_path, link_working_dir, link_target_path, link_target_ext, link_icon_location, icon_index, link_has_been_changed) = get_link_info(&path_buf);
-
         // 排除重复项目
         if link_map.contains_key(&(link_name.clone(), link_target_ext.clone())) {
             continue;
         }
-
-        // 添加至列表
-        show_info.push(ShowInfo::new(link_name.clone(), link_target_ext.clone(), link_has_been_changed.clone()));
-
+        // 添加至命令行列表
+        let show_name = if link_name.chars().count() > 30 {
+            link_name.chars().take(28).collect::<String>() + "..."
+        } else {
+            link_name.clone()
+        };
+        show_info.push(ShowInfo{name: show_name, types: link_target_ext.clone(), status: link_has_been_changed.clone()});
         // 最后添加至 HashMap，&str会影响生命周期，所以用String
         link_map.insert((link_name, link_target_ext), LinkInfo {
             link_path: link_path,

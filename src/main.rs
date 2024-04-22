@@ -1,14 +1,12 @@
 // #![windows_subsystem = "windows"]       // 隐藏 CMD 和 Powershel
-#[cfg(target_os = "windows")]
+// #![allow(non_snake_case)]
+#![cfg(target_os = "windows")]
 
 use std::env;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
-use std::os::windows::process::CommandExt;
 use std::collections::HashMap;
 use rfd::FileDialog;
 use glob::glob;
-
 use tabled::{
     settings::{
         object::{FirstRow, Rows},
@@ -21,29 +19,20 @@ use tabled::{
 mod modify;
 mod info;
 
-struct LinkInfo {
+#[allow(unused)]
+pub struct LinkInfo {
     link_path: String,
-    link_target_path: String,
     link_target_dir: String,
+    link_target_path: String,
     link_icon_location: String,
     link_has_been_changed: String,
 }
 
 #[derive(Tabled)]
-struct ShowInfo {
+pub struct ShowInfo {
     name: String,
-    extention: String,
-    change_status: String,
-}
-
-impl ShowInfo {
-    fn new(name: String, extention: String, change_status: String) -> Self {
-        Self {
-            name,
-            extention,
-            change_status,
-        }
-    }
+    types: String,
+    status: String,
 }
 
 type TableTheme = Settings<
@@ -53,7 +42,7 @@ type TableTheme = Settings<
 
 const THEME: TableTheme = Settings::empty()
     .with(Style::modern())
-    .with(Padding::new(1, 2, 0, 0))
+    .with(Padding::new(1, 1, 0, 0))
     .with(Modify::list(Rows::first(), Alignment::center()));
 
 fn main() {
@@ -78,7 +67,7 @@ fn main() {
     info::collect_link_info_in_folder(&public_desktop_path, &mut link_map, &mut show_info);
     info::collect_link_info_in_folder(&users_start_menu_path, &mut link_map, &mut show_info);
     info::collect_link_info_in_folder(&pubilc_start_menu_path, &mut link_map, &mut show_info);
-    // 显示快捷方式属性
+    // 在命令行显示快捷方式属性
     let table = Table::new(show_info).with(THEME).to_string(); println!("{table}");
 
     // 更换所有图标
@@ -90,25 +79,3 @@ fn main() {
 
 
 
-// fn clear_date(link_map: &mut HashMap<(String, String), LinkInfo>) {
-//     link_map.clear();
-// }
-
-// fn clear_thumbnails() {
-//     // https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/cleanmgr
-//     Command::new("cmd")
-//         .creation_flags(0x08000000)     // 隐藏控制台
-//         .args(&["/c", r#"cleanmgr"#])
-//         .stdout(Stdio::null())
-//         .stderr(Stdio::null())
-//         .output()
-//         .expect("cmd exec error!");
-
-//     // Choose C: and press OK.
-//     // 请选择C盘，并点击OK.
-
-//     // 选择缩略图选项，取消其他所有选项，然后点击OK并确认删除
-//     // Uncheck all the entries except Thumbnails. Click OK and click Delete Files to confirm
-
-//     // 重启资源管理器
-// }

@@ -1,8 +1,10 @@
 use std::os::windows::process::CommandExt;
 use std::time::Instant;
 use core::cmp::Ordering;
-use crate::{Command, Stdio, LinkInfo, HashMap, FileDialog, glob};
+use std::process::{Command, Stdio};
+use crate::{LinkInfo, HashMap, FileDialog, glob};
 
+#[allow(unused)]
 pub fn change_all_links_icons(link_map: &mut HashMap<(String, String), LinkInfo>) -> Result<&'static str, String> {
     // 存储 PowerShell 命令
     let mut command = String::from(r#"$shell = New-Object -ComObject WScript.Shell"#);
@@ -13,16 +15,15 @@ pub fn change_all_links_icons(link_map: &mut HashMap<(String, String), LinkInfo>
         .set_title("请选择存放图标(.ico)的文件夹")
         .pick_folder() 
     {
-        Some(path_buf) => path_buf.to_string_lossy().into_owned(),
+        Some(path_buf) => format!(r"{}\**\*.ico", path_buf.to_string_lossy().into_owned()),
         None => return Err("未选择文件夹".to_string()),
     };
-    let select_icons_folder_path = format!(r"{}\**\*.ico", select_icons_folder_path);
     // 遍历文件夹图标
     for path_buf in glob(&select_icons_folder_path).unwrap().filter_map(Result::ok) {
         // 获取图标名称路径
         let icon_path = path_buf.to_string_lossy().into_owned();    // to_string_lossy：无非法符返回Cow::Borrowed(&str)，有非法符号返回Cow::Owned(String)
         let icno_name: String = match path_buf.file_stem() {
-            Some(name) => name.to_string_lossy().into_owned().trim().to_lowercase(),
+            Some(name) => name.to_string_lossy().into_owned().trim().to_lowercase(),    // 这里用小写来后续匹配
             None => return Err(format!("获取{}的图标名称失败", icon_path)),
         };
         // 遍历 HashMap
@@ -33,7 +34,7 @@ pub fn change_all_links_icons(link_map: &mut HashMap<(String, String), LinkInfo>
                 continue;
             }
             // 匹配图标与lnk名称之间的包含关系
-            match lowercase_name.len().cmp(&icno_name.len()) {
+            match lowercase_name.chars().count().cmp(&icno_name.chars().count()) {
                 Ordering::Equal if lowercase_name == icno_name => match_same_vec.push((link_name.to_string(), link_target_ext.to_string())),
                 Ordering::Greater if lowercase_name.contains(&icno_name) => {},
                 Ordering::Less if icno_name.contains(&lowercase_name) => {},
@@ -79,6 +80,7 @@ pub fn change_all_links_icons(link_map: &mut HashMap<(String, String), LinkInfo>
     Ok("已更换桌面所有图标")
 }
 
+#[allow(unused)]
 pub fn restroe_all_links_icons(link_map: &mut HashMap<(String, String), LinkInfo>) -> Result<&'static str, String> {
     // 通知是否恢复所有默认
 
@@ -123,6 +125,7 @@ pub fn restroe_all_links_icons(link_map: &mut HashMap<(String, String), LinkInfo
     Ok("所有快捷方式图标恢复默认图标")
 }
 
+#[allow(unused)]
 pub fn change_single_shortcut_icon(link_path: String, icon_path: String) -> Result<&'static str, String> {
     let command = String::from(&format!(
         r#"
@@ -145,3 +148,27 @@ pub fn change_single_shortcut_icon(link_path: String, icon_path: String) -> Resu
 
     Ok("已更换图标")
 }
+
+
+// fn clear_date(link_map: &mut HashMap<(String, String), LinkInfo>) {
+//     link_map.clear();
+// }
+
+// fn clear_thumbnails() {
+//     // https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/cleanmgr
+//     Command::new("cmd")
+//         .creation_flags(0x08000000)     // 隐藏控制台
+//         .args(&["/c", r#"cleanmgr"#])
+//         .stdout(Stdio::null())
+//         .stderr(Stdio::null())
+//         .output()
+//         .expect("cmd exec error!");
+
+//     // Choose C: and press OK.
+//     // 请选择C盘，并点击OK.
+
+//     // 选择缩略图选项，取消其他所有选项，然后点击OK并确认删除
+//     // Uncheck all the entries except Thumbnails. Click OK and click Delete Files to confirm
+
+//     // 重启资源管理器
+// }
