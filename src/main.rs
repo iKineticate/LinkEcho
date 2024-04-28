@@ -17,15 +17,18 @@ use tabled::{
 };
 
 mod modify;
-mod info;
+// mod info_powershell;
+mod info_lnk;
 
 #[allow(unused)]
+#[derive(Debug)]
 pub struct LinkInfo {
     link_path: String,
     link_target_dir: String,
     link_target_path: String,
     link_icon_location: String,
-    link_has_been_changed: String,
+    link_icon_index: String,
+    link_icon_status: String,
 }
 
 #[derive(Tabled)]
@@ -54,19 +57,19 @@ fn main() {
     let mut show_info: Vec<ShowInfo> = vec![];
 
     // 获取当前用户的"桌面文件夹"的完整路径
-    let users_desktop_path = info::get_path_from_env("USERS_DESKTOP");
+    let users_desktop_path = info_lnk::get_path_from_env("USERS_DESKTOP");
     // 获取公共用户的"桌面文件夹"的完整路径
-    let public_desktop_path = info::get_path_from_env("PUBLIC_DESKTOP");
+    let public_desktop_path = info_lnk::get_path_from_env("PUBLIC_DESKTOP");
     // 获取当前用户的"开始菜单"的完整路径
-    let users_start_menu_path = info::get_path_from_env("USERS_START_MENU");
+    let users_start_menu_path = info_lnk::get_path_from_env("USERS_START_MENU");
     // 获取公共用户的"开始菜单"的完整路径
-    let pubilc_start_menu_path = info::get_path_from_env("PUBLIC_START_MENU");
+    let pubilc_start_menu_path = info_lnk::get_path_from_env("PUBLIC_START_MENU");
 
-    // 收集快捷方式的属性
-    info::collect_link_info_in_folder(&users_desktop_path, &mut link_map, &mut show_info);
-    info::collect_link_info_in_folder(&public_desktop_path, &mut link_map, &mut show_info);
-    info::collect_link_info_in_folder(&users_start_menu_path, &mut link_map, &mut show_info);
-    info::collect_link_info_in_folder(&pubilc_start_menu_path, &mut link_map, &mut show_info);
+    // // 收集快捷方式的属性
+    info_lnk::collect_link_info_in_folder(&users_desktop_path, &mut link_map, &mut show_info);
+    info_lnk::collect_link_info_in_folder(&public_desktop_path, &mut link_map, &mut show_info);
+    info_lnk::collect_link_info_in_folder(&users_start_menu_path, &mut link_map, &mut show_info);
+    info_lnk::collect_link_info_in_folder(&pubilc_start_menu_path, &mut link_map, &mut show_info);
     // 在命令行显示快捷方式属性
     let table = Table::new(show_info).with(THEME).to_string(); println!("{table}");
 

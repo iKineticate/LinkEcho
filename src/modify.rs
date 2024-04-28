@@ -46,7 +46,7 @@ pub fn change_all_links_icons(link_map: &mut HashMap<(String, String), LinkInfo>
             };
             // 更新LinkInfo结构体的图标路径
             link_info.link_icon_location = String::from(icon_path.clone());
-            link_info.link_has_been_changed = String::from("√");
+            link_info.link_icon_status = String::from("√");
             // 追加 PowerShell 命令
             let link_path = &link_info.link_path;
             command.push_str(&format!(
@@ -89,7 +89,7 @@ pub fn restroe_all_links_icons(link_map: &mut HashMap<(String, String), LinkInfo
     // 遍历link_map
     for ((_, link_target_ext), link_info) in link_map.iter_mut() {
         // 判断是否更换过或扩展为uwp|app（给link_map添加is_change:Y/N)
-        if link_info.link_has_been_changed.is_empty() 
+        if link_info.link_icon_status.is_empty() 
         || link_target_ext == "uwp|app" 
         || !std::path::Path::new(&link_info.link_target_path).is_file() {
             continue;
@@ -108,7 +108,7 @@ pub fn restroe_all_links_icons(link_map: &mut HashMap<(String, String), LinkInfo
         ));
         // 更新LinkInfo结构体的图标路径和更换标记
         link_info.link_icon_location = String::from(icon_path.clone());
-        link_info.link_has_been_changed = String::new();
+        link_info.link_icon_status = String::new();
         // 若更换过图标，则更新更换的显示数据
         // 刷新列表
     };
