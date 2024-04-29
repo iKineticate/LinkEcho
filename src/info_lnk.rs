@@ -102,11 +102,16 @@ fn get_link_info(path_buf: &PathBuf) -> (String, String, String, String, String,
         let target_extension = Path::new(&link_target_path).extension();    // Option<OsStr>
         match &*target_file_name {
             "schtasks.exe"   => {link_target_ext = String::from("schtasks")}, // 任务计划程序
+            "taskmgr.exe"    => {link_target_ext = String::from("taskmgr")},  // 任务管理器
             "explorer.exe"   => {link_target_ext = String::from("explorer")}, // 资源管理器
+            "msconfig.exe"   => {link_target_ext = String::from("msconfig")}, // 系统配置实用工具
+            "services.exe"   => {link_target_ext = String::from("services")}, // 管理启动和停止服务
+            "sc.exe"         => {link_target_ext = String::from("sc")},       // 管理系统服务
             "cmd.exe"        => {link_target_ext = String::from("cmd")},      // 命令提示符
             "powershell.exe" => {link_target_ext = String::from("psh")},      // PowerShell
             "wscript.exe"    => {link_target_ext = String::from("wscript")},  // 脚本
             "cscript.exe"    => {link_target_ext = String::from("cscript")},  // 脚本
+            "regedit.exe"    => {link_target_ext = String::from("regedit")},  // 注册表
             "mstsc.exe"      => {link_target_ext = String::from("mstsc")},    // 远程连接
             "regsvr32.exe"   => {link_target_ext = String::from("regsvr32")}, // 注册COM组件
             "rundll32.exe"   => {link_target_ext = String::from("rundll32")}, // 执行32位的DLL文件
@@ -115,6 +120,8 @@ fn get_link_info(path_buf: &PathBuf) -> (String, String, String, String, String,
             "control.exe"    => {link_target_ext = String::from("control")},  // 控制面板执行
             "msdt.exe"       => {link_target_ext = String::from("msdt")},     // Microsoft 支持诊断工具
             "wmic.exe"       => {link_target_ext = String::from("wmic")},     // WMI 命令行
+            "net.exe"        => {link_target_ext = String::from("net")},      // 工作组连接安装程序
+            "netscan.exe"    => {link_target_ext = String::from("netscan")},  // 网络扫描
             _ => {
                 match (&target_extension, link_target_path.contains("WindowsSubsystemForAndroid")) {
                     (None, _) => {},
