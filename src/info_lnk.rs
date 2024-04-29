@@ -105,9 +105,16 @@ fn get_link_info(path_buf: &PathBuf) -> (String, String, String, String, String,
             "explorer.exe"   => {link_target_ext = String::from("explorer")}, // 资源管理器
             "cmd.exe"        => {link_target_ext = String::from("cmd")},      // 命令提示符
             "powershell.exe" => {link_target_ext = String::from("psh")},      // PowerShell
-            "wscript.exe"    => {link_target_ext = String::from("wscript")},  // WScript 对象
+            "wscript.exe"    => {link_target_ext = String::from("wscript")},  // 脚本
+            "cscript.exe"    => {link_target_ext = String::from("cscript")},  // 脚本
             "mstsc.exe"      => {link_target_ext = String::from("mstsc")},    // 远程连接
-            "control.exe"    => {link_target_ext = String::from("control")},  // 控制面板
+            "regsvr32.exe"   => {link_target_ext = String::from("regsvr32")}, // 注册COM组件
+            "rundll32.exe"   => {link_target_ext = String::from("rundll32")}, // 执行32位的DLL文件
+            "mshta.exe"      => {link_target_ext = String::from("mshta")},    // 执行.HTA文件
+            "msiexec.exe"    => {link_target_ext = String::from("msiexec")},  // 安装Windows Installer安装包(MSI)
+            "control.exe"    => {link_target_ext = String::from("control")},  // 控制面板执行
+            "msdt.exe"       => {link_target_ext = String::from("msdt")},     // Microsoft 支持诊断工具
+            "wmic.exe"       => {link_target_ext = String::from("wmic")},     // WMI 命令行
             _ => {
                 match (&target_extension, link_target_path.contains("WindowsSubsystemForAndroid")) {
                     (None, _) => {},

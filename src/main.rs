@@ -17,7 +17,6 @@ use tabled::{
 };
 
 mod modify;
-// mod info_powershell;
 mod info_lnk;
 
 #[allow(unused)]
@@ -56,20 +55,19 @@ fn main() {
     // 显示快捷方式的属性的列表
     let mut show_info: Vec<ShowInfo> = vec![];
 
-    // 获取当前用户的"桌面文件夹"的完整路径
+    // 获取当前用户的"桌面文件夹"的完整路径并收集属性
     let users_desktop_path = info_lnk::get_path_from_env("USERS_DESKTOP");
+    info_lnk::collect_link_info_in_folder(&users_desktop_path, &mut link_map, &mut show_info);
     // 获取公共用户的"桌面文件夹"的完整路径
     let public_desktop_path = info_lnk::get_path_from_env("PUBLIC_DESKTOP");
+    info_lnk::collect_link_info_in_folder(&public_desktop_path, &mut link_map, &mut show_info);
     // 获取当前用户的"开始菜单"的完整路径
     let users_start_menu_path = info_lnk::get_path_from_env("USERS_START_MENU");
+    info_lnk::collect_link_info_in_folder(&users_start_menu_path, &mut link_map, &mut show_info);
     // 获取公共用户的"开始菜单"的完整路径
     let pubilc_start_menu_path = info_lnk::get_path_from_env("PUBLIC_START_MENU");
-
-    // // 收集快捷方式的属性
-    info_lnk::collect_link_info_in_folder(&users_desktop_path, &mut link_map, &mut show_info);
-    info_lnk::collect_link_info_in_folder(&public_desktop_path, &mut link_map, &mut show_info);
-    info_lnk::collect_link_info_in_folder(&users_start_menu_path, &mut link_map, &mut show_info);
     info_lnk::collect_link_info_in_folder(&pubilc_start_menu_path, &mut link_map, &mut show_info);
+    
     // 在命令行显示快捷方式属性
     let table = Table::new(show_info).with(THEME).to_string(); println!("{table}");
 
