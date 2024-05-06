@@ -6,11 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-dirs = "5.0.1"
 glob = "0.3.1"
-parselnk = "0.1.1"
-# lnk = "0.5.1"
 lnk = { path = "lnk-rs" }
 rfd = "0.14.1"
-tabled = "0.15.0"
 encoding = "0.2.33"

@@ -1,5 +1,5 @@
 // #![windows_subsystem = "windows"]       // 隐藏 CMD 和 Powershel
-// #![allow(non_snake_case)]
+#![allow(non_snake_case)]
 #![cfg(target_os = "windows")]
 
 use std::env;
@@ -7,19 +7,13 @@ use std::path::{Path, PathBuf};
 use std::collections::HashMap;
 use rfd::FileDialog;
 use glob::glob;
-use tabled::{
-    settings::{
-        object::{FirstRow, Rows},
-        style::{On, Style},
-        Alignment, Modify, ModifyList, Padding, Settings,
-    },
-    Table, Tabled,
-};
+use info::SystemLinkDirs;
 
 mod modify;
-mod info_lnk;
+mod info;
 
-#[allow(unused)]
+
+// #[allow(unused)]
 #[derive(Debug)]
 pub struct LinkInfo {
     link_path: String,
@@ -30,52 +24,34 @@ pub struct LinkInfo {
     link_icon_status: String,
 }
 
-#[derive(Tabled)]
-pub struct ShowInfo {
-    name: String,
-    types: String,
-    status: String,
-}
-
-type TableTheme = Settings<
-    Settings<Settings<Settings, Style<On, On, On, On, On, On, 0, 0>>, Padding>,
-    ModifyList<FirstRow, Alignment>,
->;
-
-const THEME: TableTheme = Settings::empty()
-    .with(Style::modern())
-    .with(Padding::new(1, 1, 0, 0))
-    .with(Modify::list(Rows::first(), Alignment::center()));
-
 fn main() {
-    // 获取管理员权限
-
     // 存储快捷方式的属性的哈希表
     let mut link_map: HashMap<(String, String), LinkInfo> = HashMap::new();     // Rc<RefCell<HashMap>>: 适于多函数修改，相对而言可避免不必要的复杂性和潜在的错误
-    // 显示快捷方式的属性的列表
-    let mut show_info: Vec<ShowInfo> = vec![];
 
-    // 获取当前用户的"桌面文件夹"的完整路径并收集属性
-    let users_desktop_path = info_lnk::get_path_from_env("USERS_DESKTOP");
-    info_lnk::collect_link_info_in_folder(&users_desktop_path, &mut link_map, &mut show_info);
-    // 获取公共用户的"桌面文件夹"的完整路径
-    let public_desktop_path = info_lnk::get_path_from_env("PUBLIC_DESKTOP");
-    info_lnk::collect_link_info_in_folder(&public_desktop_path, &mut link_map, &mut show_info);
-    // 获取当前用户的"开始菜单"的完整路径
-    let users_start_menu_path = info_lnk::get_path_from_env("USERS_START_MENU");
-    info_lnk::collect_link_info_in_folder(&users_start_menu_path, &mut link_map, &mut show_info);
-    // 获取公共用户的"开始菜单"的完整路径
-    let pubilc_start_menu_path = info_lnk::get_path_from_env("PUBLIC_START_MENU");
-    info_lnk::collect_link_info_in_folder(&pubilc_start_menu_path, &mut link_map, &mut show_info);
+    // 获取当前和公共用户的"桌面文件夹"的完整路径并收集属性
+    let desktop_path = dbg!(SystemLinkDirs("DESKTOP").path());
+    dbg!(info::collect_link_info(desktop_path, &mut link_map));
+
+    // let test = dbg!(lnk::ShellLink::open(r"C:\Users\11593\Desktop\Autohotkey.lnk").unwrap());
+    // let test1 = dbg!(test.link_info().clone().unwrap().local_base_path().as_ref().unwrap_or(&String::new()));
     
-    // 在命令行显示快捷方式属性
-    let table = Table::new(show_info).with(THEME).to_string(); println!("{table}");
+    // 获取当前和公共用户的"开始菜单"的完整路径并收集属性
+    // let start_menu_path = dbg!(SystemLinkDirs("START_MENU").path());
+    // dbg!(info::collect_link_info(start_menu_path, &mut link_map));
 
-    // 更换所有图标
+    // 更换所有快捷方式图标
     // match modify::change_all_links_icons(&mut link_map) {
-    //     Ok(yes) => println!("{}", yes),
+    //     Ok(change) => println!("{}", change),
     //     Err(error) => println!("{}", error),
     // }
+
+    // 恢复所有快捷方式默认图标
+    // match modify::restore_all_links_icons(&mut link_map) {
+    //     Ok(restore) => println!("{}", restore),
+    //     Err(error) => println!("{}", error),
+    // }
+
+    dbg!(&link_map);
 }
 
 

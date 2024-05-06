@@ -12,11 +12,10 @@ pub fn change_all_links_icons(link_map: &mut HashMap<(String, String), LinkInfo>
     let mut match_same_vec = vec![];
     // 选择图标文件夹
     let select_icons_folder_path: String = match FileDialog::new()
-        .set_title("请选择存放图标(.ico)的文件夹")
-        .pick_folder() 
-    {
+        .set_title("Please select the folder where the icons are stored")
+        .pick_folder() {
         Some(path_buf) => format!(r"{}\**\*.ico", path_buf.to_string_lossy().into_owned()),
-        None => return Err("未选择文件夹".to_string()),
+        None => return Err("No folder selected".to_string()),
     };
     // 遍历文件夹图标
     for path_buf in glob(&select_icons_folder_path).unwrap().filter_map(Result::ok) {
@@ -24,7 +23,7 @@ pub fn change_all_links_icons(link_map: &mut HashMap<(String, String), LinkInfo>
         let icon_path = path_buf.to_string_lossy().into_owned();    // to_string_lossy：无非法符返回Cow::Borrowed(&str)，有非法符号返回Cow::Owned(String)
         let icno_name: String = match path_buf.file_stem() {
             Some(name) => name.to_string_lossy().into_owned().trim().to_lowercase(),    // 这里用小写来后续匹配
-            None => return Err(format!("获取{}的图标名称失败", icon_path)),
+            None => return Err(format!("Icon without name: {}", icon_path)),
         };
         // 遍历 HashMap
         for ((link_name, link_target_ext), link_info) in link_map.iter_mut() {  // iter_mut: 键的不可变引用和值的可变引用
@@ -48,19 +47,16 @@ pub fn change_all_links_icons(link_map: &mut HashMap<(String, String), LinkInfo>
             link_info.link_icon_location = String::from(icon_path.clone());
             link_info.link_icon_status = String::from("√");
             // 追加 PowerShell 命令
-            let link_path = &link_info.link_path;
             command.push_str(&format!(
                 r#"
                 $shortcut = $shell.CreateShortcut("{link_path}")
                 $shortcut.IconLocation = "{icon_path}"
                 $shortcut.Save()
                 "#,
-                link_path = link_path,
+                link_path = &link_info.link_path,
                 icon_path = icon_path
             ));
-            println!("{}", link_name);
-            println!("{}", icno_name);
-            println!("");
+            println!("{}\n{}\n", link_name, icno_name);
         }
     }
     // 执行 Powershell 命令: 更换图标
@@ -77,11 +73,11 @@ pub fn change_all_links_icons(link_map: &mut HashMap<(String, String), LinkInfo>
     // 刷新桌面
     let elapsed_time = start_time.elapsed();
     println!("Elapsed time: {:?}", elapsed_time);
-    Ok("已更换桌面所有图标")
+    Ok("Successfully changed the icons of all shortcuts!")
 }
 
 #[allow(unused)]
-pub fn restroe_all_links_icons(link_map: &mut HashMap<(String, String), LinkInfo>) -> Result<&'static str, String> {
+pub fn restore_all_links_icons(link_map: &mut HashMap<(String, String), LinkInfo>) -> Result<&'static str, String> {
     // 通知是否恢复所有默认
 
     // 存储 PowerShell 命令
@@ -89,25 +85,21 @@ pub fn restroe_all_links_icons(link_map: &mut HashMap<(String, String), LinkInfo
     // 遍历link_map
     for ((_, link_target_ext), link_info) in link_map.iter_mut() {
         // 判断是否更换过或扩展为uwp|app（给link_map添加is_change:Y/N)
-        if link_info.link_icon_status.is_empty() 
-        || link_target_ext == "uwp|app" 
-        || !std::path::Path::new(&link_info.link_target_path).is_file() {
+        if link_info.link_icon_status.is_empty() || link_target_ext == "uwp|app" {
             continue;
         }
-        // 追击命令
-        let link_path = &link_info.link_path;
-        let icon_path = &link_info.link_target_path;
+        // 追加命令
         command.push_str(&format!(
             r#"
             $shortcut = $shell.CreateShortcut("{link_path}")
             $shortcut.IconLocation = "{icon_path}"
             $shortcut.Save()
             "#,
-            link_path = link_path,
-            icon_path = icon_path
+            link_path = &link_info.link_path,
+            icon_path = &link_info.link_target_path
         ));
         // 更新LinkInfo结构体的图标路径和更换标记
-        link_info.link_icon_location = String::from(icon_path.clone());
+        link_info.link_icon_location = String::from(link_info.link_target_path.clone());
         link_info.link_icon_status = String::new();
         // 若更换过图标，则更新更换的显示数据
         // 刷新列表
@@ -122,7 +114,7 @@ pub fn restroe_all_links_icons(link_map: &mut HashMap<(String, String), LinkInfo
         .expect("Failed to execute PowerShell command");
     // 刷新
 
-    Ok("所有快捷方式图标恢复默认图标")
+    Ok("Restore default icons for all shortcut icons")
 }
 
 #[allow(unused)]
@@ -146,7 +138,7 @@ pub fn change_single_shortcut_icon(link_path: String, icon_path: String) -> Resu
         .output()
         .expect("Failed to execute PowerShell command");
 
-    Ok("已更换图标")
+    Ok("The icon of the shortcut has been changed")
 }
 
 
