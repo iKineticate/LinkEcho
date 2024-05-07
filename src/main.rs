@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use rfd::FileDialog;
 use glob::glob;
 use info::SystemLinkDirs;
+use info::collect_link_info;
 
 mod modify;
 mod info;
@@ -30,14 +31,11 @@ fn main() {
 
     // 获取当前和公共用户的"桌面文件夹"的完整路径并收集属性
     let desktop_path = dbg!(SystemLinkDirs("DESKTOP").path());
-    dbg!(info::collect_link_info(desktop_path, &mut link_map));
+    collect_link_info(desktop_path, &mut link_map);
 
-    // let test = dbg!(lnk::ShellLink::open(r"C:\Users\11593\Desktop\Autohotkey.lnk").unwrap());
-    // let test1 = dbg!(test.link_info().clone().unwrap().local_base_path().as_ref().unwrap_or(&String::new()));
-    
     // 获取当前和公共用户的"开始菜单"的完整路径并收集属性
-    // let start_menu_path = dbg!(SystemLinkDirs("START_MENU").path());
-    // dbg!(info::collect_link_info(start_menu_path, &mut link_map));
+    let start_menu_path = dbg!(SystemLinkDirs("START_MENU").path());
+    collect_link_info(start_menu_path, &mut link_map);
 
     // 更换所有快捷方式图标
     // match modify::change_all_links_icons(&mut link_map) {
@@ -51,7 +49,8 @@ fn main() {
     //     Err(error) => println!("{}", error),
     // }
 
-    dbg!(&link_map);
+    // dbg!(&link_map);
+    dbg!(lnk::ShellLink::open(r"C:\Users\Default\AppData\Roaming\Microsoft\Internet Explorer\Quick Launch\Shows Desktop.lnk").unwrap());
 }
 
 
