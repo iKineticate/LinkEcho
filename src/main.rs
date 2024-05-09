@@ -8,13 +8,12 @@ use std::collections::HashMap;
 use rfd::FileDialog;
 use glob::glob;
 use info::SystemLinkDirs;
-use info::collect_link_info;
+use info::ManageLinkInfo;
 
 mod modify;
 mod info;
 
-
-// #[allow(unused)]
+#[allow(unused)]
 #[derive(Debug)]
 pub struct LinkInfo {
     link_path: String,
@@ -30,12 +29,12 @@ fn main() {
     let mut link_map: HashMap<(String, String), LinkInfo> = HashMap::new();     // Rc<RefCell<HashMap>>: 适于多函数修改，相对而言可避免不必要的复杂性和潜在的错误
 
     // 获取当前和公共用户的"桌面文件夹"的完整路径并收集属性
-    let desktop_path = dbg!(SystemLinkDirs("DESKTOP").path());
-    collect_link_info(desktop_path, &mut link_map);
+    let desktop_path = dbg!(SystemLinkDirs::Path("DESKTOP"));
+    ManageLinkInfo::collect(desktop_path, &mut link_map);
 
     // 获取当前和公共用户的"开始菜单"的完整路径并收集属性
-    let start_menu_path = dbg!(SystemLinkDirs("START_MENU").path());
-    collect_link_info(start_menu_path, &mut link_map);
+    let start_menu_path = dbg!(SystemLinkDirs::Path("START_MENU"));
+    ManageLinkInfo::collect(start_menu_path, &mut link_map);
 
     // 更换所有快捷方式图标
     // match modify::change_all_links_icons(&mut link_map) {
@@ -49,8 +48,8 @@ fn main() {
     //     Err(error) => println!("{}", error),
     // }
 
-    // dbg!(&link_map);
-    dbg!(lnk::ShellLink::open(r"C:\Users\Default\AppData\Roaming\Microsoft\Internet Explorer\Quick Launch\Shows Desktop.lnk").unwrap());
+    dbg!(&link_map);
+    // dbg!(lnk::ShellLink::open(r"C:\Users\11593\Desktop\GitHub Desktop.lnk").unwrap());
 }
 
 
