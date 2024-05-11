@@ -4,51 +4,51 @@
 
 use std::env;
 use std::path::{Path, PathBuf};
-use std::collections::HashMap;
 use rfd::FileDialog;
 use glob::glob;
-use info::SystemLinkDirs;
-use info::ManageLinkInfo;
+use info::{SystemLinkDirs, ManageLinkProp};
 
 mod modify;
 mod info;
 
 #[allow(unused)]
 #[derive(Debug)]
-pub struct LinkInfo {
-    link_path: String,
-    link_target_dir: String,
-    link_target_path: String,
-    link_icon_location: String,
-    link_icon_index: String,
-    link_icon_status: String,
+pub struct LinkProp {
+    name: String,
+    path: String,
+    target_ext: String,
+    target_dir: String,
+    target_path: String,
+    icon_status: String,
+    icon_location: String,
+    icon_index: String,
 }
 
 fn main() {
-    // 存储快捷方式的属性的哈希表
-    let mut link_map: HashMap<(String, String), LinkInfo> = HashMap::new();     // Rc<RefCell<HashMap>>: 适于多函数修改，相对而言可避免不必要的复杂性和潜在的错误
-
+    // 存储快捷方式的属性
+    let mut link_vec: Vec<LinkProp> = Vec::new();
+    
     // 获取当前和公共用户的"桌面文件夹"的完整路径并收集属性
     let desktop_path = dbg!(SystemLinkDirs::Path("DESKTOP"));
-    ManageLinkInfo::collect(desktop_path, &mut link_map);
+    ManageLinkProp::collect(desktop_path, &mut link_vec);
 
     // 获取当前和公共用户的"开始菜单"的完整路径并收集属性
-    let start_menu_path = dbg!(SystemLinkDirs::Path("START_MENU"));
-    ManageLinkInfo::collect(start_menu_path, &mut link_map);
+    // let start_menu_path = dbg!(SystemLinkDirs::Path("START_MENU"));
+    // ManageLinkProp::collect(start_menu_path, &mut link_vec);
 
     // 更换所有快捷方式图标
-    // match modify::change_all_links_icons(&mut link_map) {
-    //     Ok(change) => println!("{}", change),
-    //     Err(error) => println!("{}", error),
-    // }
+    match modify::change_all_links_icons(&mut link_vec) {
+        Ok(change) => println!("{}", change),
+        Err(error) => println!("{}", error),
+    }
 
     // 恢复所有快捷方式默认图标
-    // match modify::restore_all_links_icons(&mut link_map) {
+    // match modify::restore_all_links_icons(&mut link_vec) {
     //     Ok(restore) => println!("{}", restore),
     //     Err(error) => println!("{}", error),
     // }
 
-    dbg!(&link_map);
+    // dbg!(link_vec);
     // dbg!(lnk::ShellLink::open(r"C:\Users\11593\Desktop\GitHub Desktop.lnk").unwrap());
 }
 

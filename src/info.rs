@@ -1,5 +1,4 @@
-use crate::{HashMap, Path, PathBuf, env, LinkInfo, glob};
-
+use crate::{Path, PathBuf, env, LinkProp, glob};
 pub struct SystemLinkDirs;
 
 impl SystemLinkDirs{
@@ -39,9 +38,9 @@ impl SystemLinkDirs{
 }
 
 
-pub struct ManageLinkInfo;
+pub struct ManageLinkProp;
 
-impl ManageLinkInfo {
+impl ManageLinkProp {
     fn get(path_buf: PathBuf) -> (String, String, String, String, String, String, String, String) {
         let link_name = path_buf.file_stem()
             .map_or(String::from("unnamed_file")
@@ -93,7 +92,7 @@ impl ManageLinkInfo {
             let link_target_file_name = Path::new(&link_target_path).file_name()
                 .map_or_else(|| String::new(), 
                 |name| name.to_string_lossy().into_owned());
-            let link_target_extension = Path::new(&link_target_path).extension();
+            let file_extension = Path::new(&link_target_path).extension();
             match &*link_target_file_name {
                 "schtasks.exe"   => String::from("schtasks"), // 任务计划程序
                 "taskmgr.exe"    => String::from("taskmgr"),  // 任务管理器
@@ -117,7 +116,7 @@ impl ManageLinkInfo {
                 "net.exe"        => String::from("net"),      // 工作组连接安装程序
                 "netscan.exe"    => String::from("netscan"),  // 网络扫描
                 _ => {
-                    match (&link_target_extension, link_target_path.contains("WindowsSubsystemForAndroid")) {
+                    match (&file_extension, link_target_path.contains("WindowsSubsystemForAndroid")) {
                         (None, _) => String::new(),
                         (Some(_), true) => String::from("app"),
                         (Some(os_str), false) => os_str.to_string_lossy().into_owned().to_lowercase()
@@ -129,23 +128,21 @@ impl ManageLinkInfo {
         (link_name, link_path, link_target_dir, link_target_path, link_target_ext, link_icon_location, link_icon_index, link_icon_status)
     }
 
-    pub fn collect(path_vec: Vec<impl AsRef<Path>>, link_map: &mut HashMap<(String, String), LinkInfo>) {
+    pub fn collect(path_vec: Vec<impl AsRef<Path>>, link_vec: &mut Vec<LinkProp>) {
         for dir in path_vec.iter() {
             let directory = format!(r"{}\**\*.lnk", dir.as_ref().to_string_lossy());
             for path_buf in glob(&directory).unwrap().filter_map(Result::ok) {
-                let (link_name, link_path, link_target_dir, link_target_path, link_target_ext, link_icon_location, link_icon_index, link_icon_status) = ManageLinkInfo::get(path_buf);
-                // 排除重复项目
-                if link_map.contains_key(&(link_name.clone(), link_target_ext.clone())) {
-                    continue;
-                }
-                link_map.insert((link_name, link_target_ext), LinkInfo {
-                    link_path,
-                    link_target_path,
-                    link_target_dir,
-                    link_icon_location,
-                    link_icon_index,
-                    link_icon_status,
-                });
+                let (name, path, target_dir, target_path, target_ext, icon_location, icon_index, icon_status) = ManageLinkProp::get(path_buf);
+                link_vec.push( LinkProp {
+                    name,
+                    path,
+                    target_ext,
+                    target_dir,
+                    target_path,
+                    icon_status,
+                    icon_location,
+                    icon_index,
+                })
             }
         };
     }

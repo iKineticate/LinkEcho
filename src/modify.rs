@@ -1,11 +1,10 @@
 use std::os::windows::process::CommandExt;
 use std::time::Instant;
-use core::cmp::Ordering;
 use std::process::{Command, Stdio};
-use crate::{LinkInfo, HashMap, FileDialog, glob};
+use crate::{LinkProp, FileDialog, glob};
 
 #[allow(unused)]
-pub fn change_all_links_icons(link_map: &mut HashMap<(String, String), LinkInfo>) -> Result<&'static str, String> {
+pub fn change_all_links_icons(link_vec: &mut Vec<LinkProp>) -> Result<&'static str, String> {
     // 存储 PowerShell 命令
     let mut command = String::from(r#"$shell = New-Object -ComObject WScript.Shell"#);
     // 存储已匹配对象
@@ -26,26 +25,25 @@ pub fn change_all_links_icons(link_map: &mut HashMap<(String, String), LinkInfo>
             None => return Err(format!("Icon without name: {}", icon_path)),
         };
         // 遍历 HashMap
-        for ((link_name, link_target_ext), link_info) in link_map.iter_mut() {  // iter_mut: 键的不可变引用和值的可变引用
-            let lowercase_name = link_name.clone().trim().to_lowercase();
+        for link_prop in link_vec.iter_mut() {
+            let lowercase_name = link_prop.name.clone().trim().to_lowercase();
             // 跳过已匹配对象
-            if match_same_vec.contains(&(link_name.clone(), link_target_ext.clone())) {
+            if match_same_vec.contains(&link_prop.path) {   
                 continue;
             }
-            // 匹配图标与lnk名称之间的包含关系
-            match lowercase_name.chars().count().cmp(&icno_name.chars().count()) {
-                Ordering::Equal if lowercase_name == icno_name => match_same_vec.push((link_name.to_string(), link_target_ext.to_string())),
-                Ordering::Greater if lowercase_name.contains(&icno_name) => {},
-                Ordering::Less if icno_name.contains(&lowercase_name) => {},
-                _ => continue,
+            // 比较图标名称与LNK名称的包含关系
+            match (lowercase_name.contains(&icno_name), icno_name.contains(&lowercase_name)) {
+                (false, false) => continue,
+                (true, true) => match_same_vec.push(link_prop.path.to_string()),
+                _ => ()
             }
             // 跳过相等关系且已使用该图标情况
-            if link_info.link_icon_location == icon_path {
+            if link_prop.icon_location == icon_path {
                 continue;
             };
-            // 更新LinkInfo结构体的图标路径
-            link_info.link_icon_location = String::from(icon_path.clone());
-            link_info.link_icon_status = String::from("√");
+            // 更新LinkProp结构体的图标路径
+            link_prop.icon_location = String::from(icon_path.clone());
+            link_prop.icon_status = String::from("√");
             // 追加 PowerShell 命令
             command.push_str(&format!(
                 r#"
@@ -53,10 +51,10 @@ pub fn change_all_links_icons(link_map: &mut HashMap<(String, String), LinkInfo>
                 $shortcut.IconLocation = "{icon_path}"
                 $shortcut.Save()
                 "#,
-                link_path = &link_info.link_path,
+                link_path = &link_prop.path,
                 icon_path = icon_path
             ));
-            println!("{}\n{}\n", link_name, icno_name);
+            println!("{}\n{}\n", link_prop.name, icno_name);
         }
     }
     // 执行 Powershell 命令: 更换图标
@@ -77,15 +75,15 @@ pub fn change_all_links_icons(link_map: &mut HashMap<(String, String), LinkInfo>
 }
 
 #[allow(unused)]
-pub fn restore_all_links_icons(link_map: &mut HashMap<(String, String), LinkInfo>) -> Result<&'static str, String> {
+pub fn restore_all_links_icons(link_vec: &mut Vec<LinkProp>) -> Result<&'static str, String> {
     // 通知是否恢复所有默认
 
     // 存储 PowerShell 命令
     let mut command = String::from(r#"$shell = New-Object -ComObject WScript.Shell"#);
-    // 遍历link_map
-    for ((_, link_target_ext), link_info) in link_map.iter_mut() {
-        // 判断是否更换过或扩展为uwp|app（给link_map添加is_change:Y/N)
-        if link_info.link_icon_status.is_empty() || link_target_ext == "uwp|app" {
+    // 遍历link_vec
+    for link_prop in link_vec.iter_mut() {
+        // 判断是否更换过或扩展为uwp|app
+        if link_prop.icon_status.is_empty() || link_prop.target_ext == "uwp|app" {
             continue;
         }
         // 追加命令
@@ -95,12 +93,12 @@ pub fn restore_all_links_icons(link_map: &mut HashMap<(String, String), LinkInfo
             $shortcut.IconLocation = "{icon_path}"
             $shortcut.Save()
             "#,
-            link_path = &link_info.link_path,
-            icon_path = &link_info.link_target_path
+            link_path = &link_prop.path,
+            icon_path = &link_prop.target_path
         ));
-        // 更新LinkInfo结构体的图标路径和更换标记
-        link_info.link_icon_location = String::from(link_info.link_target_path.clone());
-        link_info.link_icon_status = String::new();
+        // 更新LinkProp结构体的图标路径和更换标记
+        link_prop.icon_location = String::from(link_prop.target_path.clone());
+        link_prop.icon_status = String::new();
         // 若更换过图标，则更新更换的显示数据
         // 刷新列表
     };
@@ -142,8 +140,8 @@ pub fn change_single_shortcut_icon(link_path: String, icon_path: String) -> Resu
 }
 
 
-// fn clear_date(link_map: &mut HashMap<(String, String), LinkInfo>) {
-//     link_map.clear();
+// fn clear_date(link_vec: &mut Vec<LinkProp>) {
+//     link_vec.clear();
 // }
 
 // fn clear_thumbnails() {
