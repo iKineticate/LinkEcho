@@ -352,10 +352,22 @@ impl From<&[u8]> for CommonNetworkRelativeLink {
             let net_name_offset_unicode = LE::read_u32(&data[20..]) as usize;
             let device_name_offset_unicode = LE::read_u32(&data[24..]) as usize;
             link.net_name_unicode = Some(strings::trim_nul_terminated_string(
-                String::from_utf8_lossy(&data[net_name_offset_unicode..]).to_string(),
+                // String::from_utf8_lossy(&data[net_name_offset_unicode..]).to_string(),
+                if net_name_offset_unicode <= data.len() {
+                    String::from_utf8_lossy(&data[net_name_offset_unicode..]).to_string()
+                } else {
+                    // println!("out of range for slice of length: {:#?}\ndata's len = {}\n net_name_offset_unicode = {}", link.net_name, data.len(), net_name_offset_unicode);
+                    String::new()
+                }
             ));
             link.device_name_unicode = Some(strings::trim_nul_terminated_string(
-                String::from_utf8_lossy(&data[device_name_offset_unicode..]).to_string(),
+                // String::from_utf8_lossy(&data[device_name_offset_unicode..]).to_string(),
+                if device_name_offset_unicode <= data.len() {
+                    String::from_utf8_lossy(&data[device_name_offset_unicode..]).to_string()
+                } else {
+                    // println!("out of range for slice of length: {:#?}\ndata's len = {}\n net_name_offset_unicode = {}", link.net_name, data.len(), device_name_offset_unicode);
+                    String::new()
+                }
             ));
         }
 

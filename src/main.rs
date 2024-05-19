@@ -26,7 +26,7 @@ pub struct LinkProp {
 
 fn main() {
     // 存储快捷方式的属性
-    let mut link_vec: Vec<LinkProp> = Vec::new();
+    let mut link_vec: Vec<LinkProp> = Vec::with_capacity(100);
     
     // 获取当前和公共用户的"桌面文件夹"的完整路径并收集属性
     let desktop_path = dbg!(SystemLinkDirs::Path("DESKTOP"));
@@ -37,18 +37,19 @@ fn main() {
     // ManageLinkProp::collect(start_menu_path, &mut link_vec);
 
     // 更换所有快捷方式图标
-    match modify::change_all_links_icons(&mut link_vec) {
-        Ok(change) => println!("{}", change),
-        Err(error) => println!("{}", error),
-    }
+    // match modify::change_all_links_icons(&mut link_vec) {
+    //     Ok(change) => println!("{}", change),
+    //     Err(error) => println!("{}", error),
+    // }
 
     // 恢复所有快捷方式默认图标
     // match modify::restore_all_links_icons(&mut link_vec) {
     //     Ok(restore) => println!("{}", restore),
     //     Err(error) => println!("{}", error),
     // }
-
-    // dbg!(link_vec);
+    
+    println!("{}", link_vec.len());
+    dbg!(link_vec);
     // dbg!(lnk::ShellLink::open(r"C:\Users\11593\Desktop\GitHub Desktop.lnk").unwrap());
 }
 

@@ -29,9 +29,9 @@ impl SystemLinkDirs{
             if !tuple.0.is_dir() {
                 match env::var_os(&tuple.1) {
                     Some(val) => {*tuple.0 = Path::new(&val).join(env_push)},
-                    None => panic!("Error: Unable to determine {} path.", name),
-                };
-            };
+                    None => panic!("Error: Unable to determine {} path.", name)
+                }
+            }
         };
         vec![users_path, public_path]
     }
@@ -41,13 +41,16 @@ impl SystemLinkDirs{
 pub struct ManageLinkProp;
 
 impl ManageLinkProp {
-    fn get(path_buf: PathBuf) -> (String, String, String, String, String, String, String, String) {
+    fn get(path_buf: PathBuf) -> Result<LinkProp, String> {
         let link_name = path_buf.file_stem()
             .map_or(String::from("unnamed_file")
             , |no_ext| no_ext.to_string_lossy().into_owned());
         let link_path = path_buf.to_string_lossy().into_owned();
         // 引用 lnk 库
-        let objlnk = lnk::ShellLink::open(&link_path).unwrap();
+        let objlnk = match lnk::ShellLink::open(&link_path) {
+            Ok(obj_lnk) => obj_lnk,
+            Err(_) => return Err(format!("Failed to open file with lnk library: {}", &link_path))
+        };
         let link_relative_path = objlnk.relative_path().clone().unwrap_or(String::new());
         let mut link_target_dir = objlnk.working_dir().clone().unwrap_or(String::new());
         let mut link_target_path = objlnk.link_info().clone().map_or(String::new(), |i| i.local_base_path().clone().unwrap_or(String::new()));
@@ -125,25 +128,30 @@ impl ManageLinkProp {
             }
         };
 
-        (link_name, link_path, link_target_dir, link_target_path, link_target_ext, link_icon_location, link_icon_index, link_icon_status)
+        Ok( LinkProp {
+            name: link_name,
+            path: link_path,
+            target_ext: link_target_ext,
+            target_dir: link_target_dir,
+            target_path: link_target_path,
+            icon_status: link_icon_status,
+            icon_location: link_icon_location,
+            icon_index: link_icon_index,
+        })
     }
 
     pub fn collect(path_vec: Vec<impl AsRef<Path>>, link_vec: &mut Vec<LinkProp>) {
         for dir in path_vec.iter() {
-            let directory = format!(r"{}\**\*.lnk", dir.as_ref().to_string_lossy());
+            let directory = dir.as_ref().join("**\\*.lnk").to_string_lossy().into_owned();
             for path_buf in glob(&directory).unwrap().filter_map(Result::ok) {
-                let (name, path, target_dir, target_path, target_ext, icon_location, icon_index, icon_status) = ManageLinkProp::get(path_buf);
-                link_vec.push( LinkProp {
-                    name,
-                    path,
-                    target_ext,
-                    target_dir,
-                    target_path,
-                    icon_status,
-                    icon_location,
-                    icon_index,
-                })
+                match ManageLinkProp::get(path_buf) {
+                    Ok(link_prop) => link_vec.push(link_prop),
+                    Err(err) => {
+                        println!("{}", err);
+                        continue
+                    }
+                }
             }
-        };
+        }
     }
 }
