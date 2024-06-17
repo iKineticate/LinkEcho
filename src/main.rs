@@ -2,7 +2,6 @@
 #![allow(non_snake_case)]
 #![cfg(target_os = "windows")]
 
-use std::env;
 use std::path::{Path, PathBuf};
 use rfd::FileDialog;
 use glob::glob;
@@ -16,11 +15,11 @@ pub struct LinkProp {
     name: String,
     path: String,
     target_ext: String,
-    target_dir: Option<String>,
-    target_path: Option<String>,
-    icon_status: Option<String>,
-    icon_location: Option<String>,
+    target_dir: String,
+    target_path: String,
+    icon_location: String,
     icon_index: String,
+    icon_status: Option<String>,
 }
 
 fn main() {
@@ -29,11 +28,11 @@ fn main() {
     
     // 获取当前和公共用户的"桌面文件夹"的完整路径并收集属性
     let desktop_path = SystemLinkDirs::Path("DESKTOP").expect("Failed to get desktop path");
-    ManageLinkProp::collect(desktop_path, &mut link_vec);
+    ManageLinkProp::collect(desktop_path, &mut link_vec).expect("Failed to get properties of desktop shortcut");
 
     // 获取当前和公共用户的"开始菜单"的完整路径并收集属性
-    // let start_menu_path = dbg!(SystemLinkDirs::Path("START_MENU").expect("Failed to get desktop path"));
-    // ManageLinkProp::collect(start_menu_path, &mut link_vec);
+    // let start_menu_path = dbg!(SystemLinkDirs::Path("START_MENU").expect("Failed to get start menu path"));
+    // ManageLinkProp::collect(start_menu_path, &mut link_vec).expect("Failed to get properties of start menu shortcut");
 
     // 更换所有快捷方式图标
     // match modify::change_all_links_icons(&mut link_vec) {
@@ -48,7 +47,7 @@ fn main() {
     // }
 
     dbg!(link_vec);
-    // dbg!(lnk::ShellLink::open(r"C:\Users\11593\Desktop\GitHub Desktop.lnk").unwrap());
+    // modify::clear_thumbnails();
 }
 
 

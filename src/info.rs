@@ -1,123 +1,80 @@
-use crate::{Path, PathBuf, env, LinkProp, glob};
+use crate::{Path, PathBuf, LinkProp, glob};
+use winsafe::{IPersistFile, prelude::*, co};
 
 pub struct SystemLinkDirs;
 impl SystemLinkDirs {
     pub fn Path(name: &str) -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
-        let mut users_path = PathBuf::new();
-        let (mut public_path, users_env, public_env, sub_path) = match name {
-            "DESKTOP" => (
-                PathBuf::from(r"C:\Users\Public\Desktop"),
-                "USERPROFILE",
-                "PUBLIC",
-                "Desktop",
-            ),
-            "START_MENU" => (
-                PathBuf::from(r"C:\ProgramData\Microsoft\Windows\Start Menu"),
-                "APPDATA",
-                "PROGRAMDATA",
-                "Microsoft/Windows/Start Menu",
-            ),
-            "START_UP" => (
-                PathBuf::from(r"C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup"),
-                "APPDATA",
-                "PROGRAMDATA",
-                "Microsoft/Windows/Start Menu/Programs/Startup",
-            ),
+        let mut path_vec = Vec::new();
+
+        let knoew_folder_id_vec = match name {
+            "DESKTOP" => {
+                vec![&co::KNOWNFOLDERID::Desktop, &co::KNOWNFOLDERID::PublicDesktop]
+            },
+            "START_MENU" => {
+                vec![&co::KNOWNFOLDERID::StartMenu, &co::KNOWNFOLDERID::CommonStartMenu]
+            },
+            "START_UP" => {
+                vec![&co::KNOWNFOLDERID::Startup, &co::KNOWNFOLDERID::CommonStartup]
+            },
             _ => return Err(
                 format!(
-                    "Unsupported input value: '{}'.\
+                    "Unsupported input value: '{name}'.\
                     Supported values are 'DESKTOP' or 'START_MENU' or 'START_UP'.",
-                    name
-                ).into())
+                ).into()
+            )
         };
-        for tuple in [(&mut users_path, users_env, sub_path), (&mut public_path, public_env, sub_path)].iter_mut() {
-            if !tuple.0.is_dir() {
-                match env::var_os(&tuple.1) {
-                    Some(val) => {*tuple.0 = Path::new(&val).join(sub_path)},
-                    None => {
-                        return Err(
-                            format!(
-                                "Error: Unable to determine {} path.",
-                                name
-                            ).into()
-                        )
-                    }
-                }
-            }
+
+        for folder_id in knoew_folder_id_vec.iter() {
+            let path = winsafe::SHGetKnownFolderPath(
+                folder_id,
+                co::KF::NO_ALIAS,    //  确保返回文件夹的物理路径，避免别名路径
+                None,
+            )?;
+            path_vec.push(PathBuf::from(path));
         };
-        Ok(vec![users_path, public_path])
+
+        Ok(path_vec)
     }
 }
 
 pub struct ManageLinkProp;
 impl ManageLinkProp {
-    fn get(path_buf: PathBuf) -> Result<LinkProp, String> {
+    fn get(path_buf: PathBuf, shell_link: winsafe::IShellLink, persist_file: IPersistFile) -> Result<LinkProp, winsafe::co::HRESULT> {
+        let link_path = path_buf.to_string_lossy().into_owned();
+
+        // Load the shortcut file (LNK file)
+        persist_file.Load(&link_path, co::STGM::READ)?;
+
         let link_name = match path_buf.file_stem() {
-            Some(no_ext) => no_ext.to_string_lossy().into_owned(),
+            Some(name) => name.to_string_lossy().into_owned(),
             None => String::from("unnamed_file")
         };
-        let link_path = path_buf.to_string_lossy().into_owned();
-        // 引用 lnk 库
-        let obj_lnk = lnk::ShellLink::open(&link_path).map_err(|_| {
-            format!("Failed to open file with lnk-rs library: \n{}", &link_path)
-        })?;
-        let mut link_target_dir = obj_lnk.working_dir().clone();
-        // 解决lnk库的link_info返回的目标路径存在非 Unicode 序列的问题
-        let mut link_target_path = obj_lnk.link_info()
-            .clone()
-            .and_then(|i| i.local_base_path().clone())
-            .filter(|path| !path.contains('�'));
-        match (&link_target_dir, &link_target_path) {
-            (Some(target_dir), None) => {
-                if let Some(link_relative_path) = obj_lnk.relative_path().clone() {   
-                    let mut new_target_path = PathBuf::from(target_dir.clone());
-                    for component in Path::new(&link_relative_path).components() {
-                        let path_string = component.as_os_str().to_string_lossy().into_owned();
-                        if !path_string.is_empty() && path_string != ".." && !target_dir.contains(&path_string) {
-                            new_target_path.push(path_string);
-                        };
-                    };
-                    if new_target_path.is_file() {
-                        link_target_path = Some(new_target_path.to_string_lossy().into_owned());
-                    };
-                };
-            },
-            (None, Some(_)) => {
-                link_target_dir = link_target_path
-                    // .clone()
-                    .as_ref()
-                    .and_then(|path| Path::new(path).parent())
-                    .map(|parent| parent.to_string_lossy().into_owned());
-            },
-            (_, _) => {},
-        };
-        // 快捷方式图标路径、是否被更换
-        let (link_icon_location, link_icon_status) = match &obj_lnk.icon_location() {
-            Some(icon_path) => {
-                if Path::new(icon_path).is_file() {
-                    if Some(icon_path) == link_target_path.as_ref()    // 排除图标源于目标
-                        || icon_path.contains("WindowsSubsystemForAndroid")   // 排除WSA应用
-                        || icon_path.contains(&link_target_dir.clone().unwrap_or(String::from("none_dir"))) {    // 排除图标位于目标(子)目录
-                        (Some(icon_path.clone()), None)
-                    } else {
-                        (Some(icon_path.clone()), Some(String::from("√")))
-                    }
-                } else {    // 排除UWP|APP情况
-                    (None, None)
+
+        let link_target_path = shell_link.GetPath(
+        Some(&mut winsafe::WIN32_FIND_DATA::default()),
+        co::SLGP::RAWPATH   // Absolute path
+        ).unwrap_or(String::new());
+
+        let link_target_dir = match shell_link.GetWorkingDirectory() {
+            Ok(path) => {
+                match path.is_empty() {
+                    true => ManageLinkProp::get_working_directory(&link_target_path),
+                    false => path
                 }
             },
-            None => (None, None),
-        };    
-        let link_icon_index = obj_lnk.header().icon_index().to_string();
-        let link_target_ext = match &link_target_path {
-            Some(path) => {
-                let link_target_file_name = Path::new(&path)
+            Err(_) => ManageLinkProp::get_working_directory(&link_target_path)
+        };
+
+        let link_target_ext = if link_target_path.is_empty() {
+            String::from("uwp|app")
+        } else {
+            let link_target_file_name = Path::new(&link_target_path)
                     .file_name()
-                    .map_or_else(
-                        || String::new(), 
+                    .map_or( 
+                        String::new(), 
                         |name| name.to_string_lossy().into_owned()
                     );
-                let link_target_file_extension = Path::new(&path).extension();
+                let link_target_file_extension = Path::new(&link_target_path).extension();
                 match &*link_target_file_name {
                     "schtasks.exe"   => String::from("schtasks"), // 任务计划程序
                     "taskmgr.exe"    => String::from("taskmgr"),  // 任务管理器
@@ -141,16 +98,36 @@ impl ManageLinkProp {
                     "net.exe"        => String::from("net"),      // 工作组连接安装程序
                     "netscan.exe"    => String::from("netscan"),  // 网络扫描
                     _ => {
-                        match (&link_target_file_extension, &path.contains("WindowsSubsystemForAndroid")) {
+                        match (&link_target_file_extension, link_target_path.contains("WindowsSubsystemForAndroid")) {
                             (None, _) => String::new(),
                             (Some(_), true) => String::from("app"),
                             (Some(os_str), false) => os_str.to_string_lossy().into_owned().to_lowercase()
                         }
                     }
                 }
-            },
-            None => String::from("uwp|app")
         };
+
+        let (link_icon_location, link_icon_index) = match shell_link.GetIconLocation() {
+            Ok((icon_path, icon_index)) => {
+                if Path::new(&icon_path).is_file() || icon_path.ends_with(".dll") {
+                    (icon_path, icon_index.to_string())
+                } else {
+                    (String::new(), String::new())
+                }
+            },
+            Err(_) => (String::new(), String::new())
+        };
+
+        let link_icon_status = if link_icon_location.is_empty()    // 未更换图标、图标不存在、图标不可访问（UWP/APP）
+            || link_icon_location == link_target_path    // 排除图标源于目标
+            || link_icon_location.contains("WindowsSubsystemForAndroid")   // 排除WSA应用
+            || (link_icon_location.contains(&link_target_dir)
+                && !link_target_dir.is_empty()) {    // 排除图标位于目标(子)目录
+            None
+        } else {
+            Some(String::from("√"))
+        };
+
         Ok( LinkProp {
             name: link_name,
             path: link_path,
@@ -163,11 +140,40 @@ impl ManageLinkProp {
         })
     }
 
-    pub fn collect(dirs_vec: Vec<impl AsRef<Path>>, link_vec: &mut Vec<LinkProp>) {
+    fn get_working_directory(path: &String) -> String {
+        match path.is_empty() {
+            true => String::new(),
+            false => {
+                Path::new(path).parent().map_or(
+                    String::new(),
+                    |path| path.to_string_lossy().into_owned()
+                )
+            }
+        }
+    }
+
+    pub fn collect(dirs_vec: Vec<impl AsRef<Path>>, link_vec: &mut Vec<LinkProp>) -> Result<(), winsafe::co::HRESULT> {
+        // Initialize COM library - 初始化 COM 库
+        let _com_lib = winsafe::CoInitializeEx( // keep guard alive
+            co::COINIT::APARTMENTTHREADED
+            | co::COINIT::DISABLE_OLE1DDE,
+        )?;
+
+        // Create IShellLink object - 创建 IShellLink 对象
+        let shell_link = winsafe::CoCreateInstance::<winsafe::IShellLink>(
+            &co::CLSID::ShellLink,
+            None,
+            co::CLSCTX::INPROC_SERVER,
+        )?;
+
+        // Query for IPersistFile interface - 查询并获取 IPersistFile 接口实例
+        let persist_file: IPersistFile = shell_link.QueryInterface()?;
+
+        // Iterate through directories - 遍历快捷方式目录
         for dir in dirs_vec.iter() {
             let directory = dir.as_ref().join("**\\*.lnk").to_string_lossy().into_owned();
             for path_buf in glob(&directory).unwrap().filter_map(Result::ok) {
-                match ManageLinkProp::get(path_buf) {
+                match ManageLinkProp::get(path_buf, shell_link.clone(), persist_file.clone()) {
                     Ok(link_prop) => link_vec.push(link_prop),
                     Err(err) => {
                         println!("{}", err);
@@ -176,5 +182,7 @@ impl ManageLinkProp {
                 }
             }
         }
+
+        winsafe::HrResult::Ok(())
     }
 }
