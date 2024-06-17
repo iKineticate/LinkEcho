@@ -11,16 +11,15 @@ use info::{SystemLinkDirs, ManageLinkProp};
 mod modify;
 mod info;
 
-#[allow(unused)]
 #[derive(Debug)]
 pub struct LinkProp {
     name: String,
     path: String,
     target_ext: String,
-    target_dir: String,
-    target_path: String,
-    icon_status: String,
-    icon_location: String,
+    target_dir: Option<String>,
+    target_path: Option<String>,
+    icon_status: Option<String>,
+    icon_location: Option<String>,
     icon_index: String,
 }
 
@@ -29,16 +28,16 @@ fn main() {
     let mut link_vec: Vec<LinkProp> = Vec::with_capacity(100);
     
     // 获取当前和公共用户的"桌面文件夹"的完整路径并收集属性
-    let desktop_path = dbg!(SystemLinkDirs::Path("DESKTOP"));
+    let desktop_path = SystemLinkDirs::Path("DESKTOP").expect("Failed to get desktop path");
     ManageLinkProp::collect(desktop_path, &mut link_vec);
 
     // 获取当前和公共用户的"开始菜单"的完整路径并收集属性
-    // let start_menu_path = dbg!(SystemLinkDirs::Path("START_MENU"));
+    // let start_menu_path = dbg!(SystemLinkDirs::Path("START_MENU").expect("Failed to get desktop path"));
     // ManageLinkProp::collect(start_menu_path, &mut link_vec);
 
     // 更换所有快捷方式图标
     // match modify::change_all_links_icons(&mut link_vec) {
-    //     Ok(change) => println!("{}", change),
+    //     Ok(_) => println!("Successfully changed the icons of all shortcuts!"),
     //     Err(error) => println!("{}", error),
     // }
 
@@ -47,8 +46,7 @@ fn main() {
     //     Ok(restore) => println!("{}", restore),
     //     Err(error) => println!("{}", error),
     // }
-    
-    println!("{}", link_vec.len());
+
     dbg!(link_vec);
     // dbg!(lnk::ShellLink::open(r"C:\Users\11593\Desktop\GitHub Desktop.lnk").unwrap());
 }
