@@ -1,30 +1,26 @@
 use crate::{Path, PathBuf, LinkProp, glob};
 use winsafe::{IPersistFile, prelude::*, co};
 
-pub struct SystemLinkDirs;
+#[allow(unused)]
+pub enum SystemLinkDirs {
+    Desktop,
+    StartMenu,
+    StartUp,
+}
+
 impl SystemLinkDirs {
-    pub fn Path(name: &str) -> Result<Vec<PathBuf>, Box<dyn std::error::Error>> {
+    pub fn get_path(&self) -> Result<Vec<PathBuf>, winsafe::co::HRESULT> {
         let mut path_vec = Vec::new();
 
-        let knoew_folder_id_vec = match name {
-            "DESKTOP" => {
-                vec![&co::KNOWNFOLDERID::Desktop, &co::KNOWNFOLDERID::PublicDesktop]
-            },
-            "START_MENU" => {
-                vec![&co::KNOWNFOLDERID::StartMenu, &co::KNOWNFOLDERID::CommonStartMenu]
-            },
-            "START_UP" => {
-                vec![&co::KNOWNFOLDERID::Startup, &co::KNOWNFOLDERID::CommonStartup]
-            },
-            _ => return Err(
-                format!(
-                    "Unsupported input value: '{name}'.\
-                    Supported values are 'DESKTOP' or 'START_MENU' or 'START_UP'.",
-                ).into()
-            )
+        // Get the GUID of the shortcut's folder - 获取快捷方式文件夹的GUID
+        let know_folder_id_vec = match self {
+            SystemLinkDirs::Desktop => vec![&co::KNOWNFOLDERID::Desktop, &co::KNOWNFOLDERID::PublicDesktop],
+            SystemLinkDirs::StartMenu => vec![&co::KNOWNFOLDERID::StartMenu, &co::KNOWNFOLDERID::CommonStartMenu],
+            SystemLinkDirs::StartUp => vec![&co::KNOWNFOLDERID::Startup, &co::KNOWNFOLDERID::CommonStartup],
         };
 
-        for folder_id in knoew_folder_id_vec.iter() {
+        // Get the path to the shortcut's folder - 获取快捷方式文件夹的路径
+        for folder_id in know_folder_id_vec.iter() {
             let path = winsafe::SHGetKnownFolderPath(
                 folder_id,
                 co::KF::NO_ALIAS,    //  确保返回文件夹的物理路径，避免别名路径
@@ -51,15 +47,15 @@ impl ManageLinkProp {
         };
 
         let link_target_path = shell_link.GetPath(
-        Some(&mut winsafe::WIN32_FIND_DATA::default()),
-        co::SLGP::RAWPATH   // Absolute path
-        ).unwrap_or(String::new());
+            Some(&mut winsafe::WIN32_FIND_DATA::default()),
+            co::SLGP::RAWPATH   // Absolute path - 绝对路径
+        ).unwrap_or(String::new());    // fn: 环境变量修改为绝对路径-----------------------  有路径参数但目标不存在，提醒是否删除或者标红？
 
         let link_target_dir = match shell_link.GetWorkingDirectory() {
             Ok(path) => {
-                match path.is_empty() {
-                    true => ManageLinkProp::get_working_directory(&link_target_path),
-                    false => path
+                match Path::new(&path).is_dir() {
+                    true => path,    // fn: 环境变量修改为绝对路径-----------------------
+                    false => ManageLinkProp::get_working_directory(&link_target_path)
                 }
             },
             Err(_) => ManageLinkProp::get_working_directory(&link_target_path)
@@ -69,48 +65,49 @@ impl ManageLinkProp {
             String::from("uwp|app")
         } else {
             let link_target_file_name = Path::new(&link_target_path)
-                    .file_name()
-                    .map_or( 
-                        String::new(), 
-                        |name| name.to_string_lossy().into_owned()
-                    );
-                let link_target_file_extension = Path::new(&link_target_path).extension();
-                match &*link_target_file_name {
-                    "schtasks.exe"   => String::from("schtasks"), // 任务计划程序
-                    "taskmgr.exe"    => String::from("taskmgr"),  // 任务管理器
-                    "explorer.exe"   => String::from("explorer"), // 资源管理器
-                    "msconfig.exe"   => String::from("msconfig"), // 系统配置实用工具
-                    "services.exe"   => String::from("services"), // 管理启动和停止服务
-                    "sc.exe"         => String::from("sc"),       // 管理系统服务
-                    "cmd.exe"        => String::from("cmd"),      // 命令提示符
-                    "powershell.exe" => String::from("psh"),      // PowerShell
-                    "wscript.exe"    => String::from("wscript"),  // 脚本
-                    "cscript.exe"    => String::from("cscript"),  // 脚本
-                    "regedit.exe"    => String::from("regedit"),  // 注册表
-                    "mstsc.exe"      => String::from("mstsc"),    // 远程连接
-                    "regsvr32.exe"   => String::from("regsvr32"), // 注册COM组件
-                    "rundll32.exe"   => String::from("rundll32"), // 执行32位的DLL文件
-                    "mshta.exe"      => String::from("mshta"),    // 执行.HTA文件
-                    "msiexec.exe"    => String::from("msiexec"),  // 安装Windows Installer安装包(MSI)
-                    "control.exe"    => String::from("control"),  // 控制面板执行
-                    "msdt.exe"       => String::from("msdt"),     // Microsoft 支持诊断工具
-                    "wmic.exe"       => String::from("wmic"),     // WMI 命令行
-                    "net.exe"        => String::from("net"),      // 工作组连接安装程序
-                    "netscan.exe"    => String::from("netscan"),  // 网络扫描
-                    _ => {
-                        match (&link_target_file_extension, link_target_path.contains("WindowsSubsystemForAndroid")) {
-                            (None, _) => String::new(),
-                            (Some(_), true) => String::from("app"),
-                            (Some(os_str), false) => os_str.to_string_lossy().into_owned().to_lowercase()
-                        }
+                .file_name()
+                .map_or( 
+                    String::new(), 
+                    |name| name.to_string_lossy().into_owned()
+                );
+            match &*link_target_file_name {
+                "schtasks.exe"   => String::from("schtasks"), // 任务计划程序
+                "taskmgr.exe"    => String::from("taskmgr"),  // 任务管理器
+                "explorer.exe"   => String::from("explorer"), // 资源管理器
+                "msconfig.exe"   => String::from("msconfig"), // 系统配置实用工具
+                "services.exe"   => String::from("services"), // 管理启动和停止服务
+                "sc.exe"         => String::from("sc"),       // 管理系统服务
+                "cmd.exe"        => String::from("cmd"),      // 命令提示符
+                "powershell.exe" => String::from("psh"),      // PowerShell
+                "wscript.exe"    => String::from("wscript"),  // 脚本
+                "cscript.exe"    => String::from("cscript"),  // 脚本
+                "regedit.exe"    => String::from("regedit"),  // 注册表
+                "mstsc.exe"      => String::from("mstsc"),    // 远程连接
+                "regsvr32.exe"   => String::from("regsvr32"), // 注册COM组件
+                "rundll32.exe"   => String::from("rundll32"), // 执行32位的DLL文件
+                "mshta.exe"      => String::from("mshta"),    // 执行.HTA文件
+                "msiexec.exe"    => String::from("msiexec"),  // 安装Windows Installer安装包(MSI)
+                "control.exe"    => String::from("control"),  // 控制面板执行
+                "msdt.exe"       => String::from("msdt"),     // Microsoft 支持诊断工具
+                "wmic.exe"       => String::from("wmic"),     // WMI 命令行
+                "net.exe"        => String::from("net"),      // 工作组连接安装程序
+                "netscan.exe"    => String::from("netscan"),  // 网络扫描   
+                _ => {
+                    let ext = Path::new(&link_target_path).extension();
+                    let app = link_target_path.contains("WindowsSubsystemForAndroid");
+                    match (&ext, app) {
+                        (_, true) => String::from("app"),
+                        (None, false) => String::new(),
+                        (Some(os_str), false) => os_str.to_string_lossy().into_owned().to_lowercase()
                     }
                 }
+            }   
         };
 
         let (link_icon_location, link_icon_index) = match shell_link.GetIconLocation() {
             Ok((icon_path, icon_index)) => {
                 if Path::new(&icon_path).is_file() || icon_path.ends_with(".dll") {
-                    (icon_path, icon_index.to_string())
+                    (icon_path, icon_index.to_string())    // fn: 环境变量修改为绝对路径-----------------------
                 } else {
                     (String::new(), String::new())
                 }

@@ -68,8 +68,8 @@ pub fn change_all_links_icons(link_vec: &mut Vec<LinkProp>) -> Result<(), Box<dy
             // Load the shortcut file (LNK file) - 载入快捷方式的文件
             match persist_file.Load(&link_prop.path, co::STGM::WRITE) {
                 Ok(_) => (),
-                Err(_) => {
-                    println!("Failed to load shortcut file: {}", &link_prop.path);
+                Err(err) => {
+                    println!("Failed to load shortcut file: {}\n{}", &link_prop.path, err);
                     continue
                 }
             };
@@ -77,24 +77,25 @@ pub fn change_all_links_icons(link_vec: &mut Vec<LinkProp>) -> Result<(), Box<dy
             // Set the icon location - 设置图标位置
             match shell_link.SetIconLocation(&icon_path, 0) {
                 Ok(_) => (),
-                Err(_) => {
-                    println!("Failed to set the icon location:\n{}\n{}\n", &link_prop.path, icon_path);
+                Err(err) => {
+                    println!("Failed to set the icon location:\n{}\n{}\n{}\n", &link_prop.path, icon_path, err);
                     continue
                 }
             };
 
-            // Saves a copy of the object to the specified file - 将对象的副本保存到指定文件
+            // Save a copy of the object to the specified file - 将对象的副本保存到指定文件
             match persist_file.Save(None, true) {
                 Ok(_) => println!("Successfully Set the icon location:\n{}\n{}\n", &link_prop.path, icon_path),
-                Err(_) => {
-                    println!("Failed to save a copy of the object to the specified file:\n{}\n", &link_prop.path);
+                Err(err) => {
+                    println!("Failed to save a copy of the object to the specified file:\n{}\n{}\n", &link_prop.path, err);
                     continue
                 }
             };
         }
     }
-    // 刷新图标
+    
     // 日志记录
+    // 刷新图标
     // 刷新桌面
 
     Ok(())
