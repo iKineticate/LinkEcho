@@ -1,5 +1,6 @@
-use crate::{Path, PathBuf, LinkProp, glob};
+use crate::{glob, LinkProp, Path, PathBuf};
 use winsafe::{IPersistFile, prelude::*, co};
+use std::env;
 
 #[allow(unused)]
 pub enum SystemLinkDirs {
@@ -7,7 +8,6 @@ pub enum SystemLinkDirs {
     StartMenu,
     StartUp,
 }
-
 impl SystemLinkDirs {
     pub fn get_path(&self) -> Result<Vec<PathBuf>, winsafe::co::HRESULT> {
         let mut path_vec = Vec::new();
@@ -35,7 +35,7 @@ impl SystemLinkDirs {
 
 pub struct ManageLinkProp;
 impl ManageLinkProp {
-    fn get(path_buf: PathBuf, shell_link: winsafe::IShellLink, persist_file: IPersistFile) -> Result<LinkProp, winsafe::co::HRESULT> {
+    fn get_info(path_buf: PathBuf, shell_link: winsafe::IShellLink, persist_file: IPersistFile) -> Result<LinkProp, winsafe::co::HRESULT> {
         let link_path = path_buf.to_string_lossy().into_owned();
 
         // Load the shortcut file (LNK file)
@@ -49,12 +49,15 @@ impl ManageLinkProp {
         let link_target_path = shell_link.GetPath(
             Some(&mut winsafe::WIN32_FIND_DATA::default()),
             co::SLGP::RAWPATH   // Absolute path - 绝对路径
-        ).unwrap_or(String::new());    // fn: 环境变量修改为绝对路径-----------------------  有路径参数但目标不存在，提醒是否删除或者标红？
+        ).map_or(
+            String::new(),
+            |path| ManageLinkProp::convert_env_to_path(path)    // 开头为环境变量时修改为路径
+        );
 
         let link_target_dir = match shell_link.GetWorkingDirectory() {
             Ok(path) => {
                 match Path::new(&path).is_dir() {
-                    true => path,    // fn: 环境变量修改为绝对路径-----------------------
+                    true => ManageLinkProp::convert_env_to_path(path),    // 开头为环境变量时修改为路径
                     false => ManageLinkProp::get_working_directory(&link_target_path)
                 }
             },
@@ -104,28 +107,32 @@ impl ManageLinkProp {
             }   
         };
 
+        let mut back_icon_path = String::new();
+
         let (link_icon_location, link_icon_index) = match shell_link.GetIconLocation() {
             Ok((icon_path, icon_index)) => {
-                if Path::new(&icon_path).is_file() || icon_path.ends_with(".dll") {
-                    (icon_path, icon_index.to_string())    // fn: 环境变量修改为绝对路径-----------------------
-                } else {
-                    (String::new(), String::new())
+                back_icon_path = icon_path.clone();
+                match (Path::new(&icon_path).is_file(), icon_path.ends_with(".dll")) {
+                    (false, false) => (String::new(), String::new()),
+                    (false, true) => (String::new(), icon_index.to_string()),
+                    _ => (ManageLinkProp::convert_env_to_path(icon_path), icon_index.to_string())    // 开头为环境变量（如%windir%）时修改为路径
                 }
             },
             Err(_) => (String::new(), String::new())
         };
 
-        let link_icon_status = if link_icon_location.is_empty()    // 未更换图标、图标不存在、图标不可访问（UWP/APP）
-            || link_icon_location == link_target_path    // 排除图标源于目标
-            || link_icon_location.contains("WindowsSubsystemForAndroid")   // 排除WSA应用
-            || (link_icon_location.contains(&link_target_dir)
-                && !link_target_dir.is_empty()) {    // 排除图标位于目标(子)目录
+        let link_icon_status = if link_icon_location.is_empty()    // unchanged、non-existent、inaccessible - 未更换图标、图标不存在、图标不可访问（UWP/APP）
+            || link_icon_location == link_target_path    // unchanged(from target file) - 未更换图标（图标源于目标文件）
+            || link_icon_location.contains("WindowsSubsystemForAndroid")   //Android App - WSA应用
+            || back_icon_path.starts_with("%")    // System icon - 系统图标(如%windir%/.../powershell.exe)
+            || (Path::new(&link_icon_location).parent().unwrap_or(Path::new("")) == Path::new(&link_target_dir)    // Icons come from the target file's (sub)directory - 图标来源于目标文件的(子)目录
+                && !link_target_dir.is_empty()) {
             None
         } else {
             Some(String::from("√"))
         };
 
-        Ok( LinkProp {
+        Ok(LinkProp {
             name: link_name,
             path: link_path,
             target_ext: link_target_ext,
@@ -146,6 +153,40 @@ impl ManageLinkProp {
                     |path| path.to_string_lossy().into_owned()
                 )
             }
+        }
+    }
+
+    fn convert_env_to_path(env_path: String) -> String {
+        match env_path.starts_with("%") {
+            true => {
+                let envs = vec![
+                    ("%windir%", env::var_os("WINDIR").map_or("C:/Windows".to_string(), |path| path.to_string_lossy().into_owned())),
+                    ("%systemroot%", env::var_os("SYSTEMROOT").map_or("C:/Windows".to_string(), |path| path.to_string_lossy().into_owned())),
+                    ("%programfiles%", env::var_os("PROGRAMFILES ").map_or("C:/Program Files".to_string(), |path| path.to_string_lossy().into_owned())),
+                    ("%programfiles(x86)%", env::var_os("PROGRAMFILES(X86)").map_or("C:/Program Files (x86)".to_string(), |path| path.to_string_lossy().into_owned())),
+                    ("%commonprogramfiles%", env::var_os("COMMONPROGRAMFILES").map_or("C:/Program Files/Common Files".to_string(), |path| path.to_string_lossy().into_owned())),
+                    ("%allusersprofile%", env::var_os("ALLUSERSPROFILE").map_or("C:/ProgramData".to_string(), |path| path.to_string_lossy().into_owned())),
+                    ("%cmdcmdline%", env::var_os("CMDCMDLINE ").map_or("C:/Windows/System32/cmd.exe".to_string(), |path| path.to_string_lossy().into_owned())),
+                    ("%comspec%", env::var_os("COMSPEC ").map_or("C:/Windows/System32/cmd.exe".to_string(), |path| path.to_string_lossy().into_owned())),
+                    ("%usersprofile%", env::var_os("USERPROFILE").map_or(String::new(), |path| path.to_string_lossy().into_owned())),
+                    ("%localappdata%", env::var_os("LOCALAPPDATA").map_or(String::new(), |path| path.to_string_lossy().into_owned())),
+                    ("%appdata%", env::var_os("APPDATA").map_or(String::new(), |path| path.to_string_lossy().into_owned())),
+                    ("%public%", env::var_os("PUBLIC").map_or(String::new(), |path| path.to_string_lossy().into_owned())),
+                    ("%temp%", env::var_os("TEMP").map_or(String::new(), |path| path.to_string_lossy().into_owned())),
+                    ("%tmp%", env::var_os("TMP").map_or(String::new(), |path| path.to_string_lossy().into_owned())),
+                ];
+                for (env, root) in envs.iter() {
+                    if Path::new(&env_path.to_lowercase()).starts_with(env) {
+                        let new_path = env_path.replacen(env, &root, 1);
+                        match (Path::new(&new_path).is_file(), Path::new(&new_path).is_dir()) {
+                            (false, false) => return env_path,
+                            _ => return new_path
+                        };
+                    };
+                };
+                String::new()
+            },
+            false => env_path
         }
     }
 
@@ -170,7 +211,7 @@ impl ManageLinkProp {
         for dir in dirs_vec.iter() {
             let directory = dir.as_ref().join("**\\*.lnk").to_string_lossy().into_owned();
             for path_buf in glob(&directory).unwrap().filter_map(Result::ok) {
-                match ManageLinkProp::get(path_buf, shell_link.clone(), persist_file.clone()) {
+                match ManageLinkProp::get_info(path_buf, shell_link.clone(), persist_file.clone()) {
                     Ok(link_prop) => link_vec.push(link_prop),
                     Err(err) => {
                         println!("{}", err);
