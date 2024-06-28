@@ -1,4 +1,4 @@
-use crate::{glob, LinkProp, Path, PathBuf};
+use crate::{glob, LinkProp, Status, Path, PathBuf};
 use winsafe::{IPersistFile, prelude::*, co};
 use std::env;
 
@@ -97,8 +97,8 @@ impl ManageLinkProp {
                 "netscan.exe"    => String::from("netscan"),  // 网络扫描   
                 _ => {
                     let ext = Path::new(&link_target_path).extension();
-                    let app = link_target_path.contains("WindowsSubsystemForAndroid");
-                    match (&ext, app) {
+                    let is_app = link_target_path.contains("WindowsSubsystemForAndroid");
+                    match (&ext, is_app) {
                         (_, true) => String::from("app"),
                         (None, false) => String::new(),
                         (Some(os_str), false) => os_str.to_string_lossy().into_owned().to_lowercase()
@@ -127,18 +127,18 @@ impl ManageLinkProp {
             || back_icon_path.starts_with("%")    // System icon - 系统图标(如%windir%/.../powershell.exe)
             || (Path::new(&link_icon_location).parent().unwrap_or(Path::new("")) == Path::new(&link_target_dir)    // Icons come from the target file's (sub)directory - 图标来源于目标文件的(子)目录
                 && !link_target_dir.is_empty()) {
-            None
+            Status::Unchanged
         } else {
-            Some(String::from("√"))
+            Status::Changed
         };
 
         Ok(LinkProp {
             name: link_name,
             path: link_path,
+            status: link_icon_status,
             target_ext: link_target_ext,
             target_dir: link_target_dir,
             target_path: link_target_path,
-            icon_status: link_icon_status,
             icon_location: link_icon_location,
             icon_index: link_icon_index,
         })
@@ -177,7 +177,7 @@ impl ManageLinkProp {
                 ];
                 for (env, root) in envs.iter() {
                     if Path::new(&env_path.to_lowercase()).starts_with(env) {
-                        let new_path = env_path.replacen(env, &root, 1);
+                        let new_path = env_path.replacen(env, root, 1);
                         match (Path::new(&new_path).is_file(), Path::new(&new_path).is_dir()) {
                             (false, false) => return env_path,
                             _ => return new_path

@@ -2,7 +2,7 @@
 use std::os::windows::process::CommandExt;
 use std::time::Instant;
 use std::process::Command;
-use crate::{LinkProp, FileDialog, glob};
+use crate::{glob, FileDialog, LinkProp, Status};
 use winsafe::{co, prelude::*, HrResult, IPersistFile};
 
 pub fn change_all_links_icons(link_vec: &mut Vec<LinkProp>) -> Result<(), Box<dyn std::error::Error>> {
@@ -30,7 +30,7 @@ pub fn change_all_links_icons(link_vec: &mut Vec<LinkProp>) -> Result<(), Box<dy
         .set_title("Please select the folder where the icons are stored")
         .pick_folder() {
             Some(path_buf) => format!(r"{}\**\*.ico", path_buf.to_string_lossy().into_owned()),
-            None => return Err("No folder selected".into()),
+            None => return Ok(()),
         };
 
     // Iterate through the folder of icons - 遍历快捷方式目录中的图标（包括子目录）
@@ -62,7 +62,7 @@ pub fn change_all_links_icons(link_vec: &mut Vec<LinkProp>) -> Result<(), Box<dy
                 continue;
             } else {    // Updating the icon path of a LinkProp structure - 更新LinkProp结构体的图标路径
                 link_prop.icon_location = String::from(icon_path.clone());
-                link_prop.icon_status = Some(String::from("√"));
+                link_prop.status = Status::Changed;
             };
             
             // Load the shortcut file (LNK file) - 载入快捷方式的文件
@@ -123,7 +123,8 @@ pub fn restore_all_links_icons(link_vec: &mut Vec<LinkProp>) -> Result<(), Box<d
     // Iterate over the vec that stores the shortcut properties - 遍历快捷方式的属性
     for link_prop in link_vec.iter_mut() {
         // Skip shortcuts that are not replaced or extend to uwp|app - 跳过未被更换图标或扩展为uwp|app的快捷方式
-        if link_prop.icon_status.is_none() || link_prop.target_ext == String::from("uwp|app") {
+        if link_prop.status == Status::Unchanged 
+            || link_prop.target_ext == String::from("uwp|app") {
             continue;
         }
         let icon_path = &link_prop.target_path;
@@ -148,7 +149,7 @@ pub fn restore_all_links_icons(link_vec: &mut Vec<LinkProp>) -> Result<(), Box<d
 
         // Saves a copy of the object to the specified file - 将对象的副本保存到指定文件
         match persist_file.Save(None, true) {
-            Ok(_) => println!("Successfully Set the icon location:\n{}\n{}\n", &link_prop.path, icon_path),
+            Ok(_) => println!("Successfully restored the default icon:\n{}\n{}\n", &link_prop.path, icon_path),
             Err(_) => {
                 println!("Failed to save a copy of the object to the specified file:\n{}\n", &link_prop.path);
                 continue
@@ -157,7 +158,7 @@ pub fn restore_all_links_icons(link_vec: &mut Vec<LinkProp>) -> Result<(), Box<d
 
         // Update the icon path and icon status in the LinkProp structure - 更新LinkProp结构体
         link_prop.icon_location = icon_path.clone();
-        link_prop.icon_status = None;
+        link_prop.status = Status::Unchanged;
         // 若更换过图标，则更新更换的显示数据
         // 刷新列表
     };
