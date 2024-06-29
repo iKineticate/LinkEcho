@@ -202,7 +202,7 @@ impl App {
     }
 
     fn render_footer(area: Rect, buf: &mut Buffer) {
-        Paragraph::new("退出[Q] | 更换[C] | 恢复[R] | 搜索[S] | 功能[F] | 返回顶部/底部[T/B] | 帮助[H]")
+        Paragraph::new("退出[Q] | 更换[C] | 恢复[R] | 搜索[S] | 功能[F] | 返回顶部/底部[T/B] | 日志[L] | 帮助[H]")
             .centered()
             .render(area, buf);
     }
