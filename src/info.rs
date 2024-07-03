@@ -1,4 +1,4 @@
-use crate::{glob, LinkProp, Status, Path, PathBuf};
+use crate::{utils::{open_log_file, write_log}, Error, glob, LinkProp, Status, Path, PathBuf};
 use winsafe::{IPersistFile, prelude::*, co};
 use std::env;
 
@@ -35,7 +35,11 @@ impl SystemLinkDirs {
 
 pub struct ManageLinkProp;
 impl ManageLinkProp {
-    fn get_info(path_buf: PathBuf, shell_link: winsafe::IShellLink, persist_file: IPersistFile) -> Result<LinkProp, winsafe::co::HRESULT> {
+    fn get_info(
+        path_buf: PathBuf,
+        shell_link: winsafe::IShellLink,
+        persist_file: IPersistFile
+    ) -> Result<LinkProp, winsafe::co::HRESULT> {
         let link_path = path_buf.to_string_lossy().into_owned();
 
         // Load the shortcut file (LNK file)
@@ -114,7 +118,7 @@ impl ManageLinkProp {
                 back_icon_path = icon_path.clone();
                 match (Path::new(&icon_path).is_file(), icon_path.ends_with(".dll")) {
                     (false, false) => (String::new(), String::new()),
-                    (false, true) => (String::new(), icon_index.to_string()),
+                    (false, true) => (ManageLinkProp::convert_env_to_path(icon_path), icon_index.to_string()),
                     _ => (ManageLinkProp::convert_env_to_path(icon_path), icon_index.to_string())    // 开头为环境变量（如%windir%）时修改为路径
                 }
             },
@@ -160,20 +164,90 @@ impl ManageLinkProp {
         match env_path.starts_with("%") {
             true => {
                 let envs = vec![
-                    ("%windir%", env::var_os("WINDIR").map_or("C:/Windows".to_string(), |path| path.to_string_lossy().into_owned())),
-                    ("%systemroot%", env::var_os("SYSTEMROOT").map_or("C:/Windows".to_string(), |path| path.to_string_lossy().into_owned())),
-                    ("%programfiles%", env::var_os("PROGRAMFILES ").map_or("C:/Program Files".to_string(), |path| path.to_string_lossy().into_owned())),
-                    ("%programfiles(x86)%", env::var_os("PROGRAMFILES(X86)").map_or("C:/Program Files (x86)".to_string(), |path| path.to_string_lossy().into_owned())),
-                    ("%commonprogramfiles%", env::var_os("COMMONPROGRAMFILES").map_or("C:/Program Files/Common Files".to_string(), |path| path.to_string_lossy().into_owned())),
-                    ("%allusersprofile%", env::var_os("ALLUSERSPROFILE").map_or("C:/ProgramData".to_string(), |path| path.to_string_lossy().into_owned())),
-                    ("%cmdcmdline%", env::var_os("CMDCMDLINE ").map_or("C:/Windows/System32/cmd.exe".to_string(), |path| path.to_string_lossy().into_owned())),
-                    ("%comspec%", env::var_os("COMSPEC ").map_or("C:/Windows/System32/cmd.exe".to_string(), |path| path.to_string_lossy().into_owned())),
-                    ("%usersprofile%", env::var_os("USERPROFILE").map_or(String::new(), |path| path.to_string_lossy().into_owned())),
-                    ("%localappdata%", env::var_os("LOCALAPPDATA").map_or(String::new(), |path| path.to_string_lossy().into_owned())),
-                    ("%appdata%", env::var_os("APPDATA").map_or(String::new(), |path| path.to_string_lossy().into_owned())),
-                    ("%public%", env::var_os("PUBLIC").map_or(String::new(), |path| path.to_string_lossy().into_owned())),
-                    ("%temp%", env::var_os("TEMP").map_or(String::new(), |path| path.to_string_lossy().into_owned())),
-                    ("%tmp%", env::var_os("TMP").map_or(String::new(), |path| path.to_string_lossy().into_owned())),
+                    ("%windir%",
+                        env::var_os("WINDIR").map_or(
+                            "C:/Windows".to_string(),
+                            |path| path.to_string_lossy().into_owned()
+                        )
+                    ),
+                    ("%systemroot%",
+                        env::var_os("SYSTEMROOT").map_or(
+                            "C:/Windows".to_string(),
+                            |path| path.to_string_lossy().into_owned()
+                        )
+                    ),
+                    ("%programfiles%",
+                        env::var_os("PROGRAMFILES").map_or(
+                            "C:/Program Files".to_string(),
+                            |path| path.to_string_lossy().into_owned()
+                        )
+                    ),
+                    ("%programfiles(x86)%",
+                        env::var_os("PROGRAMFILES(X86)").map_or(
+                            "C:/Program Files (x86)".to_string(),
+                            |path| path.to_string_lossy().into_owned()
+                        )
+                    ),
+                    ("%commonprogramfiles%",
+                        env::var_os("COMMONPROGRAMFILES").map_or(
+                            "C:/Program Files/Common Files".to_string(),
+                            |path| path.to_string_lossy().into_owned()
+                        )
+                    ),
+                    ("%allusersprofile%",
+                        env::var_os("ALLUSERSPROFILE").map_or(
+                            "C:/ProgramData".to_string(),
+                            |path| path.to_string_lossy().into_owned()
+                        )
+                    ),
+                    ("%cmdcmdline%",
+                        env::var_os("CMDCMDLINE").map_or(
+                            "C:/Windows/System32/cmd.exe".to_string(),
+                            |path| path.to_string_lossy().into_owned()
+                        )
+                    ),
+                    ("%comspec%",
+                        env::var_os("COMSPEC").map_or(
+                            "C:/Windows/System32/cmd.exe".to_string(),
+                            |path| path.to_string_lossy().into_owned()
+                        )
+                    ),
+                    ("%usersprofile%",
+                        env::var_os("USERPROFILE").map_or(
+                            String::new(),
+                            |path| path.to_string_lossy().into_owned()
+                        )
+                    ),
+                    ("%localappdata%",
+                        env::var_os("LOCALAPPDATA").map_or(
+                            String::new(),
+                            |path| path.to_string_lossy().into_owned()
+                        )
+                    ),
+                    ("%appdata%",
+                        env::var_os("APPDATA").map_or(
+                            String::new(),
+                            |path| path.to_string_lossy().into_owned()
+                        )
+                    ),
+                    ("%public%",
+                        env::var_os("PUBLIC").map_or(
+                            String::new(),
+                            |path| path.to_string_lossy().into_owned()
+                        )
+                    ),
+                    ("%temp%",
+                        env::var_os("TEMP").map_or(
+                            String::new(),
+                            |path| path.to_string_lossy().into_owned()
+                        )
+                    ),
+                    ("%tmp%",
+                        env::var_os("TMP").map_or(
+                            String::new(),
+                            |path| path.to_string_lossy().into_owned()
+                        )
+                    ),
                 ];
                 for (env, root) in envs.iter() {
                     if Path::new(&env_path.to_lowercase()).starts_with(env) {
@@ -190,7 +264,10 @@ impl ManageLinkProp {
         }
     }
 
-    pub fn collect(dirs_vec: Vec<impl AsRef<Path>>, link_vec: &mut Vec<LinkProp>) -> Result<(), winsafe::co::HRESULT> {
+    pub fn collect(dirs_vec: Vec<impl AsRef<Path>>, link_vec: &mut Vec<LinkProp>) -> Result<(), Box<dyn Error>> {
+        // Clear
+        link_vec.clear();
+
         // Initialize COM library - 初始化 COM 库
         let _com_lib = winsafe::CoInitializeEx( // keep guard alive
             co::COINIT::APARTMENTTHREADED
@@ -214,13 +291,14 @@ impl ManageLinkProp {
                 match ManageLinkProp::get_info(path_buf, shell_link.clone(), persist_file.clone()) {
                     Ok(link_prop) => link_vec.push(link_prop),
                     Err(err) => {
-                        println!("{}", err);
+                        let mut log_file = open_log_file().expect("Failed to open 'LinkEcho.log'");
+                        write_log(&mut log_file, err.to_string())?;
                         continue
                     }
                 }
             }
         }
 
-        winsafe::HrResult::Ok(())
+        Ok(())
     }
 }

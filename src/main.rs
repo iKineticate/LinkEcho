@@ -3,9 +3,16 @@
 
 mod info;
 mod modify;
+mod tui;
+mod utils;
 
-use std::{error::Error, io};
-use std::path::{Path, PathBuf};
+use std::{
+    io,
+    env,
+    error::Error,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 use rfd::FileDialog;
 use glob::glob;
@@ -26,7 +33,7 @@ use ratatui::{
     },
 };
 
-const TODO_HEADER_STYLE: Style = Style::new().fg(Color::Rgb(245, 245, 245)).bg(Color::Rgb(82, 54, 161));
+const TODO_HEADER_STYLE: Style = Style::new().fg(Color::Rgb(245, 245, 245)).bg(Color::Rgb(79, 52, 156));
 const NORMAL_ROW_BG: Color = Color::Rgb(25, 25, 25);
 const ALT_ROW_BG_COLOR: Color = Color::Rgb(42, 42, 42);
 const SELECTED_STYLE: Style = Style::new().bg(Color::Rgb(66, 66, 66)).add_modifier(Modifier::BOLD);
@@ -109,23 +116,19 @@ impl App {
         }
         match key.code {
             KeyCode::Char('q') | KeyCode::Char('Q') | KeyCode::Esc => self.should_exit = true,
-            KeyCode::Char('c') | KeyCode::Char('C') => modify::change_all_links_icons(&mut self.link_list.items).expect("Failed to change the icons of all shortcuts"),
+            KeyCode::Char('c') | KeyCode::Char('C') | KeyCode::Enter => self.change_single_link_icon(),
+            KeyCode::Char('e') | KeyCode::Char('E') => modify::change_all_shortcuts_icons(&mut self.link_list.items).expect("Failed to change the icons of all shortcuts"),
+            KeyCode::Char('r') | KeyCode::Char('R') => self.restore_single_link_icon(),
+            KeyCode::Char('l') | KeyCode::Char('L') => self.open_log_file(),
             // KeyCode::Char('c') | KeyCode::Char('C') => modify::clear_thumbnails().expect("REASON"),
-            KeyCode::Char('h') | KeyCode::Char('H') | KeyCode::Left => self.select_none(),   // 取消选择
             KeyCode::Char('j') | KeyCode::Char('J') | KeyCode::Down => self.select_next(),   // 下
             KeyCode::Char('k') | KeyCode::Char('K') | KeyCode::Up => self.select_previous(), // 上
             KeyCode::Char('t') | KeyCode::Char('T') | KeyCode::Home => self.select_first(),  // 顶部
             KeyCode::Char('b') | KeyCode::Char('B') | KeyCode::End => self.select_last(),    // 底部
-            KeyCode::Char('l') | KeyCode::Char('L') | KeyCode::Right | KeyCode::Enter => {   // 右
-                self.toggle_status();
-            }
             _ => {}
         }
     }
 
-    fn select_none(&mut self) {
-        self.link_list.state.select(None);
-    }
 
     fn select_next(&mut self) {
         let i = match self.link_list.state.selected() {
@@ -163,14 +166,33 @@ impl App {
         self.link_list.state.select_last();
     }
 
-    /// 更改所选列表项的信息(的状态)
-    fn toggle_status(&mut self) {
+    fn change_single_link_icon(&mut self) {
         if let Some(i) = self.link_list.state.selected() {
-            self.link_list.items[i].status = match self.link_list.items[i].status {
-                Status::Changed => Status::Unchanged,
-                Status::Unchanged => Status::Changed,
-            };
-        }
+            let link_path = self.link_list.items[i].path.clone();
+            modify::change_single_shortcut_icon(
+                link_path,
+                &mut self.link_list.items[i]
+            ).expect("Failed to change the icon of the shortcut");
+        };
+    }
+
+    fn restore_single_link_icon(&mut self) {
+        if let Some(i) = self.link_list.state.selected() {
+            let link_path = self.link_list.items[i].path.clone();
+            modify::restore_single_shortcut_icon(
+                link_path,
+                &mut self.link_list.items[i]
+            ).expect("Failed to change the icon of the shortcut");
+        };  
+    }
+
+    fn open_log_file(&mut self) {
+        let mut log_path = env::temp_dir();
+        log_path.push("LinkEcho.log");
+        let _ = Command::new("cmd")
+            .args(&["/C", "start", &log_path.to_string_lossy()])
+            .status()
+            .expect("Failed to execute command");
     }
 }
 
@@ -244,12 +266,12 @@ impl App {
         // 获取信息
         let info = if let Some(i) = self.link_list.state.selected() {
             format!("名称: {}
-路径: {}
-目标扩展名: {}
-目标目录: {}
-目标路径: {}
-图标位置: {}
-图标索引: {}",
+                \n路径: {}
+                \n目标扩展名: {}
+                \n目标目录: {}
+                \n目标路径: {}
+                \n图标位置: {}
+                \n图标索引: {}",
                 &self.link_list.items[i].name,
                 &self.link_list.items[i].path,
                 &self.link_list.items[i].target_ext,
@@ -299,70 +321,3 @@ impl From<&LinkProp> for ListItem<'_> {
         ListItem::new(line)
     }
 }
-
-mod tui {
-    use std::{io, io::stdout};
-
-    use color_eyre::config::HookBuilder;
-    use ratatui::{
-        backend::{Backend, CrosstermBackend},
-        crossterm::{
-            terminal::{
-                disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
-            },
-            ExecutableCommand,
-        },
-        terminal::Terminal,
-    };
-
-    pub fn init_error_hooks() -> color_eyre::Result<()> {
-        let (panic, error) = HookBuilder::default().into_hooks();
-        let panic = panic.into_panic_hook();
-        let error = error.into_eyre_hook();
-        color_eyre::eyre::set_hook(Box::new(move |e| {
-            let _ = restore_terminal();
-            error(e)
-        }))?;
-        std::panic::set_hook(Box::new(move |info| {
-            let _ = restore_terminal();
-            panic(info);
-        }));
-        Ok(())
-    }
-
-    pub fn init_terminal() -> io::Result<Terminal<impl Backend>> {
-        stdout().execute(EnterAlternateScreen)?;
-        enable_raw_mode()?;
-        Terminal::new(CrosstermBackend::new(stdout()))
-    }
-
-    pub fn restore_terminal() -> io::Result<()> {
-        stdout().execute(LeaveAlternateScreen)?;
-        disable_raw_mode()
-    }
-}
-
-
-
-//     // 存储快捷方式的属性
-//     let mut link_vec: Vec<LinkProp> = Vec::with_capacity(100);
-    
-//     // 获取当前和公共用户的"桌面文件夹"的完整路径并收集属性
-//     let desktop_path = SystemLinkDirs::Desktop.get_path().expect("Failed to get desktop path");
-//     ManageLinkProp::collect(desktop_path, &mut link_vec).expect("Failed to get properties of desktop shortcut");
-
-//     // 获取当前和公共用户的"开始菜单"的完整路径并收集属性
-//     // let start_menu_path = SystemLinkDirs::StartMenu.get_path().expect("Failed to get start menu path");
-//     // ManageLinkProp::collect(start_menu_path, &mut link_vec).expect("Failed to get properties of start menu shortcut");
-
-//     // 更换所有快捷方式图标
-//     modify::change_all_links_icons(&mut link_vec).expect("Failed to change the icons of all shortcuts");
-
-//     // 恢复所有快捷方式默认图标
-//     // modify::restore_all_links_icons(&mut link_vec).expect("Failed to restore the icons of all shortcuts");
-
-//     // 清理缓存
-//     // modify::clear_thumbnails().expect("REASON");
-
-
-
