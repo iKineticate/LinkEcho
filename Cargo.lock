@@ -2004,9 +2004,9 @@ dependencies = [
 
 [[package]]
 name = "win-toast-notify"
-version = "0.1.4"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff70c161bf41526eaef561ec6412b9e7552c264d73e4b665d8f5bea64e79aa2a"
+checksum = "44ea454f28e00c28c3dddbf7ef44dce92074bad6458442c8302675adc18b8387"
 dependencies = [
  "xml",
 ]

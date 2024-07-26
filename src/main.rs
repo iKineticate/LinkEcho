@@ -29,11 +29,10 @@ use ratatui::{
     text::Line,
     widgets::{
         Block, Borders, BorderType, HighlightSpacing, List, ListItem, ListState, Padding, Paragraph,
-        StatefulWidget, Widget, Wrap,
+        StatefulWidget, Widget, Wrap, Scrollbar, ScrollbarState, ScrollbarOrientation,
     },
 };
 
-const TODO_HEADER_STYLE: Style = Style::new().fg(Color::Rgb(245, 245, 245)).bg(Color::Rgb(79, 52, 156));
 const NORMAL_ROW_BG: Color = Color::Rgb(25, 25, 25);
 const ALT_ROW_BG_COLOR: Color = Color::Rgb(42, 42, 42);
 const SELECTED_STYLE: Style = Style::new().bg(Color::Rgb(66, 66, 66)).add_modifier(Modifier::BOLD);
@@ -61,6 +60,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 struct App {
     should_exit: bool,
     link_list: LinkList,
+    items_len: usize,
+    scroll_state: ScrollbarState,
+    scroll_position: usize,
     show_func_popup: bool,
 }
 
@@ -89,12 +91,16 @@ enum Status {
 
 impl App {
     fn new(link_vec: Vec<LinkProp>) -> Self {
+        let items_len = link_vec.len();
         Self {
             should_exit: false,
             link_list: LinkList {
                 items: link_vec,
                 state: ListState::default()
             },
+            items_len,
+            scroll_state: ScrollbarState::default().content_length(items_len),
+            scroll_position: 0,
             show_func_popup: false,
         }
     }
@@ -153,7 +159,7 @@ impl App {
     fn select_next(&mut self) {
         let i = match self.link_list.state.selected() {
             Some(i) => {
-                if i >= self.link_list.items.len() - 1 {
+                if i >= self.items_len - 1 {
                     0
                 } else {
                     i + 1
@@ -162,13 +168,14 @@ impl App {
             None => 0,
         };
         self.link_list.state.select(Some(i));
+        self.scroll_position = i;
     }
 
     fn select_previous(&mut self) {
         let i = match self.link_list.state.selected() {
             Some(i) => {
                 if i == 0 {
-                    self.link_list.items.len() - 1
+                    self.items_len - 1
                 } else {
                     i - 1
                 }
@@ -176,14 +183,17 @@ impl App {
             None => 0,
         };
         self.link_list.state.select(Some(i));
+        self.scroll_position = i;
     }
 
     fn select_first(&mut self) {
         self.link_list.state.select_first();
+        self.scroll_position = 0;
     }
 
     fn select_last(&mut self) {
         self.link_list.state.select_last();
+        self.scroll_position = self.items_len;
     }
 
     fn change_single_link_icon(&mut self) {
@@ -258,6 +268,7 @@ impl Widget for &mut App {
         App::render_header(header_area, buf);
         App::render_footer(footer_area, buf);
         self.render_list(list_area, buf);
+        self.render_scrollbar(list_area, buf);
         self.render_selected_info(item_area, buf);
         self.render_func_popup(area, buf);  // 最后渲染
     }
@@ -373,24 +384,14 @@ impl App {
         }
     }
 
-    /*
-    // 右下角通知窗口
-        fn render_func_popup(&self, area: Rect, buf: &mut Buffer) {
-        if self.show_func_popup {
-            let block = Block::bordered()
-                .border_type(ratatui::widgets::BorderType::Rounded)
-                .title("其他功能".blue());
-            let area = Self::centered_rect(60, 4, area);
+    fn render_scrollbar(&mut self, area: Rect, buf: &mut Buffer) {
+        self.scroll_state = ScrollbarState::default()
+            .content_length(self.items_len)
+            .position(self.scroll_position);
 
-            Paragraph::new("更换所有[C] | 恢复所有[R] | 日志[L] | 清理缩略图[T]\n复制序号[?]")   // 中文会被后方的中文顶替，造成格式错乱
-                .block(block)
-                .fg(Color::Blue)
-                .centered()
-                .wrap(Wrap { trim: false })
-                .render(area, buf);
-        }
+        Scrollbar::new(ScrollbarOrientation::VerticalRight)
+            .render(area, buf, &mut self.scroll_state);
     }
-     */
 }
 
 const fn alternate_colors(i: usize) -> Color {
