@@ -93,7 +93,7 @@ pub fn change_all_shortcuts_icons(link_vec: &mut Vec<LinkProp>) -> Result<(), Bo
     Ok(())
 }
 
-pub fn restore_all_links_icons(link_vec: &mut Vec<LinkProp>) -> Result<(), Box<dyn std::error::Error>> {
+pub fn restore_all_shortcuts_icons(link_vec: &mut Vec<LinkProp>) -> Result<(), Box<dyn std::error::Error>> {
     // 在main.rs里通知是否恢复所有默认
 
     // Initialize COM library - 初始化 COM 库

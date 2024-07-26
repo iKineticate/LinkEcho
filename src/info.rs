@@ -165,34 +165,62 @@ impl ManageLinkProp {
             true => {
                 let envs = vec![
                     ("%windir%",
-                        env::var_os("WINDIR").map_or(
-                            "C:/Windows".to_string(),
-                            |path| path.to_string_lossy().into_owned()
-                        )
+                        winsafe::SHGetKnownFolderPath(
+                            &co::KNOWNFOLDERID::Windows,
+                            co::KF::NO_ALIAS,
+                            None,
+                        ).unwrap_or("C:/Windows".to_string()),
                     ),
                     ("%systemroot%",
-                        env::var_os("SYSTEMROOT").map_or(
-                            "C:/Windows".to_string(),
-                            |path| path.to_string_lossy().into_owned()
-                        )
+                        winsafe::SHGetKnownFolderPath(
+                            &co::KNOWNFOLDERID::Windows,
+                            co::KF::NO_ALIAS,
+                            None,
+                        ).unwrap_or("C:/Windows".to_string()),
                     ),
                     ("%programfiles%",
-                        env::var_os("PROGRAMFILES").map_or(
-                            "C:/Program Files".to_string(),
-                            |path| path.to_string_lossy().into_owned()
-                        )
+                        winsafe::SHGetKnownFolderPath(
+                            &co::KNOWNFOLDERID::ProgramFiles,
+                            co::KF::NO_ALIAS,
+                            None,
+                        ).unwrap_or("C:/Windows/Program Files".to_string()),
                     ),
                     ("%programfiles(x86)%",
-                        env::var_os("PROGRAMFILES(X86)").map_or(
-                            "C:/Program Files (x86)".to_string(),
+                        winsafe::SHGetKnownFolderPath(
+                            &co::KNOWNFOLDERID::ProgramFilesX86,
+                            co::KF::NO_ALIAS,
+                            None,
+                        ).unwrap_or("C:/Windows/Program Files(x86)".to_string()),
+                    ),
+                    ("%programfiles(arm)%",
+                        env::var_os("PROGRAMFILES(Arm)").map_or(
+                            "C:/Program Files (Arm)".to_string(),
                             |path| path.to_string_lossy().into_owned()
                         )
                     ),
                     ("%commonprogramfiles%",
-                        env::var_os("COMMONPROGRAMFILES").map_or(
+                        env::var_os("CommonProgramFiles").map_or(
                             "C:/Program Files/Common Files".to_string(),
                             |path| path.to_string_lossy().into_owned()
                         )
+                    ),
+                    ("%commonprogramfiles(arm)%",
+                    env::var_os("CommonProgramFiles(Arm)").map_or(
+                        "C:/Program Files (Arm)/Common Files".to_string(),
+                        |path| path.to_string_lossy().into_owned()
+                    )
+                    ),
+                    ("%commonprogramfiles(x86)%",
+                    env::var_os("CommonProgramFiles(x86)").map_or(
+                        "C:/Program Files (x86)/Common Files".to_string(),
+                        |path| path.to_string_lossy().into_owned()
+                    )
+                    ),
+                    ("%programdata%",
+                    env::var_os("ProgramData").map_or(
+                        "C:/ProgramData".to_string(),
+                        |path| path.to_string_lossy().into_owned()
+                    )
                     ),
                     ("%allusersprofile%",
                         env::var_os("ALLUSERSPROFILE").map_or(

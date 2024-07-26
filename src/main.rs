@@ -17,6 +17,7 @@ use std::{
 use rfd::FileDialog;
 use glob::glob;
 use info::{SystemLinkDirs, ManageLinkProp};
+use copypasta::{ClipboardContext, ClipboardProvider};
 use crossterm::event::KeyEvent;
 use ratatui::{
     backend::Backend,
@@ -24,11 +25,10 @@ use ratatui::{
     crossterm::event::{self, Event, KeyCode, KeyEventKind},
     layout::{Constraint, Layout, Rect},
     style::{Color, Modifier, Style, Stylize},
-    symbols,
     terminal::Terminal,
     text::Line,
     widgets::{
-        Block, Borders, HighlightSpacing, List, ListItem, ListState, Padding, Paragraph,
+        Block, Borders, BorderType, HighlightSpacing, List, ListItem, ListState, Padding, Paragraph,
         StatefulWidget, Widget, Wrap,
     },
 };
@@ -61,6 +61,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 struct App {
     should_exit: bool,
     link_list: LinkList,
+    show_func_popup: bool,
 }
 
 struct LinkList {
@@ -69,7 +70,6 @@ struct LinkList {
 }
 
 #[derive(Debug)]
-#[allow(unused)]
 pub struct LinkProp {
     name: String,
     path: String,
@@ -94,7 +94,8 @@ impl App {
             link_list: LinkList {
                 items: link_vec,
                 state: ListState::default()
-            }
+            },
+            show_func_popup: false,
         }
     }
 }
@@ -114,21 +115,40 @@ impl App {
         if key.kind != KeyEventKind::Press {
             return;
         }
-        match key.code {
-            KeyCode::Char('q') | KeyCode::Char('Q') | KeyCode::Esc => self.should_exit = true,
-            KeyCode::Char('c') | KeyCode::Char('C') | KeyCode::Enter => self.change_single_link_icon(),
-            KeyCode::Char('e') | KeyCode::Char('E') => modify::change_all_shortcuts_icons(&mut self.link_list.items).expect("Failed to change the icons of all shortcuts"),
-            KeyCode::Char('r') | KeyCode::Char('R') => self.restore_single_link_icon(),
-            KeyCode::Char('l') | KeyCode::Char('L') => self.open_log_file(),
-            // KeyCode::Char('c') | KeyCode::Char('C') => modify::clear_thumbnails().expect("REASON"),
-            KeyCode::Char('j') | KeyCode::Char('J') | KeyCode::Down => self.select_next(),   // 下
-            KeyCode::Char('k') | KeyCode::Char('K') | KeyCode::Up => self.select_previous(), // 上
-            KeyCode::Char('t') | KeyCode::Char('T') | KeyCode::Home => self.select_first(),  // 顶部
-            KeyCode::Char('b') | KeyCode::Char('B') | KeyCode::End => self.select_last(),    // 底部
-            _ => {}
+        match self.show_func_popup {
+            true => { match key.code {
+                KeyCode::Down => self.select_next(),
+                KeyCode::Up => self.select_previous(),
+                KeyCode::Char('c') | KeyCode::Char('C') => modify::change_all_shortcuts_icons(&mut self.link_list.items).expect("Failed to change the icons of all shortcuts"),
+                KeyCode::Char('r') | KeyCode::Char('R') => modify::restore_all_shortcuts_icons(&mut self.link_list.items).expect("Failed to restore the default icons of all shortcuts"),
+                KeyCode::Char('t') | KeyCode::Char('T') => modify::clear_thumbnails().expect("Failed to open 'Disk Cleanup'."),
+                KeyCode::Char('f') | KeyCode::Char('F') | KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('Q') => (),
+                KeyCode::Char('l') | KeyCode::Char('L') => self.open_log_file(),
+                KeyCode::Char('s') | KeyCode::Char('S') => self.open_start_menu(),
+                KeyCode::Char('1') => self.copy_prop(1),
+                KeyCode::Char('2') => self.copy_prop(2),
+                KeyCode::Char('3') => self.copy_prop(3),
+                KeyCode::Char('4') => self.copy_prop(4),
+                KeyCode::Char('5') => self.copy_prop(5),
+                KeyCode::Char('6') => self.copy_prop(6),
+                KeyCode::Char('7') => self.copy_prop(6),
+                _ => self.show_func_popup = !self.show_func_popup
+                };
+                self.show_func_popup = !self.show_func_popup;
+            },
+            false => match key.code {
+                KeyCode::Char('q') | KeyCode::Char('Q') | KeyCode::Esc => self.should_exit = true,
+                KeyCode::Char('c') | KeyCode::Char('C') | KeyCode::Enter => self.change_single_link_icon(),
+                KeyCode::Char('r') | KeyCode::Char('R') => self.restore_single_link_icon(),
+                KeyCode::Char('j') | KeyCode::Char('J') | KeyCode::Down => self.select_next(),
+                KeyCode::Char('k') | KeyCode::Char('K') | KeyCode::Up => self.select_previous(),
+                KeyCode::Char('t') | KeyCode::Char('T') | KeyCode::Home => self.select_first(),
+                KeyCode::Char('b') | KeyCode::Char('B') | KeyCode::End => self.select_last(),
+                KeyCode::Char('f') | KeyCode::Char('F')=> self.show_func_popup = !self.show_func_popup,
+                _ => {}
+            },
         }
     }
-
 
     fn select_next(&mut self) {
         let i = match self.link_list.state.selected() {
@@ -187,12 +207,39 @@ impl App {
     }
 
     fn open_log_file(&mut self) {
-        let mut log_path = env::temp_dir();
-        log_path.push("LinkEcho.log");
-        let _ = Command::new("cmd")
-            .args(&["/C", "start", &log_path.to_string_lossy()])
-            .status()
-            .expect("Failed to execute command");
+        let log_path = env::temp_dir().join("LinkEcho.log");
+        match log_path.try_exists() {
+            Ok(true) => {
+                let _ = Command::new("cmd")
+                .args(&["/C", "start", &log_path.to_string_lossy()])
+                .status()
+                .expect("Failed to execute command");
+            },
+            Ok(false) => {},
+            Err(err) => {}, 
+        };
+    }
+
+    fn open_start_menu(&mut self) {
+        let start_menu_path = SystemLinkDirs::StartMenu.get_path().expect("Failed to get desktop path");
+        ManageLinkProp::collect(start_menu_path, &mut self.link_list.items).expect("Failed to get properties of desktop shortcut");
+    }
+
+    fn copy_prop(&mut self, index: u8) {
+        if let Some(i) = self.link_list.state.selected() {
+            let mut ctx = ClipboardContext::new().unwrap();
+            let text = match index {
+                1 => self.link_list.items[i].name.clone(),
+                2 => self.link_list.items[i].path.clone(),
+                3 => self.link_list.items[i].target_ext.clone(),
+                4 => self.link_list.items[i].target_dir.clone(),
+                5 => self.link_list.items[i].target_path.clone(),
+                6 => self.link_list.items[i].icon_location.clone(),
+                7 => self.link_list.items[i].icon_index.clone(),
+                _ => String::new(),
+            };
+            ctx.set_contents(text).unwrap();
+        };  
     }
 }
 
@@ -206,12 +253,13 @@ impl Widget for &mut App {
         .areas(area);
 
         let [list_area, item_area] =
-            Layout::horizontal(Constraint::from_percentages([30, 70])).areas(main_area);
+            Layout::horizontal(Constraint::from_percentages([24, 76])).areas(main_area);
 
         App::render_header(header_area, buf);
         App::render_footer(footer_area, buf);
         self.render_list(list_area, buf);
         self.render_selected_info(item_area, buf);
+        self.render_func_popup(area, buf);  // 最后渲染
     }
 }
 
@@ -224,7 +272,7 @@ impl App {
     }
 
     fn render_footer(area: Rect, buf: &mut Buffer) {
-        Paragraph::new("退出[Q] | 更换[C] | 恢复[R] | 搜索[S] | 功能[F] | 返回顶部/底部[T/B] | 日志[L] | 帮助[H]")
+        Paragraph::new("退出[Q] | 更换[C] | 恢复[R] | 搜索[S] | 功能[F] | 返回顶部/底部[T/B] | 帮助[H]")
             .centered()
             .render(area, buf);
     }
@@ -232,10 +280,9 @@ impl App {
     // 渲染列表（左侧面板）
     fn render_list(&mut self, area: Rect, buf: &mut Buffer) {
         let block = Block::new()
-            .title(Line::raw("Name").centered())
-            .borders(Borders::TOP)
-            .border_set(symbols::border::EMPTY)
-            .border_style(TODO_HEADER_STYLE)
+            .title("Name")
+            .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
             .bg(NORMAL_ROW_BG);
 
         // 遍历"项目"(App的items)中的所有元素，并对其进行风格化处理。
@@ -254,7 +301,7 @@ impl App {
         let list = List::new(items)
             .block(block)
             .highlight_style(SELECTED_STYLE)
-            .highlight_symbol(">>")
+            .highlight_symbol(">")
             .highlight_spacing(HighlightSpacing::Always);
 
         // 由于 `Widget` 和 `StatefulWidget` 共享相同的方法名 `render` ，我们需要对该特征方法进行歧义区分
@@ -263,15 +310,14 @@ impl App {
 
     // 渲染当前项目信息的区块
     fn render_selected_info(&self, area: Rect, buf: &mut Buffer) {
-        // 获取信息
         let info = if let Some(i) = self.link_list.state.selected() {
-            format!("名称: {}
-                \n路径: {}
-                \n目标扩展名: {}
-                \n目标目录: {}
-                \n目标路径: {}
-                \n图标位置: {}
-                \n图标索引: {}",
+            format!("1.名称: {}
+                \n2.路径: {}
+                \n3.目标扩展名: {}
+                \n4.目标目录: {}
+                \n5.目标路径: {}
+                \n6.图标位置: {}
+                \n7.图标索引: {}",
                 &self.link_list.items[i].name,
                 &self.link_list.items[i].path,
                 &self.link_list.items[i].target_ext,
@@ -284,22 +330,67 @@ impl App {
             "Nothing selected...".into()
         };
 
-        // 自定义区域
         let block = Block::new()
-            .title(Line::raw("Properties").centered())
-            .borders(Borders::TOP)
-            .border_set(symbols::border::EMPTY)
-            .border_style(TODO_HEADER_STYLE)
+            .title("Properties")
+            .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
             .bg(NORMAL_ROW_BG)
             .padding(Padding::horizontal(1));
 
-        // 渲染信息
         Paragraph::new(info)
             .block(block)
             .fg(TEXT_FG_COLOR)
             .wrap(Wrap { trim: false })
             .render(area, buf);
     }
+
+    fn render_func_popup(&self, area: Rect, buf: &mut Buffer) {
+        if self.show_func_popup {
+            let block = Block::bordered()
+                .border_type(ratatui::widgets::BorderType::Rounded)
+                .title("其他功能".blue());
+
+            let popup_layout = Layout::vertical([
+                Constraint::Fill(3),
+                Constraint::Length(4),
+                Constraint::Fill(1),
+            ])
+            .split(area);
+
+            let area = Layout::horizontal([
+                Constraint::Fill(1),
+                Constraint::Percentage(52),
+                Constraint::Fill(1),
+            ])
+            .split(popup_layout[1])[1];
+
+            Paragraph::new("更换所有[C] | 恢复所有[R] | 日志[L] | 清理缩略图[T]\n载入开始菜单快捷方式[S] | 复制快捷方式属性[1~7]")   // 中文会被后方的中文顶替，造成格式错乱
+                .block(block)
+                .fg(Color::Blue)
+                .centered()
+                .wrap(Wrap { trim: false })
+                .render(area, buf);
+        }
+    }
+
+    /*
+    // 右下角通知窗口
+        fn render_func_popup(&self, area: Rect, buf: &mut Buffer) {
+        if self.show_func_popup {
+            let block = Block::bordered()
+                .border_type(ratatui::widgets::BorderType::Rounded)
+                .title("其他功能".blue());
+            let area = Self::centered_rect(60, 4, area);
+
+            Paragraph::new("更换所有[C] | 恢复所有[R] | 日志[L] | 清理缩略图[T]\n复制序号[?]")   // 中文会被后方的中文顶替，造成格式错乱
+                .block(block)
+                .fg(Color::Blue)
+                .centered()
+                .wrap(Wrap { trim: false })
+                .render(area, buf);
+        }
+    }
+     */
 }
 
 const fn alternate_colors(i: usize) -> Color {
@@ -311,11 +402,11 @@ const fn alternate_colors(i: usize) -> Color {
 }
 
 impl From<&LinkProp> for ListItem<'_> {
-    fn from(value: &LinkProp) -> Self {
-        let line = match value.status {
-            Status::Unchanged => Line::styled(format!(" ☐ {}", value.name), TEXT_FG_COLOR),
+    fn from(link_prop: &LinkProp) -> Self {
+        let line = match link_prop.status {
+            Status::Unchanged => Line::styled(format!(" ☐ {}", link_prop.name), TEXT_FG_COLOR),
             Status::Changed => {
-                Line::styled(format!(" ✓ {}", value.name), CHANGED_TEXT_FG_COLOR)
+                Line::styled(format!(" ✓ {}", link_prop.name), CHANGED_TEXT_FG_COLOR)
             }
         };
         ListItem::new(line)
