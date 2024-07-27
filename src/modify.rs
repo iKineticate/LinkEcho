@@ -1,6 +1,6 @@
 use std::os::windows::process::CommandExt;
 use std::process::Command;
-use crate::{glob, utils::{open_log_file, write_log}, FileDialog, LinkProp, Status};
+use crate::{glob, utils::{read_log, write_log}, FileDialog, LinkProp, Status};
 use winsafe::{co, prelude::*, IPersistFile};
 
 pub fn change_all_shortcuts_icons(link_vec: &mut Vec<LinkProp>) -> Result<(), Box<dyn std::error::Error>> {
@@ -24,7 +24,7 @@ pub fn change_all_shortcuts_icons(link_vec: &mut Vec<LinkProp>) -> Result<(), Bo
     let mut match_same_vec = vec![];
 
     // Open Log File - 打开日志文件
-    let mut log_file = open_log_file().expect("Failed to open 'LinkEcho.log'");
+    let mut log_file = read_log().expect("Failed to open 'LinkEcho.log'");
 
     // Select the folder with the icons - 选择有图标的文件夹
     let select_icons_folder_path = match FileDialog::new()
@@ -113,7 +113,7 @@ pub fn restore_all_shortcuts_icons(link_vec: &mut Vec<LinkProp>) -> Result<(), B
     let persist_file: IPersistFile = shell_link.QueryInterface()?;
 
     // Open Log File - 打开日志文件
-    let mut log_file = open_log_file().expect("Failed to open 'LinkEcho.log'");
+    let mut log_file = read_log().expect("Failed to open 'LinkEcho.log'");
 
     // Iterate over the vec that stores the shortcut properties - 遍历快捷方式的属性
     for link_prop in link_vec.iter_mut() {
@@ -179,7 +179,7 @@ pub fn change_single_shortcut_icon(link_path: String, link_prop: &mut LinkProp) 
     persist_file.Load(&link_path, co::STGM::WRITE)?;
 
     // Open Log File - 打开日志文件
-    let mut log_file = open_log_file().expect("Failed to open 'LinkEcho.log'");
+    let mut log_file = read_log().expect("Failed to open 'LinkEcho.log'");
 
     // Select an icon - 选择有图标的文件夹
     let select_icon_path = match FileDialog::new()
@@ -238,7 +238,7 @@ pub fn restore_single_shortcut_icon(link_path: String, link_prop: &mut LinkProp)
     persist_file.Load(&link_path, co::STGM::WRITE)?;
 
     // Open Log File - 打开日志文件
-    let mut log_file = open_log_file().expect("Failed to open 'LinkEcho.log'");
+    let mut log_file = read_log().expect("Failed to open 'LinkEcho.log'");
 
     // Set the icon location - 设置图标位置
     shell_link.SetIconLocation(&icon_path, 0)?;

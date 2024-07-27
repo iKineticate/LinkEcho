@@ -1,4 +1,4 @@
-use crate::{utils::{open_log_file, write_log}, Error, glob, LinkProp, Status, Path, PathBuf};
+use crate::{utils::{read_log, write_log}, Error, glob, LinkProp, Status, Path, PathBuf};
 use winsafe::{IPersistFile, prelude::*, co};
 use std::env;
 
@@ -319,7 +319,7 @@ impl ManageLinkProp {
                 match ManageLinkProp::get_info(path_buf, shell_link.clone(), persist_file.clone()) {
                     Ok(link_prop) => link_vec.push(link_prop),
                     Err(err) => {
-                        let mut log_file = open_log_file().expect("Failed to open 'LinkEcho.log'");
+                        let mut log_file = read_log().expect("Failed to open 'LinkEcho.log'");
                         write_log(&mut log_file, err.to_string())?;
                         continue
                     }

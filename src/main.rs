@@ -32,6 +32,7 @@ use ratatui::{
         StatefulWidget, Widget, Wrap, Scrollbar, ScrollbarState, ScrollbarOrientation,
     },
 };
+use win_toast_notify::WinToastNotify;
 
 const NORMAL_ROW_BG: Color = Color::Rgb(25, 25, 25);
 const ALT_ROW_BG_COLOR: Color = Color::Rgb(42, 42, 42);
@@ -45,7 +46,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // 获取当前和公共用户的"桌面文件夹"的完整路径并收集属性
     let desktop_path = SystemLinkDirs::Desktop.get_path().expect("Failed to get desktop path");
-    ManageLinkProp::collect(desktop_path, &mut link_vec).expect("Failed to get properties of desktop shortcut");
+    ManageLinkProp::collect(desktop_path, &mut link_vec)
+        .expect("Failed to get properties of desktop shortcut");
 
     tui::init_error_hooks()?;
     let terminal = tui::init_terminal()?;
@@ -60,7 +62,6 @@ fn main() -> Result<(), Box<dyn Error>> {
 struct App {
     should_exit: bool,
     link_list: LinkList,
-    items_len: usize,
     scroll_state: ScrollbarState,
     scroll_position: usize,
     show_func_popup: bool,
@@ -98,7 +99,6 @@ impl App {
                 items: link_vec,
                 state: ListState::default()
             },
-            items_len,
             scroll_state: ScrollbarState::default().content_length(items_len),
             scroll_position: 0,
             show_func_popup: false,
@@ -120,25 +120,29 @@ impl App {
     fn handle_key(&mut self, key: KeyEvent) {
         if key.kind != KeyEventKind::Press {
             return;
-        }
+        };
         match self.show_func_popup {
             true => { match key.code {
                 KeyCode::Down => self.select_next(),
                 KeyCode::Up => self.select_previous(),
-                KeyCode::Char('c') | KeyCode::Char('C') => modify::change_all_shortcuts_icons(&mut self.link_list.items).expect("Failed to change the icons of all shortcuts"),
-                KeyCode::Char('r') | KeyCode::Char('R') => modify::restore_all_shortcuts_icons(&mut self.link_list.items).expect("Failed to restore the default icons of all shortcuts"),
-                KeyCode::Char('t') | KeyCode::Char('T') => modify::clear_thumbnails().expect("Failed to open 'Disk Cleanup'."),
+                KeyCode::Char('c') | KeyCode::Char('C') => self.change_all_shortcuts_icons(),
+                KeyCode::Char('r') | KeyCode::Char('R') => self.restore_all_shortcuts_icons(),
+                KeyCode::Char('t') | KeyCode::Char('T') => modify::clear_thumbnails()
+                    .expect("Failed to open 'Disk Cleanup'."),
                 KeyCode::Char('f') | KeyCode::Char('F') | KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('Q') => (),
                 KeyCode::Char('l') | KeyCode::Char('L') => self.open_log_file(),
-                KeyCode::Char('s') | KeyCode::Char('S') => self.open_start_menu(),
+                KeyCode::Char('s') | KeyCode::Char('S') => self.load_start_menu(),
+                KeyCode::Char('o') | KeyCode::Char('O') => self.load_other_dir(),
+                KeyCode::Char('w') | KeyCode::Char('W') => self.open_working_dir(),
+                KeyCode::Char('i') | KeyCode::Char('I') => self.open_icon_parent(),
                 KeyCode::Char('1') => self.copy_prop(1),
                 KeyCode::Char('2') => self.copy_prop(2),
                 KeyCode::Char('3') => self.copy_prop(3),
                 KeyCode::Char('4') => self.copy_prop(4),
                 KeyCode::Char('5') => self.copy_prop(5),
                 KeyCode::Char('6') => self.copy_prop(6),
-                KeyCode::Char('7') => self.copy_prop(6),
-                _ => self.show_func_popup = !self.show_func_popup
+                KeyCode::Char('7') => self.copy_prop(7),
+                _ => ()
                 };
                 self.show_func_popup = !self.show_func_popup;
             },
@@ -153,13 +157,13 @@ impl App {
                 KeyCode::Char('f') | KeyCode::Char('F')=> self.show_func_popup = !self.show_func_popup,
                 _ => {}
             },
-        }
+        };
     }
 
     fn select_next(&mut self) {
         let i = match self.link_list.state.selected() {
             Some(i) => {
-                if i >= self.items_len - 1 {
+                if i >= self.link_list.items.len() - 1 {
                     0
                 } else {
                     i + 1
@@ -175,7 +179,7 @@ impl App {
         let i = match self.link_list.state.selected() {
             Some(i) => {
                 if i == 0 {
-                    self.items_len - 1
+                    self.link_list.items.len() - 1
                 } else {
                     i - 1
                 }
@@ -193,7 +197,25 @@ impl App {
 
     fn select_last(&mut self) {
         self.link_list.state.select_last();
-        self.scroll_position = self.items_len;
+        self.scroll_position = self.link_list.items.len();
+    }
+
+    fn change_all_shortcuts_icons(&mut self) {
+        match modify::change_all_shortcuts_icons(&mut self.link_list.items) {
+            Ok(_) => show_notify(vec!["Successfully changed icons of all shortcuts"]),
+            Err(err) => show_notify(vec![
+                "Failed to change icons of all shortcuts",
+                &format!("{}", err)])
+        };
+    }
+
+    fn restore_all_shortcuts_icons(&mut self) {
+        match modify::restore_all_shortcuts_icons(&mut self.link_list.items) {
+            Ok(_) => show_notify(vec!["Successfully set all shortcut icons as default icons"]),
+            Err(err) => show_notify(vec![
+                "Failed to restore icons of all shortcuts",
+                &format!("{}", err)])       
+        };
     }
 
     fn change_single_link_icon(&mut self) {
@@ -216,23 +238,63 @@ impl App {
         };  
     }
 
+    fn open_file(path: impl AsRef<std::ffi::OsStr>) {
+        match Command::new("cmd")
+            .args(["/C", "start"])
+            .arg(path.as_ref())
+            .status() {
+                Ok(status) => {
+                    if !status.success() {
+                        show_notify(vec![
+                            "Failed to open the file",
+                            &path.as_ref().to_string_lossy()
+                        ])
+                    };
+                }
+                Err(_) => show_notify(vec!["Failed to execute process"]),
+            }
+    }
+
     fn open_log_file(&mut self) {
         let log_path = env::temp_dir().join("LinkEcho.log");
         match log_path.try_exists() {
             Ok(true) => {
-                let _ = Command::new("cmd")
-                .args(&["/C", "start", &log_path.to_string_lossy()])
-                .status()
-                .expect("Failed to execute command");
+                App::open_file(log_path)
             },
-            Ok(false) => {},
-            Err(err) => {}, 
+            Ok(false) => show_notify(vec!["Log file does not exist and cannot be created"]),
+            Err(err) => show_notify(vec![&format!("Error checking if log file exists: {}", err)]),
         };
     }
 
-    fn open_start_menu(&mut self) {
+    fn open_icon_parent(&self) {
+        if let Some(i) = self.link_list.state.selected() {
+            match Path::new(&self.link_list.items[i].icon_location).parent() {
+                Some(parent) => App::open_file(parent),
+                None => show_notify(vec!["Failed to get the directory of the ICON"])
+            }
+        }
+    }
+
+    fn open_working_dir(&self) {
+        if let Some(i) = self.link_list.state.selected() {
+            App::open_file(&self.link_list.items[i].target_dir)
+        }
+    }
+    fn load_start_menu(&mut self) {
         let start_menu_path = SystemLinkDirs::StartMenu.get_path().expect("Failed to get desktop path");
-        ManageLinkProp::collect(start_menu_path, &mut self.link_list.items).expect("Failed to get properties of desktop shortcut");
+        ManageLinkProp::collect(start_menu_path, &mut self.link_list.items)
+            .expect("Failed to get properties of desktop shortcut");
+    }
+
+    fn load_other_dir(&mut self) {
+        match FileDialog::new()
+            .set_title("Please select the directory where shortcuts are stored")
+            .pick_folder() {
+                Some(path_buf) => 
+                    ManageLinkProp::collect(vec![path_buf], &mut self.link_list.items)
+                        .expect("Failed to get properties of desktop shortcut"),
+                None => return,
+            };
     }
 
     fn copy_prop(&mut self, index: u8) {
@@ -256,21 +318,29 @@ impl App {
 impl Widget for &mut App {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let [header_area, main_area, footer_area] = Layout::vertical([
-            Constraint::Length(2),
+            Constraint::Length(1),
             Constraint::Fill(1),
             Constraint::Length(1),
         ])
         .areas(area);
 
-        let [list_area, item_area] =
-            Layout::horizontal(Constraint::from_percentages([24, 76])).areas(main_area);
+        let [left_area, item_area] = Layout::horizontal([
+            Constraint::Fill(1),
+            Constraint::Fill(3),
+        ]).areas(main_area);
+
+        let [list_area, status_area] = Layout::vertical([
+            Constraint::Fill(1),
+            Constraint::Length(3),
+        ]).areas(left_area);
 
         App::render_header(header_area, buf);
         App::render_footer(footer_area, buf);
         self.render_list(list_area, buf);
         self.render_scrollbar(list_area, buf);
-        self.render_selected_info(item_area, buf);
-        self.render_func_popup(area, buf);  // 最后渲染
+        self.render_status(status_area, buf);
+        self.render_info(item_area, buf);
+        self.render_func_popup(item_area, buf);
     }
 }
 
@@ -278,12 +348,15 @@ impl Widget for &mut App {
 impl App {
     fn render_header(area: Rect, buf: &mut Buffer) {
         Paragraph::new("LinkEcho v1.0.0")
+            .fg(TEXT_FG_COLOR)
             .bold()
             .render(area, buf);
     }
 
     fn render_footer(area: Rect, buf: &mut Buffer) {
-        Paragraph::new("退出[Q] | 更换[C] | 恢复[R] | 搜索[S] | 功能[F] | 返回顶部/底部[T/B] | 帮助[H]")
+        Paragraph::new("退出[Q] | 更换[C] | 恢复[R] | 搜索[/] | 功能[F] | 返回顶部/底部[T/B] | 帮助[H]")
+            .fg(TEXT_FG_COLOR)
+            .bg(NORMAL_ROW_BG)
             .centered()
             .render(area, buf);
     }
@@ -292,9 +365,10 @@ impl App {
     fn render_list(&mut self, area: Rect, buf: &mut Buffer) {
         let block = Block::new()
             .title("Name")
+            .fg(TEXT_FG_COLOR)
+            .bg(NORMAL_ROW_BG)
             .borders(Borders::ALL)
-            .border_type(BorderType::Rounded)
-            .bg(NORMAL_ROW_BG);
+            .border_type(BorderType::Rounded);
 
         // 遍历"项目"(App的items)中的所有元素，并对其进行风格化处理。
         let items: Vec<ListItem> = self
@@ -320,77 +394,104 @@ impl App {
     }
 
     // 渲染当前项目信息的区块
-    fn render_selected_info(&self, area: Rect, buf: &mut Buffer) {
-        let info = if let Some(i) = self.link_list.state.selected() {
-            format!("1.名称: {}
-                \n2.路径: {}
-                \n3.目标扩展名: {}
-                \n4.目标目录: {}
-                \n5.目标路径: {}
-                \n6.图标位置: {}
-                \n7.图标索引: {}",
-                &self.link_list.items[i].name,
-                &self.link_list.items[i].path,
-                &self.link_list.items[i].target_ext,
-                &self.link_list.items[i].target_dir,
-                &self.link_list.items[i].target_path,
-                &self.link_list.items[i].icon_location,
-                &self.link_list.items[i].icon_index,
-            )
-        } else {
-            "Nothing selected...".into()
-        };
+    fn render_info(&self, area: Rect, buf: &mut Buffer) {
+        let area_vec: [ratatui::layout::Rect; 7] = Layout::vertical(
+            vec![Constraint::Length(1); 6]
+                .into_iter()
+                .chain(vec![Constraint::Fill(1)])
+                .collect::<Vec<Constraint>>()
+        )
+        .vertical_margin(1)
+        .horizontal_margin(2)
+        .areas(area);
 
         let block = Block::new()
             .title("Properties")
+            .bg(NORMAL_ROW_BG)
+            .fg(TEXT_FG_COLOR)
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
-            .bg(NORMAL_ROW_BG)
-            .padding(Padding::horizontal(1));
+            .padding(Padding::horizontal(2));
+        
+        Paragraph::new("").block(block).render(area, buf);
 
-        Paragraph::new(info)
-            .block(block)
-            .fg(TEXT_FG_COLOR)
-            .wrap(Wrap { trim: false })
-            .render(area, buf);
+        if let Some(i) = self.link_list.state.selected() {
+            let texts = vec![
+                format!("1.名称: {}", self.link_list.items[i].name),
+                format!("2.路径: {}", self.link_list.items[i].path),
+                format!("3.目标扩展: {}", self.link_list.items[i].target_ext),
+                format!("4.目标目录: {}", self.link_list.items[i].target_dir),
+                format!("5.目标路径: {}", self.link_list.items[i].target_path),
+                format!("6.图标位置: {}", self.link_list.items[i].icon_location),
+                format!("7.图标索引: {}", self.link_list.items[i].icon_index),
+            ];
+    
+            for (index, text) in texts.iter().enumerate() {
+                Paragraph::new(text.as_str()).fg(TEXT_FG_COLOR).render(area_vec[index], buf);
+            };
+        } else {
+            Paragraph::new("Nothing selected...").fg(TEXT_FG_COLOR).render(area_vec[0], buf);
+        }
     }
 
     fn render_func_popup(&self, area: Rect, buf: &mut Buffer) {
         if self.show_func_popup {
+            let color = Color::Rgb(51, 137, 208);
+
             let block = Block::bordered()
-                .border_type(ratatui::widgets::BorderType::Rounded)
-                .title("其他功能".blue());
+                .fg(color)
+                .border_type(BorderType::Rounded)
+                .title("其他功能");
 
-            let popup_layout = Layout::vertical([
-                Constraint::Fill(3),
-                Constraint::Length(4),
+            let popup_area = Layout::vertical([
                 Constraint::Fill(1),
+                Constraint::Length(7),
+                Constraint::Length(1),
             ])
-            .split(area);
+            .horizontal_margin(2)
+            .split(area)[1];
 
-            let area = Layout::horizontal([
-                Constraint::Fill(1),
-                Constraint::Percentage(52),
-                Constraint::Fill(1),
-            ])
-            .split(popup_layout[1])[1];
+            
 
-            Paragraph::new("更换所有[C] | 恢复所有[R] | 日志[L] | 清理缩略图[T]\n载入开始菜单快捷方式[S] | 复制快捷方式属性[1~7]")   // 中文会被后方的中文顶替，造成格式错乱
+            let text = vec![
+                "更换所有快捷方式[C] | 恢复所有快捷方式[R]",
+                "打开快捷方式工作目录[W] | 打开快捷方式图标目录[I]",
+                "载入开始菜单快捷方式[S] | 载入其他目录快捷方式[O]",
+                "  打开日志[L] | 清理缩略图[T]",
+                "复制快捷方式属性[1~7]",
+            ].join("\n");
+
+            Paragraph::new(text)   // 中文会被后方的中文顶替，造成格式错乱
                 .block(block)
-                .fg(Color::Blue)
+                .fg(color)
                 .centered()
                 .wrap(Wrap { trim: false })
-                .render(area, buf);
+                .render(popup_area, buf);
         }
     }
 
     fn render_scrollbar(&mut self, area: Rect, buf: &mut Buffer) {
         self.scroll_state = ScrollbarState::default()
-            .content_length(self.items_len)
+            .content_length(self.link_list.items.len())
             .position(self.scroll_position);
 
         Scrollbar::new(ScrollbarOrientation::VerticalRight)
             .render(area, buf, &mut self.scroll_state);
+    }
+
+    fn render_status(&self, area: Rect, buf: &mut Buffer) {
+        let block = Block::bordered()
+            .title("Status")
+            .fg(TEXT_FG_COLOR)
+            .bg(NORMAL_ROW_BG)
+            .borders(Borders::ALL)
+            .border_type(BorderType::Rounded);
+
+        Paragraph::new(format!("Total: {}", self.link_list.items.len()))
+            .fg(TEXT_FG_COLOR)
+            .block(block)
+            .centered()
+            .render(area, buf);
     }
 }
 
@@ -412,4 +513,12 @@ impl From<&LinkProp> for ListItem<'_> {
         };
         ListItem::new(line)
     }
+}
+
+fn show_notify(messages: Vec<&str>) {
+    WinToastNotify::new()
+        .set_title("LinkEcho")
+        .set_messages(messages)
+        .show()
+        .expect("Failed to show toast notification")
 }

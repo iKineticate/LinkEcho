@@ -1,4 +1,4 @@
-![image](https://github.com/iKineticate/LinkEcho/blob/master/Screenshots/app.png)
+![image](https://github.com/iKineticate/LinkEcho/blob/master/screenshots/app.png)
 
 ## LinkEcho
 
