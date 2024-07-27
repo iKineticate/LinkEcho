@@ -436,37 +436,40 @@ impl App {
 
     fn render_func_popup(&self, area: Rect, buf: &mut Buffer) {
         if self.show_func_popup {
-            let color = Color::Rgb(51, 137, 208);
-
-            let block = Block::bordered()
-                .fg(color)
-                .border_type(BorderType::Rounded)
-                .title("其他功能");
+            let color = Color::Rgb(100, 72, 196);
 
             let popup_area = Layout::vertical([
                 Constraint::Fill(1),
-                Constraint::Length(7),
+                Constraint::Length(5),
                 Constraint::Length(1),
             ])
             .horizontal_margin(2)
             .split(area)[1];
 
-            
+            let [revise_area, load_area, other_area] = Layout::horizontal([
+                Constraint::Fill(1),
+                Constraint::Fill(1),
+                Constraint::Fill(1),
+            ]).areas(popup_area);
 
-            let text = vec![
-                "更换所有快捷方式[C] | 恢复所有快捷方式[R]",
-                "打开快捷方式工作目录[W] | 打开快捷方式图标目录[I]",
-                "载入开始菜单快捷方式[S] | 载入其他目录快捷方式[O]",
-                "  打开日志[L] | 清理缩略图[T]",
-                "复制快捷方式属性[1~7]",
-            ].join("\n");
+            let popup_vec = vec![
+                (revise_area, "Revise", "更换所有快捷方式[C]\n恢复所有快捷方式[R]\n复制快捷方式属性[1~7]"),
+                (load_area, "Load", "载入开始菜单快捷方式[S]\n载入其他目录快捷方式[O]"),
+                (other_area, "Other", "打开日志[L]\n清理缩略图[T]")
+            ];
 
-            Paragraph::new(text)   // 中文会被后方的中文顶替，造成格式错乱
-                .block(block)
-                .fg(color)
-                .centered()
-                .wrap(Wrap { trim: false })
-                .render(popup_area, buf);
+            for (area, title, text) in popup_vec {
+                let block = Block::bordered()
+                    .title(title)
+                    .fg(color)
+                    .border_type(BorderType::Rounded);
+
+                Paragraph::new(text)
+                    .block(block)
+                    .fg(color)
+                    .centered()
+                    .render(area, buf);
+            };
         }
     }
 
