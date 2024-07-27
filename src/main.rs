@@ -28,8 +28,10 @@ use ratatui::{
     terminal::Terminal,
     text::Line,
     widgets::{
-        Block, Borders, BorderType, HighlightSpacing, List, ListItem, ListState, Padding, Paragraph,
-        StatefulWidget, Widget, Wrap, Scrollbar, ScrollbarState, ScrollbarOrientation,
+        Block, Borders, BorderType, Paragraph,
+        List, ListItem, ListState, Padding, HighlightSpacing,
+        StatefulWidget, Widget,
+        Scrollbar, ScrollbarState, ScrollbarOrientation,
     },
 };
 use win_toast_notify::WinToastNotify;
@@ -72,7 +74,6 @@ struct LinkList {
     state: ListState,
 }
 
-#[derive(Debug)]
 pub struct LinkProp {
     name: String,
     path: String,
@@ -84,7 +85,7 @@ pub struct LinkProp {
     icon_index: String,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(PartialEq)]
 enum Status {
     Unchanged,
     Changed,
@@ -133,6 +134,7 @@ impl App {
                 KeyCode::Char('l') | KeyCode::Char('L') => self.open_log_file(),
                 KeyCode::Char('s') | KeyCode::Char('S') => self.load_start_menu(),
                 KeyCode::Char('o') | KeyCode::Char('O') => self.load_other_dir(),
+                KeyCode::Char('d') | KeyCode::Char('D') => self.load_desktop(),
                 KeyCode::Char('w') | KeyCode::Char('W') => self.open_working_dir(),
                 KeyCode::Char('i') | KeyCode::Char('I') => self.open_icon_parent(),
                 KeyCode::Char('1') => self.copy_prop(1),
@@ -214,28 +216,41 @@ impl App {
             Ok(_) => show_notify(vec!["Successfully set all shortcut icons as default icons"]),
             Err(err) => show_notify(vec![
                 "Failed to restore icons of all shortcuts",
-                &format!("{}", err)])       
-        };
+                &format!("{}", err)]
+            )
+        }
     }
 
     fn change_single_link_icon(&mut self) {
         if let Some(i) = self.link_list.state.selected() {
             let link_path = self.link_list.items[i].path.clone();
-            modify::change_single_shortcut_icon(
-                link_path,
-                &mut self.link_list.items[i]
-            ).expect("Failed to change the icon of the shortcut");
+            match modify::change_single_shortcut_icon(link_path,&mut self.link_list.items[i]) {
+                Ok(_) => show_notify(vec![
+                    "Successfully changed the icon of the shortcut",
+                    &format!("Nmae: {}", &self.link_list.items[i].name),
+                ]),
+                Err(err) => show_notify(vec![
+                    "Failed to change the icon of all shortcut",
+                    &format!("{}: {}", &self.link_list.items[i].name, err),
+                ])
+            }
         };
     }
 
     fn restore_single_link_icon(&mut self) {
         if let Some(i) = self.link_list.state.selected() {
             let link_path = self.link_list.items[i].path.clone();
-            modify::restore_single_shortcut_icon(
-                link_path,
-                &mut self.link_list.items[i]
-            ).expect("Failed to change the icon of the shortcut");
-        };  
+            match modify::restore_single_shortcut_icon(link_path,&mut self.link_list.items[i]) {
+                Ok(_) => show_notify(vec![
+                    "Successfully set the shortcut's icon as default icon",
+                    &format!("Nmae: {}", &self.link_list.items[i].name),
+                ]),
+                Err(err) => show_notify(vec![
+                    "Failed to restore the icon of the shortcut",
+                    &format!("{}: {}", &self.link_list.items[i].name, err),
+                ])
+            };
+        };
     }
 
     fn open_file(path: impl AsRef<std::ffi::OsStr>) {
@@ -250,7 +265,7 @@ impl App {
                             &path.as_ref().to_string_lossy()
                         ])
                     };
-                }
+                },
                 Err(_) => show_notify(vec!["Failed to execute process"]),
             }
     }
@@ -280,19 +295,44 @@ impl App {
             App::open_file(&self.link_list.items[i].target_dir)
         }
     }
+
+    fn load_desktop(&mut self) {
+        let start_menu_path = SystemLinkDirs::Desktop.get_path().expect("Failed to get desktop path");
+        if let Err (err) = ManageLinkProp::collect(start_menu_path, &mut self.link_list.items) {
+            show_notify(vec![
+                "Failed to load shortcut from Start menu",
+                &format!("{}", err),
+            ]);
+        };
+    }
+
     fn load_start_menu(&mut self) {
         let start_menu_path = SystemLinkDirs::StartMenu.get_path().expect("Failed to get desktop path");
-        ManageLinkProp::collect(start_menu_path, &mut self.link_list.items)
-            .expect("Failed to get properties of desktop shortcut");
+        if let Err (err) = ManageLinkProp::collect(start_menu_path, &mut self.link_list.items) {
+            show_notify(vec![
+                "Failed to load shortcut from Start menu",
+                &format!("{}", err),
+            ]);
+        };
     }
 
     fn load_other_dir(&mut self) {
         match FileDialog::new()
             .set_title("Please select the directory where shortcuts are stored")
             .pick_folder() {
-                Some(path_buf) => 
-                    ManageLinkProp::collect(vec![path_buf], &mut self.link_list.items)
-                        .expect("Failed to get properties of desktop shortcut"),
+                Some(path_buf) => {
+                    if let Err (err) = ManageLinkProp::collect(vec![&path_buf], &mut self.link_list.items) {
+                        show_notify(vec![
+                            &format!(
+                                "Failed to load shortcut from {}",
+                                path_buf.file_name().map_or_else(
+                                    || "Unable to get the directory name".to_string(),
+                                    |n| n.to_string_lossy().into_owned()
+                            )),
+                            &format!("{}", err),
+                        ]);
+                    };
+                },
                 None => return,
             };
     }
@@ -324,7 +364,7 @@ impl Widget for &mut App {
         ])
         .areas(area);
 
-        let [left_area, item_area] = Layout::horizontal([
+        let [left_area, info_area] = Layout::horizontal([
             Constraint::Fill(1),
             Constraint::Fill(3),
         ]).areas(main_area);
@@ -339,8 +379,8 @@ impl Widget for &mut App {
         self.render_list(list_area, buf);
         self.render_scrollbar(list_area, buf);
         self.render_status(status_area, buf);
-        self.render_info(item_area, buf);
-        self.render_func_popup(item_area, buf);
+        self.render_info(info_area, buf);
+        self.render_func_popup(info_area, buf);
     }
 }
 
@@ -454,7 +494,7 @@ impl App {
 
             let popup_vec = vec![
                 (revise_area, "Revise", "更换所有快捷方式[C]\n恢复所有快捷方式[R]\n复制快捷方式属性[1~7]"),
-                (load_area, "Load", "载入开始菜单快捷方式[S]\n载入其他目录快捷方式[O]"),
+                (load_area, "Load", "载入开始菜单快捷方式[S]\n载入其他目录快捷方式[O]\n载入所有桌面快捷方式[D]"),
                 (other_area, "Other", "打开日志[L]\n清理缩略图[T]")
             ];
 
