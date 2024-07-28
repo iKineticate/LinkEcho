@@ -26,7 +26,7 @@ use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::{Color, Modifier, Style, Stylize},
     terminal::Terminal,
-    text::Line,
+    text::{Line, Span},
     widgets::{
         Block, Borders, BorderType, Paragraph,
         List, ListItem, ListState, Padding, HighlightSpacing,
@@ -533,7 +533,16 @@ impl App {
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded);
 
-        Paragraph::new(format!("Total: {}", self.link_list.items.len()))
+        let changed_text = format!("Changed: {}",
+            self.link_list.items.iter().filter(|prop| prop.status == Status::Changed).count()
+        );
+        let total_text = format!(" | Total: {}", self.link_list.items.len());
+        let text = vec![
+            Span::styled(changed_text, Style::default().fg(CHANGED_TEXT_FG_COLOR)),
+            Span::styled(total_text, Style::default().fg(TEXT_FG_COLOR)),
+        ];
+
+        Paragraph::new(Line::default().spans(text))
             .fg(TEXT_FG_COLOR)
             .block(block)
             .centered()
