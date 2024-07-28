@@ -34,7 +34,7 @@ use ratatui::{
         Scrollbar, ScrollbarState, ScrollbarOrientation,
     },
 };
-use win_toast_notify::WinToastNotify;
+use crate::utils::show_notify;
 
 const NORMAL_ROW_BG: Color = Color::Rgb(25, 25, 25);
 const ALT_ROW_BG_COLOR: Color = Color::Rgb(42, 42, 42);
@@ -43,11 +43,19 @@ const TEXT_FG_COLOR: Color = Color::Rgb(245, 245, 245);
 const CHANGED_TEXT_FG_COLOR: Color = Color::Rgb(54, 161, 92);
 
 fn main() -> Result<(), Box<dyn Error>> {
-    // 存储快捷方式的属性
+    // 默认以管理员身份启动
+    // 使用mt.exe向可执行程序(.exe)注入manifest.xml实现默认以管理员身份启动软件
+    // 安装Visual Studio可获取mt.exe
+    // "C:\...\arm64(或x64或x86)\mt.exe" -manifest "manifest.xml路径" -outputresource:"可执行程序路径"
+
+
+    // Properties for storing shortcuts - 存储快捷方式的属性
     let mut link_vec: Vec<LinkProp> = Vec::with_capacity(100);
 
-    // 获取当前和公共用户的"桌面文件夹"的完整路径并收集属性
-    let desktop_path = SystemLinkDirs::Desktop.get_path().expect("Failed to get desktop path");
+    // Get the full path to the current and public user's "desktop folders"
+    // and collect the properties of the shortcuts in these folders
+    // - 获取当前和公共用户的"桌面文件夹"的完整路径并收集属性
+    let desktop_path = SystemLinkDirs::Desktop.get_path().expect("Failed to get desktops path");
     ManageLinkProp::collect(desktop_path, &mut link_vec)
         .expect("Failed to get properties of desktop shortcut");
 
@@ -83,6 +91,7 @@ pub struct LinkProp {
     target_path: String,
     icon_location: String,
     icon_index: String,
+    arguments: String,
 }
 
 #[derive(PartialEq)]
@@ -128,9 +137,7 @@ impl App {
                 KeyCode::Up => self.select_previous(),
                 KeyCode::Char('c') | KeyCode::Char('C') => self.change_all_shortcuts_icons(),
                 KeyCode::Char('r') | KeyCode::Char('R') => self.restore_all_shortcuts_icons(),
-                KeyCode::Char('t') | KeyCode::Char('T') => modify::clear_thumbnails()
-                    .expect("Failed to open 'Disk Cleanup'."),
-                KeyCode::Char('f') | KeyCode::Char('F') | KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('Q') => (),
+                KeyCode::Char('t') | KeyCode::Char('T') => modify::clear_thumbnails(),
                 KeyCode::Char('l') | KeyCode::Char('L') => self.open_log_file(),
                 KeyCode::Char('s') | KeyCode::Char('S') => self.load_start_menu(),
                 KeyCode::Char('o') | KeyCode::Char('O') => self.load_other_dir(),
@@ -144,6 +151,7 @@ impl App {
                 KeyCode::Char('5') => self.copy_prop(5),
                 KeyCode::Char('6') => self.copy_prop(6),
                 KeyCode::Char('7') => self.copy_prop(7),
+                KeyCode::Char('8') => self.copy_prop(8),
                 _ => ()
                 };
                 self.show_func_popup = !self.show_func_popup;
@@ -170,7 +178,7 @@ impl App {
                 } else {
                     i + 1
                 }
-            }
+            },
             None => 0,
         };
         self.link_list.state.select(Some(i));
@@ -185,7 +193,7 @@ impl App {
                 } else {
                     i - 1
                 }
-            }
+            },
             None => 0,
         };
         self.link_list.state.select(Some(i));
@@ -204,10 +212,12 @@ impl App {
 
     fn change_all_shortcuts_icons(&mut self) {
         match modify::change_all_shortcuts_icons(&mut self.link_list.items) {
-            Ok(_) => show_notify(vec!["Successfully changed icons of all shortcuts"]),
+            Ok(Some(_)) => show_notify(vec!["Successfully changed icons of all shortcuts"]),
+            Ok(None) => (),
             Err(err) => show_notify(vec![
                 "Failed to change icons of all shortcuts",
-                &format!("{}", err)])
+                &format!("{err}"),
+            ]),
         };
     }
 
@@ -216,24 +226,26 @@ impl App {
             Ok(_) => show_notify(vec!["Successfully set all shortcut icons as default icons"]),
             Err(err) => show_notify(vec![
                 "Failed to restore icons of all shortcuts",
-                &format!("{}", err)]
-            )
-        }
+                &format!("{err}"),
+            ]),
+        };
     }
 
     fn change_single_link_icon(&mut self) {
         if let Some(i) = self.link_list.state.selected() {
             let link_path = self.link_list.items[i].path.clone();
             match modify::change_single_shortcut_icon(link_path,&mut self.link_list.items[i]) {
-                Ok(_) => show_notify(vec![
-                    "Successfully changed the icon of the shortcut",
-                    &format!("Nmae: {}", &self.link_list.items[i].name),
+                Ok(Some(name)) => show_notify(vec![
+                    &format!("Successfully changed the icon of {name}")
                 ]),
+                Ok(None) => (),
                 Err(err) => show_notify(vec![
-                    "Failed to change the icon of all shortcut",
-                    &format!("{}: {}", &self.link_list.items[i].name, err),
-                ])
-            }
+                    &format!(
+                        "Successfully changed the icon of {}\n{err}",
+                        &self.link_list.items[i].name
+                    )
+                ]),
+            };
         };
     }
 
@@ -242,13 +254,11 @@ impl App {
             let link_path = self.link_list.items[i].path.clone();
             match modify::restore_single_shortcut_icon(link_path,&mut self.link_list.items[i]) {
                 Ok(_) => show_notify(vec![
-                    "Successfully set the shortcut's icon as default icon",
-                    &format!("Nmae: {}", &self.link_list.items[i].name),
+                    &format!("Successfully set {}'s icon as default icon", &self.link_list.items[i].name)
                 ]),
                 Err(err) => show_notify(vec![
-                    "Failed to restore the icon of the shortcut",
-                    &format!("{}: {}", &self.link_list.items[i].name, err),
-                ])
+                    &format!("Failed to restore the icon of {}\n{err}", &self.link_list.items[i].name)
+                ]),
             };
         };
     }
@@ -263,7 +273,7 @@ impl App {
                         show_notify(vec![
                             "Failed to open the file",
                             &path.as_ref().to_string_lossy()
-                        ])
+                        ]);
                     };
                 },
                 Err(_) => show_notify(vec!["Failed to execute process"]),
@@ -277,7 +287,7 @@ impl App {
                 App::open_file(log_path)
             },
             Ok(false) => show_notify(vec!["Log file does not exist and cannot be created"]),
-            Err(err) => show_notify(vec![&format!("Error checking if log file exists: {}", err)]),
+            Err(err) => show_notify(vec![&format!("Error checking if log file exists: {err}")]),
         };
     }
 
@@ -297,44 +307,38 @@ impl App {
     }
 
     fn load_desktop(&mut self) {
-        let start_menu_path = SystemLinkDirs::Desktop.get_path().expect("Failed to get desktop path");
+        let start_menu_path = SystemLinkDirs::Desktop.get_path().expect("Failed to get desktops path");
         if let Err (err) = ManageLinkProp::collect(start_menu_path, &mut self.link_list.items) {
-            show_notify(vec![
-                "Failed to load shortcut from Start menu",
-                &format!("{}", err),
-            ]);
+            show_notify(vec!["Failed to load shortcut from Start menu", &format!("{err}")]);
         };
     }
 
     fn load_start_menu(&mut self) {
-        let start_menu_path = SystemLinkDirs::StartMenu.get_path().expect("Failed to get desktop path");
+        let start_menu_path = SystemLinkDirs::StartMenu.get_path().expect("Failed to get desktops path");
         if let Err (err) = ManageLinkProp::collect(start_menu_path, &mut self.link_list.items) {
-            show_notify(vec![
-                "Failed to load shortcut from Start menu",
-                &format!("{}", err),
-            ]);
+            show_notify(vec!["Failed to load shortcut from Start menu", &format!("{err}")]);
         };
     }
 
     fn load_other_dir(&mut self) {
         match FileDialog::new()
-            .set_title("Please select the directory where shortcuts are stored")
-            .pick_folder() {
-                Some(path_buf) => {
-                    if let Err (err) = ManageLinkProp::collect(vec![&path_buf], &mut self.link_list.items) {
-                        show_notify(vec![
+        .set_title("Please select the directory where shortcuts are stored")
+        .pick_folder() {
+            Some(path_buf) => {
+                if let Err (err) = ManageLinkProp::collect(vec![&path_buf], &mut self.link_list.items) {
+                    show_notify(vec![
                             &format!(
                                 "Failed to load shortcut from {}",
                                 path_buf.file_name().map_or_else(
                                     || "Unable to get the directory name".to_string(),
                                     |n| n.to_string_lossy().into_owned()
                             )),
-                            &format!("{}", err),
-                        ]);
-                    };
-                },
-                None => return,
-            };
+                            &format!("{err}"),
+                    ]);
+                };
+            },
+            None => return,
+        };
     }
 
     fn copy_prop(&mut self, index: u8) {
@@ -348,6 +352,7 @@ impl App {
                 5 => self.link_list.items[i].target_path.clone(),
                 6 => self.link_list.items[i].icon_location.clone(),
                 7 => self.link_list.items[i].icon_index.clone(),
+                8 => self.link_list.items[i].arguments.clone(),
                 _ => String::new(),
             };
             ctx.set_contents(text).unwrap();
@@ -394,14 +399,13 @@ impl App {
     }
 
     fn render_footer(area: Rect, buf: &mut Buffer) {
-        Paragraph::new("退出[Q] | 更换[C] | 恢复[R] | 搜索[/] | 功能[F] | 返回顶部/底部[T/B] | 帮助[H]")
+        Paragraph::new("退出[Q] | 更换[C] | 恢复[R] | 功能[F] | 搜索[/] | 返回顶部/底部[T/B] | 帮助[H]")
             .fg(TEXT_FG_COLOR)
             .bg(NORMAL_ROW_BG)
             .centered()
             .render(area, buf);
     }
 
-    // 渲染列表（左侧面板）
     fn render_list(&mut self, area: Rect, buf: &mut Buffer) {
         let block = Block::new()
             .title("Name")
@@ -410,19 +414,19 @@ impl App {
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded);
 
-        // 遍历"项目"(App的items)中的所有元素，并对其进行风格化处理。
+        // 遍历"项目"(App的items)中的所有元素，并对其进行风格化处理在收集
         let items: Vec<ListItem> = self
             .link_list
             .items
             .iter()
-            .enumerate()    // 迭代过程中产生当前计数和元素的迭代器，i为计数器
+            .enumerate()
             .map(|(i, link_item)| {
                 let color = alternate_colors(i);    // 根据奇偶数赋予不同背景颜色
                 ListItem::from(link_item).bg(color)    // 重新设置字符串和颜色
             })
             .collect();
 
-        // 从所有列表项目中创建一个列表，并设置高亮（并在其左侧添加">"）显示当前选中的项目
+        // 创建列表，并设置高亮背景和高亮符号来提醒当前选中的项目
         let list = List::new(items)
             .block(block)
             .highlight_style(SELECTED_STYLE)
@@ -433,10 +437,9 @@ impl App {
         StatefulWidget::render(list, area, buf, &mut self.link_list.state);
     }
 
-    // 渲染当前项目信息的区块
     fn render_info(&self, area: Rect, buf: &mut Buffer) {
-        let area_vec: [ratatui::layout::Rect; 7] = Layout::vertical(
-            vec![Constraint::Length(1); 6]
+        let area_vec: [ratatui::layout::Rect; 8] = Layout::vertical(
+        vec![Constraint::Length(1); 7]
                 .into_iter()
                 .chain(vec![Constraint::Fill(1)])
                 .collect::<Vec<Constraint>>()
@@ -445,16 +448,15 @@ impl App {
         .horizontal_margin(2)
         .areas(area);
 
-        let block = Block::new()
+        Block::new()
             .title("Properties")
             .bg(NORMAL_ROW_BG)
             .fg(TEXT_FG_COLOR)
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
-            .padding(Padding::horizontal(2));
+            .padding(Padding::horizontal(2))
+            .render(area, buf);
         
-        Paragraph::new("").block(block).render(area, buf);
-
         if let Some(i) = self.link_list.state.selected() {
             let texts = vec![
                 format!("1.名称: {}", self.link_list.items[i].name),
@@ -464,6 +466,7 @@ impl App {
                 format!("5.目标路径: {}", self.link_list.items[i].target_path),
                 format!("6.图标位置: {}", self.link_list.items[i].icon_location),
                 format!("7.图标索引: {}", self.link_list.items[i].icon_index),
+                format!("8.运行参数: {}", self.link_list.items[i].arguments),
             ];
     
             for (index, text) in texts.iter().enumerate() {
@@ -549,6 +552,7 @@ const fn alternate_colors(i: usize) -> Color {
 impl From<&LinkProp> for ListItem<'_> {
     fn from(link_prop: &LinkProp) -> Self {
         let line = match link_prop.status {
+            // 若扩展名特殊，则标记__颜色------------------------------------
             Status::Unchanged => Line::styled(format!(" ☐ {}", link_prop.name), TEXT_FG_COLOR),
             Status::Changed => {
                 Line::styled(format!(" ✓ {}", link_prop.name), CHANGED_TEXT_FG_COLOR)
@@ -556,12 +560,4 @@ impl From<&LinkProp> for ListItem<'_> {
         };
         ListItem::new(line)
     }
-}
-
-fn show_notify(messages: Vec<&str>) {
-    WinToastNotify::new()
-        .set_title("LinkEcho")
-        .set_messages(messages)
-        .show()
-        .expect("Failed to show toast notification")
 }

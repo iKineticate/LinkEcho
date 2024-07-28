@@ -3,6 +3,7 @@ use std::env;
 use std::io::{Error, Write};
 use chrono::Local;
 use color_eyre::eyre::Result;
+use win_toast_notify::WinToastNotify;
 
 pub fn read_log() -> Result<File, Error> {
     let log_path = env::temp_dir().join("LinkEcho.log");
@@ -21,4 +22,12 @@ pub fn write_log(log_file: &mut File, text: String) -> Result<(), Error> {
     let now_time = Local::now().format("%Y-%m-%d %H:%M:%S%.3f").to_string();
     writeln!(log_file, "{}\n{}\n", now_time, text)?;
     Ok(())
+}
+
+pub fn show_notify(messages: Vec<&str>) {
+    WinToastNotify::new()
+        .set_title("LinkEcho")
+        .set_messages(messages)
+        .show()
+        .expect("Failed to show toast notification");
 }

@@ -39,7 +39,7 @@ impl ManageLinkProp {
         path_buf: PathBuf,
         shell_link: winsafe::IShellLink,
         persist_file: IPersistFile
-    ) -> Result<LinkProp, winsafe::co::HRESULT> {
+    ) -> Result<LinkProp, Box<dyn std::error::Error>> {
         let link_path = path_buf.to_string_lossy().into_owned();
 
         // Load the shortcut file (LNK file)
@@ -50,19 +50,20 @@ impl ManageLinkProp {
             None => String::from("unnamed_file")
         };
 
-        let link_target_path = shell_link.GetPath(
+        let link_target_path = match shell_link.GetPath(
             Some(&mut winsafe::WIN32_FIND_DATA::default()),
             co::SLGP::RAWPATH   // Absolute path - 绝对路径
-        ).map_or(
-            String::new(),
-            |path| ManageLinkProp::convert_env_to_path(path)    // 开头为环境变量时修改为路径
-        );
+        ) {
+            Ok(path) => ManageLinkProp::convert_env_to_path(path),    // 开头为环境变量时转换为绝对路径
+            Err(_) => String::new(),
+        };
 
         let link_target_dir = match shell_link.GetWorkingDirectory() {
             Ok(path) => {
-                match Path::new(&path).is_dir() {
-                    true => ManageLinkProp::convert_env_to_path(path),    // 开头为环境变量时修改为路径
-                    false => ManageLinkProp::get_working_directory(&link_target_path)
+                match Path::new(&path).try_exists() {
+                    Ok(true) => ManageLinkProp::convert_env_to_path(path),    // 开头为环境变量时转换为绝对路径,
+                    Ok(false) => ManageLinkProp::get_working_directory(&link_target_path),
+                    Err(_) => return Err(format!("{link_name}: Failed get the working directory").into()),
                 }
             },
             Err(_) => ManageLinkProp::get_working_directory(&link_target_path)
@@ -111,29 +112,35 @@ impl ManageLinkProp {
             }   
         };
 
-        let mut back_icon_path = String::new();
+        #[allow(unused_assignments)]
+        let mut unconverted_icon_path = String::new();
 
         let (link_icon_location, link_icon_index) = match shell_link.GetIconLocation() {
             Ok((icon_path, icon_index)) => {
-                back_icon_path = icon_path.clone();
+                unconverted_icon_path = icon_path.clone();
                 match (Path::new(&icon_path).is_file(), icon_path.ends_with(".dll")) {
                     (false, false) => (String::new(), String::new()),
                     (false, true) => (ManageLinkProp::convert_env_to_path(icon_path), icon_index.to_string()),
                     _ => (ManageLinkProp::convert_env_to_path(icon_path), icon_index.to_string())    // 开头为环境变量（如%windir%）时修改为路径
                 }
             },
-            Err(_) => (String::new(), String::new())
+            Err(err) => return Err(format!("{err}\n{link_name}: Failed get the icon location").into()), // (String::new(), String::new()),
         };
 
         let link_icon_status = if link_icon_location.is_empty()    // unchanged、non-existent、inaccessible - 未更换图标、图标不存在、图标不可访问（UWP/APP）
             || link_icon_location == link_target_path    // unchanged(from target file) - 未更换图标（图标源于目标文件）
             || link_icon_location.contains("WindowsSubsystemForAndroid")   //Android App - WSA应用
-            || back_icon_path.starts_with("%")    // System icon - 系统图标(如%windir%/.../powershell.exe)
+            || unconverted_icon_path.starts_with("%")    // System icon - 系统图标(如%windir%/.../powershell.exe)
             || (Path::new(&link_icon_location).parent().unwrap_or(Path::new("")) == Path::new(&link_target_dir)    // Icons come from the target file's (sub)directory - 图标来源于目标文件的(子)目录
                 && !link_target_dir.is_empty()) {
             Status::Unchanged
         } else {
             Status::Changed
+        };
+
+        let link_arguments = match shell_link.GetArguments() {
+            Ok(arguments) => arguments,
+            Err(err) => return Err(format!("{err}\n{link_name}: Failed get the Arguments").into()),
         };
 
         Ok(LinkProp {
@@ -145,6 +152,7 @@ impl ManageLinkProp {
             target_path: link_target_path,
             icon_location: link_icon_location,
             icon_index: link_icon_index,
+            arguments: link_arguments,
         })
     }
 
@@ -199,34 +207,38 @@ impl ManageLinkProp {
                         )
                     ),
                     ("%commonprogramfiles%",
-                        env::var_os("CommonProgramFiles").map_or(
-                            "C:/Program Files/Common Files".to_string(),
-                            |path| path.to_string_lossy().into_owned()
-                        )
+                        winsafe::SHGetKnownFolderPath(
+                            &co::KNOWNFOLDERID::ProgramFilesCommonX64,
+                            co::KF::NO_ALIAS,
+                            None,
+                        ).unwrap_or("C:/Program Files/Common Files".into()),
                     ),
                     ("%commonprogramfiles(arm)%",
-                    env::var_os("CommonProgramFiles(Arm)").map_or(
-                        "C:/Program Files (Arm)/Common Files".to_string(),
-                        |path| path.to_string_lossy().into_owned()
-                    )
-                    ),
-                    ("%commonprogramfiles(x86)%",
-                    env::var_os("CommonProgramFiles(x86)").map_or(
-                        "C:/Program Files (x86)/Common Files".to_string(),
-                        |path| path.to_string_lossy().into_owned()
-                    )
-                    ),
-                    ("%programdata%",
-                    env::var_os("ProgramData").map_or(
-                        "C:/ProgramData".to_string(),
-                        |path| path.to_string_lossy().into_owned()
-                    )
-                    ),
-                    ("%allusersprofile%",
-                        env::var_os("ALLUSERSPROFILE").map_or(
-                            "C:/ProgramData".to_string(),
+                        env::var_os("CommonProgramFiles(Arm)").map_or(
+                            "C:/Program Files (Arm)/Common Files".to_string(),
                             |path| path.to_string_lossy().into_owned()
                         )
+                        ),
+                    ("%commonprogramfiles(x86)%",
+                        winsafe::SHGetKnownFolderPath(
+                            &co::KNOWNFOLDERID::ProgramFilesCommonX86,
+                            co::KF::NO_ALIAS,
+                            None,
+                        ).unwrap_or("C:/Program Files (x86)/Common Files".into()),
+                    ),
+                    ("%programdata%",
+                        winsafe::SHGetKnownFolderPath(
+                            &co::KNOWNFOLDERID::ProgramData,
+                            co::KF::NO_ALIAS,
+                            None,
+                        ).unwrap_or("C:/ProgramData".into()),
+                    ),
+                    ("%allusersprofile%",
+                        winsafe::SHGetKnownFolderPath(
+                            &co::KNOWNFOLDERID::ProgramData,
+                            co::KF::NO_ALIAS,
+                            None,
+                        ).unwrap_or("C:/ProgramData".into()),
                     ),
                     ("%cmdcmdline%",
                         env::var_os("CMDCMDLINE").map_or(
@@ -241,28 +253,32 @@ impl ManageLinkProp {
                         )
                     ),
                     ("%usersprofile%",
-                        env::var_os("USERPROFILE").map_or(
-                            String::new(),
-                            |path| path.to_string_lossy().into_owned()
-                        )
+                        winsafe::SHGetKnownFolderPath(
+                            &co::KNOWNFOLDERID::Profile,
+                            co::KF::NO_ALIAS,
+                            None,
+                        ).unwrap_or(String::new()),
                     ),
                     ("%localappdata%",
-                        env::var_os("LOCALAPPDATA").map_or(
-                            String::new(),
-                            |path| path.to_string_lossy().into_owned()
-                        )
+                        winsafe::SHGetKnownFolderPath(
+                            &co::KNOWNFOLDERID::LocalAppData,
+                            co::KF::NO_ALIAS,
+                            None,
+                        ).unwrap_or(String::new()),
                     ),
                     ("%appdata%",
-                        env::var_os("APPDATA").map_or(
-                            String::new(),
-                            |path| path.to_string_lossy().into_owned()
-                        )
+                        winsafe::SHGetKnownFolderPath(
+                            &co::KNOWNFOLDERID::RoamingAppData,
+                            co::KF::NO_ALIAS,
+                            None,
+                        ).unwrap_or(String::new()),
                     ),
                     ("%public%",
-                        env::var_os("PUBLIC").map_or(
-                            String::new(),
-                            |path| path.to_string_lossy().into_owned()
-                        )
+                        winsafe::SHGetKnownFolderPath(
+                            &co::KNOWNFOLDERID::Public,
+                            co::KF::NO_ALIAS,
+                            None,
+                        ).unwrap_or(String::new()),
                     ),
                     ("%temp%",
                         env::var_os("TEMP").map_or(
@@ -312,6 +328,9 @@ impl ManageLinkProp {
         // Query for IPersistFile interface - 查询并获取 IPersistFile 接口实例
         let persist_file: IPersistFile = shell_link.QueryInterface()?;
 
+        // Open Log File - 打开日志文件
+        let mut log_file = read_log().expect("Failed to open 'LinkEcho.log'");
+
         // Iterate through directories - 遍历快捷方式目录
         for dir in dirs_vec.iter() {
             let directory = dir.as_ref().join("**\\*.lnk").to_string_lossy().into_owned();
@@ -319,7 +338,6 @@ impl ManageLinkProp {
                 match ManageLinkProp::get_info(path_buf, shell_link.clone(), persist_file.clone()) {
                     Ok(link_prop) => link_vec.push(link_prop),
                     Err(err) => {
-                        let mut log_file = read_log().expect("Failed to open 'LinkEcho.log'");
                         write_log(&mut log_file, err.to_string())?;
                         continue
                     }

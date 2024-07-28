@@ -2,7 +2,11 @@
 name = "LinkEcho"
 version = "0.1.0"
 edition = "2021"
-
+authors = ["iKineticate"]
+keywords = ["notification", "windows", "toast", "notify"]
+repository = "https://github.com/iKineticate/LinkEcho"
+homepage = "https://github.com/iKineticate/win-toast-notify"
+license = "MIT"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]

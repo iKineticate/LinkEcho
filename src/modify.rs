@@ -1,9 +1,8 @@
-use std::os::windows::process::CommandExt;
 use std::process::Command;
-use crate::{glob, utils::{read_log, write_log}, FileDialog, LinkProp, Status};
+use crate::{glob, utils::{read_log, write_log, show_notify}, FileDialog, LinkProp, Status};
 use winsafe::{co, prelude::*, IPersistFile};
 
-pub fn change_all_shortcuts_icons(link_vec: &mut Vec<LinkProp>) -> Result<(), Box<dyn std::error::Error>> {
+pub fn change_all_shortcuts_icons(link_vec: &mut Vec<LinkProp>) -> Result<Option<&str>, Box<dyn std::error::Error>> {
     // Initialize COM library - 初始化 COM 库
     let _com_lib = winsafe::CoInitializeEx( // keep guard alive
         co::COINIT::APARTMENTTHREADED
@@ -31,7 +30,7 @@ pub fn change_all_shortcuts_icons(link_vec: &mut Vec<LinkProp>) -> Result<(), Bo
         .set_title("Please select the folder where the icons are stored")
         .pick_folder() {
             Some(path_buf) => format!(r"{}\**\*.ico", path_buf.to_string_lossy().into_owned()),
-            None => return Ok(()),
+            None => return Ok(None),
         };
 
     // Iterate through the folder of icons - 遍历快捷方式目录中的图标（包括子目录）
@@ -40,7 +39,7 @@ pub fn change_all_shortcuts_icons(link_vec: &mut Vec<LinkProp>) -> Result<(), Bo
         let icon_path = path_buf.to_string_lossy().into_owned();
         let icno_name: String = match path_buf.file_stem() {
             Some(name) => name.to_string_lossy().into_owned().trim().to_lowercase(),    // Subsequent case-insensitive matching - 后续不区分大小写进行匹配
-            None => return Err(format!("Icon without name: {}", icon_path).into()),
+            None => return Err(format!("Icon without name: {icon_path}").into()),
         };
 
         // Iterate over the vec that stores the shortcut properties - 遍历快捷方式的属性
@@ -68,29 +67,28 @@ pub fn change_all_shortcuts_icons(link_vec: &mut Vec<LinkProp>) -> Result<(), Bo
             
             // Load the shortcut file (LNK file) - 载入快捷方式的文件
             if let Err(_) = persist_file.Load(&link_prop.path, co::STGM::WRITE) {
-                write_log(&mut log_file, format!("Failed to load shortcut file: {}", &link_prop.path))?;
+                write_log(&mut log_file, format!("Failed to load the shortcut: {}", &link_prop.path))?;
                 continue
             }
 
             // Set the icon location - 设置图标位置
             if let Err(_) = shell_link.SetIconLocation(&icon_path, 0) {
-                write_log(&mut log_file, format!("Failed to set the icon location:\n{}\n{}", &link_prop.path, icon_path))?;
+                write_log(&mut log_file, format!("Failed to set the icon location:\n{}\n{icon_path}", &link_prop.path))?;
                 continue
             }
 
             // Save a copy of the object to the specified file - 将对象的副本保存到指定文件
             match persist_file.Save(None, true) {
-                Ok(_) => write_log(&mut log_file, format!("Successfully set the icon location:\n{}\n{}", &link_prop.path, icon_path))?,
+                Ok(_) => write_log(&mut log_file, format!("Successfully set the icon location:\n{}\n{icon_path}", &link_prop.path))?,
                 Err(err) => {
-                    write_log(&mut log_file, format!("Failed to save a copy of the object to the specified file:\n{}\n{}", &link_prop.path, err))?;
+                    write_log(&mut log_file, format!("Failed to save a copy of the object to the specified file:\n{}\n{err}", &link_prop.path))?;
                     continue
                 }
             };
         }
     }
-    // 刷新图标
-    // 刷新桌面
-    Ok(())
+
+    Ok(Some(""))
 }
 
 pub fn restore_all_shortcuts_icons(link_vec: &mut Vec<LinkProp>) -> Result<(), Box<dyn std::error::Error>> {
@@ -126,21 +124,27 @@ pub fn restore_all_shortcuts_icons(link_vec: &mut Vec<LinkProp>) -> Result<(), B
 
         // Load the shortcut file (LNK file) - 载入快捷方式的文件
         if let Err(_) = persist_file.Load(&link_prop.path, co::STGM::WRITE) {
-            write_log(&mut log_file, format!("Failed to load shortcut file: {}", &link_prop.path))?;
+            write_log(&mut log_file, format!("Failed to load the shortcut: {}", &link_prop.path))?;
             continue
         }
 
         // Set the icon location - 设置图标位置
         if let Err(_) = shell_link.SetIconLocation(&icon_path, 0) {
-            write_log(&mut log_file, format!("Failed to set the icon location:\n{}\n{}", &link_prop.path, icon_path))?;
+            write_log(&mut log_file, 
+                format!("Failed to restore the icon location:\n{}\n{icon_path}", &link_prop.path)
+            )?;
             continue
         }
 
         // Saves a copy of the object to the specified file - 将对象的副本保存到指定文件
         match persist_file.Save(None, true) {
-            Ok(_) => write_log(&mut log_file, format!("Successfully restore the default icon:\n{}\n{}", &link_prop.path, icon_path))?,
+            Ok(_) => write_log(&mut log_file,
+                format!("Successfully restore the default icon:\n{}\n{icon_path}", &link_prop.path)
+            )?,
             Err(_) => {
-                write_log(&mut log_file, format!("Failed to save a copy of the object to the specified file:\n{}", &link_prop.path))?;
+                write_log(&mut log_file,
+                    format!("Failed to save a copy of the object to the specified file:\n{}", &link_prop.path)
+                )?;
                 continue
             }
         };
@@ -148,17 +152,12 @@ pub fn restore_all_shortcuts_icons(link_vec: &mut Vec<LinkProp>) -> Result<(), B
         // Update the icon path and icon status in the LinkProp structure - 更新LinkProp结构体
         link_prop.icon_location = icon_path.clone();
         link_prop.status = Status::Unchanged;
-
-        // 刷新列表
     };
 
-    // 刷新
     Ok(())
 }
 
-pub fn change_single_shortcut_icon(link_path: String, link_prop: &mut LinkProp) -> Result<(), Box<dyn std::error::Error>> {
-    // 在main.rs里通知是否恢复默认
-
+pub fn change_single_shortcut_icon(link_path: String, link_prop: &mut LinkProp) -> Result<Option<&str>, Box<dyn std::error::Error>> {
     // Initialize COM library - 初始化 COM 库
     let _com_lib = winsafe::CoInitializeEx( // keep guard alive
         co::COINIT::APARTMENTTHREADED
@@ -187,7 +186,7 @@ pub fn change_single_shortcut_icon(link_path: String, link_prop: &mut LinkProp) 
         .add_filter("ICO File", &["ico"])
         .pick_file() {
             Some(path_buf) => path_buf.to_string_lossy().into_owned(),
-            None => return Ok(()),
+            None => return Ok(None),
         };
 
     // Set the icon location - 设置图标位置
@@ -205,12 +204,16 @@ pub fn change_single_shortcut_icon(link_path: String, link_prop: &mut LinkProp) 
         link_prop.status = Status::Unchanged;
     };
 
-    write_log(&mut log_file, format!("Successfully change the shortcut icon:\n{}\n{}", &link_path, select_icon_path))?;
+    write_log(&mut log_file,
+        format!("Successfully change the shortcut icon:\n{}\n{select_icon_path}", &link_path)
+    )?;
 
-    Ok(())
+    Ok(Some(&link_prop.name))
 }
 
 pub fn restore_single_shortcut_icon(link_path: String, link_prop: &mut LinkProp) -> Result<(), Box<dyn std::error::Error>> {
+    // 在main.rs里通知是否恢复默认，不恢复则返回Ok(None)
+
     // Skip shortcuts that are not replaced or extend to uwp|app - 跳过未被更换图标或扩展为uwp|app的快捷方式
     if link_prop.status == Status::Unchanged || link_prop.target_ext == String::from("uwp|app") {
         return Ok(())
@@ -250,33 +253,29 @@ pub fn restore_single_shortcut_icon(link_path: String, link_prop: &mut LinkProp)
     link_prop.icon_location = icon_path.clone();
     link_prop.status = Status::Unchanged;
 
-    write_log(&mut log_file, format!("Successfully restore the shortcut icon:\n{}\n{}", &link_path, icon_path))?;
+    write_log(&mut log_file,
+        format!("Successfully restore the shortcut icon:\n{}\n{icon_path}", &link_path)
+    )?;
 
     Ok(())
 }
 
-
-pub fn clear_thumbnails() -> Result<(), Box<dyn std::error::Error>> {
-    // https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/cleanmgr
-    let output = Command::new("cmd")
-        .creation_flags(0x08000000)     // 隐藏控制台
-        .args(&["/c", r#"cleanmgr"#])
-        .output()
-        .map_err(|e| format!("Failed to execute process: {}", e))?;
-    if !output.status.success() {
-        return Err(format!(
-            "Failed to execute command: {}",
-            String::from_utf8_lossy(&output.stderr)
-        )
-        .into());
-    }
-
-    Ok(())
-    // Choose C, and press OK - 请选择C盘，并点击OK
-    
-    // Uncheck all the entries except Thumbnails - 选择缩略图选项，取消其他所有选项
-
-    // Click OK and click Delete Files to confirm - 点击OK并确认删除
-
-    // Restart Explorer - 重启资源管理器
+// https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/cleanmgr
+pub fn clear_thumbnails() {
+   match Command::new("powershell").arg("cleanmgr").status() {
+        Ok(status) => {
+            if status.success() {
+                show_notify(vec![
+                    "Choose C, uncheck all the entries except Thumbnails",
+                    "Click OK and click Delete Files to confirm",
+                    "Restart Explorer",
+                ]);
+            } else {
+                // -------------------------------
+                // 通知+延长时间+按钮重启资源管理器
+                show_notify(vec!["Failed to open cleanmgr"])
+            }
+        },
+        Err(err) => show_notify(vec![&format!("Failed to open cleanmgr: {err}")]),
+   }
 }
