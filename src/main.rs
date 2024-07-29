@@ -496,7 +496,7 @@ impl App {
             ]).areas(popup_area);
 
             let popup_vec = vec![
-                (revise_area, "Revise", "更换所有快捷方式[C]\n恢复所有快捷方式[R]\n复制快捷方式属性[1~7]"),
+                (revise_area, "Revise", "更换所有快捷方式[C]\n恢复所有快捷方式[R]\n复制快捷方式属性[1~8]"),
                 (load_area, "Load", "载入开始菜单快捷方式[S]\n载入其他目录快捷方式[O]\n载入所有桌面快捷方式[D]"),
                 (other_area, "Other", "打开日志[L]\n清理缩略图[T]")
             ];
