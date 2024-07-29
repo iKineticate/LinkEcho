@@ -10,9 +10,9 @@ pub fn read_log() -> Result<File, Error> {
     match log_path.try_exists() {
         Ok(_) => {
             OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(log_path)
+                .create(true)
+                .append(true)
+                .open(log_path)
         },
         Err(err) => Err(err), 
     }

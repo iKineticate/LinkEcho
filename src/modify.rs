@@ -1,5 +1,5 @@
 use std::process::Command;
-use crate::{glob, utils::{read_log, write_log, show_notify}, FileDialog, LinkProp, Status};
+use crate::{Path, PathBuf, glob, utils::{read_log, write_log, show_notify}, FileDialog, LinkProp, Status, icongen};
 use winsafe::{co, prelude::*, IPersistFile};
 
 pub fn change_all_shortcuts_icons(link_vec: &mut Vec<LinkProp>) -> Result<Option<&str>, Box<dyn std::error::Error>> {
@@ -25,21 +25,70 @@ pub fn change_all_shortcuts_icons(link_vec: &mut Vec<LinkProp>) -> Result<Option
     // Open Log File - 打开日志文件
     let mut log_file = read_log().expect("Failed to open 'LinkEcho.log'");
 
+    // Get data folder path - 获取数据文件夹路径
+    let app_date = winsafe::SHGetKnownFolderPath(
+        &co::KNOWNFOLDERID::LocalAppData,
+        co::KF::NO_ALIAS,
+        None,
+    ).map_or(String::new(), |path| format!("{path}\\LinkEcho"));
+
+    // Create APP Date - 创建数据文件夹
+    match Path::new(&app_date).try_exists() {
+        Ok(true) => (),
+        Ok(false) => std::fs::create_dir(&app_date)?,
+        Err(err) => return Err(err.into()),
+    };
+
     // Select the folder with the icons - 选择有图标的文件夹
     let select_icons_folder_path = match FileDialog::new()
         .set_title("Please select the folder where the icons are stored")
         .pick_folder() {
-            Some(path_buf) => format!(r"{}\**\*.ico", path_buf.to_string_lossy().into_owned()),
+            Some(path_buf) => format!(r"{}\**\*.*", path_buf.to_string_lossy().into_owned()),
             None => return Ok(None),
         };
 
     // Iterate through the folder of icons - 遍历快捷方式目录中的图标（包括子目录）
     for path_buf in glob(&select_icons_folder_path).unwrap().filter_map(Result::ok) {
         // Get icon name and path
-        let icon_path = path_buf.to_string_lossy().into_owned();
-        let icno_name: String = match path_buf.file_stem() {
+        let mut icon_path = path_buf.to_string_lossy().into_owned();
+
+        let icon_name = match path_buf.file_stem() {
             Some(name) => name.to_string_lossy().into_owned().trim().to_lowercase(),    // Subsequent case-insensitive matching - 后续不区分大小写进行匹配
-            None => return Err(format!("Icon without name: {icon_path}").into()),
+            None => {
+                write_log(&mut log_file, format!("Icon without name: {icon_path}"))?;
+                continue;
+            },
+        };
+
+        // 若为目标图片格式，且数据文件夹中没有该名称图标，则转换图片到数据文件夹中，重新赋予icon_path路径
+        if let Some(ext_os_str) = &path_buf.extension() {
+            let ext = match ext_os_str.to_str() {
+                Some(v) => v.to_lowercase(),
+                _ => continue
+            };
+
+            if matches!(ext.as_str(), "png" | "svg" | "tiff" | "webp") {
+                let logo_path_buf = Path::new(&app_date).join(format!("{}.ico", &icon_name));
+                let logo_path_string = logo_path_buf.to_string_lossy().into_owned();
+    
+                match logo_path_buf.try_exists() {
+                    Ok(true) => icon_path = logo_path_string,
+                    Ok(false) => {
+                        match icongen::convert_ico(path_buf, logo_path_buf, &icon_name) {
+                            Ok(_) => write_log(&mut log_file, format!("Successfully converted {icon_name} to ICO"))?,
+                            Err(err) => {
+                                write_log(&mut log_file, format!("Failed to convert {icon_name} to ICO\n{err}"))?;
+                                continue;
+                            },
+                        };
+                        icon_path = logo_path_string;
+                    },
+                    Err(err) => {
+                        write_log(&mut log_file, format!("Error checking if {icon_name} exists: {err}"))?;
+                        continue;
+                    },
+                };
+            };
         };
 
         // Iterate over the vec that stores the shortcut properties - 遍历快捷方式的属性
@@ -51,37 +100,52 @@ pub fn change_all_shortcuts_icons(link_vec: &mut Vec<LinkProp>) -> Result<Option
 
             // Compare the containment relationship between two strings - 比较图标名称与LNK名称的包含关系
             let link_name_lowercase = &link_prop.name.trim().to_lowercase();
-            match (link_name_lowercase.contains(&icno_name), icno_name.contains(link_name_lowercase)) {
+            match (link_name_lowercase.contains(&icon_name), icon_name.contains(link_name_lowercase)) {
                 (false, false) => continue,
-                (true, true) => match_same_vec.push(link_prop.path.clone()),
+                (true, true) => match_same_vec.push(link_prop.path.clone()),    // 需排在ink_prop.icon_location == icon_path上方
                 _ => ()
             };
 
             // Skip cases with identical icons - 跳过图标相同的情况
             if link_prop.icon_location == icon_path {
                 continue;
-            } else {    // Updating the icon path of a LinkProp structure - 更新LinkProp结构体的图标路径
-                link_prop.icon_location = String::from(icon_path.clone());
-                link_prop.status = Status::Changed;
             };
             
             // Load the shortcut file (LNK file) - 载入快捷方式的文件
             if let Err(_) = persist_file.Load(&link_prop.path, co::STGM::WRITE) {
-                write_log(&mut log_file, format!("Failed to load the shortcut: {}", &link_prop.path))?;
-                continue
+                write_log(&mut log_file, format!(
+                    "Failed to load the shortcut: {}",
+                    &link_prop.path)
+                )?;
+                continue;
             }
 
             // Set the icon location - 设置图标位置
             if let Err(_) = shell_link.SetIconLocation(&icon_path, 0) {
-                write_log(&mut log_file, format!("Failed to set the icon location:\n{}\n{icon_path}", &link_prop.path))?;
+                write_log(&mut log_file, format!(
+                    "Failed to set the icon location:\n{}\n{icon_path}",
+                    &link_prop.path)
+                )?;
                 continue
             }
 
             // Save a copy of the object to the specified file - 将对象的副本保存到指定文件
             match persist_file.Save(None, true) {
-                Ok(_) => write_log(&mut log_file, format!("Successfully set the icon location:\n{}\n{icon_path}", &link_prop.path))?,
+                Ok(_) => {
+                    link_prop.icon_location = String::from(icon_path.clone());  // 
+                    link_prop.status = Status::Changed;
+                    write_log(&mut log_file,
+                        format!("Successfully set the icon location:\n{}\n{icon_path}",
+                        &link_prop.path)
+                    )?
+                },
                 Err(err) => {
-                    write_log(&mut log_file, format!("Failed to save a copy of the object to the specified file:\n{}\n{err}", &link_prop.path))?;
+                    write_log(&mut log_file,
+                        format!(
+                            "Failed to save a copy of the object to the specified file:\n{}\n{err}",
+                            &link_prop.path
+                        )
+                    )?;
                     continue
                 }
             };
@@ -180,32 +244,73 @@ pub fn change_single_shortcut_icon(link_path: String, link_prop: &mut LinkProp) 
     // Open Log File - 打开日志文件
     let mut log_file = read_log().expect("Failed to open 'LinkEcho.log'");
 
+    // Get data folder path - 获取数据文件夹路径
+    let app_date = winsafe::SHGetKnownFolderPath(
+        &co::KNOWNFOLDERID::LocalAppData,
+        co::KF::NO_ALIAS,
+        None,
+    ).map_or(String::new(), |path| format!("{path}\\LinkEcho"));
+
+    // Create APP Date - 创建数据文件夹
+    match Path::new(&app_date).try_exists() {
+        Ok(true) => (),
+        Ok(false) => std::fs::create_dir(&app_date)?,
+        Err(err) => return Err(err.into()),
+    };
+
     // Select an icon - 选择有图标的文件夹
-    let select_icon_path = match FileDialog::new()
+    let mut icon_path = match FileDialog::new()
         .set_title("Please select an icon")
-        .add_filter("ICO File", &["ico"])
+        .add_filter("ICONs", &["ico", "png", "svg", "webp", "tiff"])
         .pick_file() {
             Some(path_buf) => path_buf.to_string_lossy().into_owned(),
             None => return Ok(None),
         };
 
+    let icon_name = match Path::new(&icon_path).file_stem() {
+        Some(name) => name.to_string_lossy().into_owned().trim().to_lowercase(),    // Subsequent case-insensitive matching - 后续不区分大小写进行匹配
+        None => {
+            write_log(&mut log_file, format!("Icon without name: {icon_path}"))?;
+            return Err(format!("Icon without name: {icon_path}").into())
+        },
+    };
+
+    let logo_path_buf = Path::new(&app_date).join(format!("{}.ico", &icon_name));
+    let logo_path_string = logo_path_buf.to_string_lossy().into_owned();
+
+    match logo_path_buf.try_exists() {
+        Ok(true) => icon_path = logo_path_string,
+        Ok(false) => {
+            match icongen::convert_ico(PathBuf::from(&icon_path), logo_path_buf, &icon_name) {
+                Ok(_) => write_log(&mut log_file, format!("Successfully converted {icon_name} to ICO"))?,
+                Err(err) => {
+                    write_log(&mut log_file, format!("Failed to convert {icon_name} to ICO\n{err}"))?;
+                },
+            };
+            icon_path = logo_path_string;
+        },
+        Err(err) => {
+            write_log(&mut log_file, format!("Error checking if {icon_name} exists: {err}"))?;
+        },
+    };
+
     // Set the icon location - 设置图标位置
-    shell_link.SetIconLocation(&select_icon_path, 0)?;
+    shell_link.SetIconLocation(&icon_path, 0)?;
 
     // Saves a copy of the object to the specified file - 将对象的副本保存到指定文件
     persist_file.Save(None, true)?;
 
     // Update the shortcut properties - 更新快捷方式属性
-    if link_prop.icon_location != select_icon_path && select_icon_path != link_prop.path {
-        link_prop.icon_location = select_icon_path.clone();
+    if link_prop.icon_location != icon_path && icon_path != link_prop.path {
+        link_prop.icon_location = icon_path.clone();
         link_prop.status = Status::Changed;
     } else {
-        link_prop.icon_location = select_icon_path.clone();
+        link_prop.icon_location = icon_path.clone();
         link_prop.status = Status::Unchanged;
     };
 
     write_log(&mut log_file,
-        format!("Successfully change the shortcut icon:\n{}\n{select_icon_path}", &link_path)
+        format!("Successfully change the shortcut icon:\n{}\n{icon_path}", &link_path)
     )?;
 
     Ok(Some(&link_prop.name))

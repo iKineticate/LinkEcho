@@ -11,15 +11,27 @@ build = "build.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-glob = "0.3.1"
-rfd = "0.14.1"
+glob = "0.3.1" # 遍历文件夹中的子文件（夹）
+rfd = "0.14.1" # 打开
 winsafe = { version = "0.0.21", features = ["shell"] }
 crossterm = "0.27.0"
 ratatui = "0.27.0"
 color-eyre = "0.6.3"
-chrono = "0.4.38"
-copypasta = "0.10.1"
+chrono = "0.4.38" # 获取时间
+copypasta = "0.10.1" # 粘贴至剪切板
 win-toast-notify = "0.1.5"
+# 图标转换
+image = "0.24"
+console = "0.15"
+anyhow = "1"
+rayon = "1.5"
+resvg = "0.23"
+usvg = "0.23"
+tiny-skia = "0.6"
 
 [build-dependencies]
-embed-resource = "2.4"
+embed-resource = "2.4" # 载入清单
+
+[profile.release]
+lto = true
+codegen-units = 1

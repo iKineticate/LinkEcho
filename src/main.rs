@@ -5,6 +5,7 @@ mod info;
 mod modify;
 mod tui;
 mod utils;
+mod icongen;
 
 use std::{
     io,
@@ -43,12 +44,6 @@ const TEXT_FG_COLOR: Color = Color::Rgb(245, 245, 245);
 const CHANGED_TEXT_FG_COLOR: Color = Color::Rgb(54, 161, 92);
 
 fn main() -> Result<(), Box<dyn Error>> {
-    // 默认以管理员身份启动
-    // 使用mt.exe向可执行程序(.exe)注入manifest.xml实现默认以管理员身份启动软件
-    // 安装Visual Studio可获取mt.exe
-    // "C:\...\arm64(或x64或x86)\mt.exe" -manifest "manifest.xml路径" -outputresource:"可执行程序路径"
-
-
     // Properties for storing shortcuts - 存储快捷方式的属性
     let mut link_vec: Vec<LinkProp> = Vec::with_capacity(100);
 
@@ -498,7 +493,7 @@ impl App {
             let popup_vec = vec![
                 (revise_area, "Revise", "更换所有快捷方式[C]\n恢复所有快捷方式[R]\n复制快捷方式属性[1~8]"),
                 (load_area, "Load", "载入开始菜单快捷方式[S]\n载入其他目录快捷方式[O]\n载入所有桌面快捷方式[D]"),
-                (other_area, "Other", "打开日志[L]\n清理缩略图[T]")
+                (other_area, "Other", "打开记录日志[L]\n打开转换图标文件[I]\n清理桌面图标缓存[T]")
             ];
 
             for (area, title, text) in popup_vec {
