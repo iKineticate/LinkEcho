@@ -43,51 +43,62 @@ pub fn change_all_shortcuts_icons(link_vec: &mut Vec<LinkProp>) -> Result<Option
     let select_icons_folder_path = match FileDialog::new()
         .set_title("Please select the folder where the icons are stored")
         .pick_folder() {
-            Some(path_buf) => format!(r"{}\**\*.*", path_buf.to_string_lossy().into_owned()),
+            Some(path_buf) => format!(r"{}\**\*.*", path_buf.to_string_lossy().to_string()),
             None => return Ok(None),
         };
 
     // Iterate through the folder of icons - 遍历快捷方式目录中的图标（包括子目录）
-    for path_buf in glob(&select_icons_folder_path).unwrap().filter_map(Result::ok) {
+    for path_buf in glob(&select_icons_folder_path).unwrap().filter_map(Result::ok) {        
+        let ext = match path_buf.extension() {
+            Some(ext_os_str) => {
+                if let Some(extension) = ext_os_str.to_str(){
+                    let ext_string = extension.to_lowercase();
+                    if ["ico", "png", "svg", "tiff", "webp"].contains(&ext_string.as_str()) {
+                         ext_string
+                    } else {
+                        continue
+                    }
+                } else {
+                    continue
+                }
+            },
+            None => continue,
+        };
+
         // Get icon name and path
-        let mut icon_path = path_buf.to_string_lossy().into_owned();
+        let mut icon_path = path_buf.to_string_lossy().to_string();
 
         let icon_name = match path_buf.file_stem() {
-            Some(name) => name.to_string_lossy().into_owned().trim().to_lowercase(),    // Subsequent case-insensitive matching - 后续不区分大小写进行匹配
+            Some(name) => name.to_string_lossy().to_string().trim().to_lowercase(),    // Subsequent case-insensitive matching - 后续不区分大小写进行匹配
             None => {
                 write_log(&mut log_file, format!("Icon without name: {icon_path}"))?;
                 continue;
             },
         };
 
-        // 若为目标图片格式，且数据文件夹中没有该名称图标，则转换图片到数据文件夹中，重新赋予icon_path路径
-        if let Some(ext_os_str) = &path_buf.extension() {
-            let ext = match ext_os_str.to_str() {
-                Some(v) => v.to_lowercase(),
-                _ => continue
-            };
+        // 若图标非ICO格式，且数据文件夹中无该名称图标，则转换图片到数据文件夹中，改变icon_path路径
+        if ext != "ico".to_string() {
+            let logo_path_buf = Path::new(&app_date).join(format!("{icon_name}.ico"));
+            let logo_path_string = logo_path_buf.to_string_lossy().to_string();
 
-            if matches!(ext.as_str(), "png" | "svg" | "tiff" | "webp") {
-                let logo_path_buf = Path::new(&app_date).join(format!("{}.ico", &icon_name));
-                let logo_path_string = logo_path_buf.to_string_lossy().into_owned();
-    
-                match logo_path_buf.try_exists() {
-                    Ok(true) => icon_path = logo_path_string,
-                    Ok(false) => {
-                        match icongen::convert_ico(path_buf, logo_path_buf, &icon_name) {
-                            Ok(_) => write_log(&mut log_file, format!("Successfully converted {icon_name} to ICO"))?,
-                            Err(err) => {
-                                write_log(&mut log_file, format!("Failed to convert {icon_name} to ICO\n{err}"))?;
-                                continue;
-                            },
-                        };
-                        icon_path = logo_path_string;
-                    },
-                    Err(err) => {
-                        write_log(&mut log_file, format!("Error checking if {icon_name} exists: {err}"))?;
-                        continue;
-                    },
-                };
+            match logo_path_buf.try_exists() {
+                Ok(true) => icon_path = logo_path_string,
+                Ok(false) => {
+                    match icongen::convert_ico(path_buf, logo_path_buf, &icon_name) {
+                        Ok(_) => {
+                            icon_path = logo_path_string;
+                            write_log(&mut log_file, format!("Successfully converted {icon_name}.{ext} to ICO"))?;
+                        },
+                        Err(err) => {
+                            write_log(&mut log_file, format!("Failed to convert {icon_name}.{ext} to ICO: {err}"))?;
+                            continue;
+                        },
+                    };
+                },
+                Err(err) => {
+                    write_log(&mut log_file, format!("Error checking if {logo_path_string} exists: {err}"))?;
+                    continue;
+                },
             };
         };
 
@@ -263,36 +274,44 @@ pub fn change_single_shortcut_icon(link_path: String, link_prop: &mut LinkProp) 
         .set_title("Please select an icon")
         .add_filter("ICONs", &["ico", "png", "svg", "webp", "tiff"])
         .pick_file() {
-            Some(path_buf) => path_buf.to_string_lossy().into_owned(),
+            Some(path_buf) => path_buf.to_string_lossy().to_string(),
             None => return Ok(None),
         };
 
     let icon_name = match Path::new(&icon_path).file_stem() {
-        Some(name) => name.to_string_lossy().into_owned().trim().to_lowercase(),    // Subsequent case-insensitive matching - 后续不区分大小写进行匹配
+        // Subsequent case-insensitive matching - 后续不区分大小写进行匹配
+        Some(name) => name.to_string_lossy().to_string().trim().to_lowercase(),
         None => {
             write_log(&mut log_file, format!("Icon without name: {icon_path}"))?;
             return Err(format!("Icon without name: {icon_path}").into())
         },
     };
 
-    let logo_path_buf = Path::new(&app_date).join(format!("{}.ico", &icon_name));
-    let logo_path_string = logo_path_buf.to_string_lossy().into_owned();
-
-    match logo_path_buf.try_exists() {
-        Ok(true) => icon_path = logo_path_string,
-        Ok(false) => {
-            match icongen::convert_ico(PathBuf::from(&icon_path), logo_path_buf, &icon_name) {
-                Ok(_) => write_log(&mut log_file, format!("Successfully converted {icon_name} to ICO"))?,
-                Err(err) => {
-                    write_log(&mut log_file, format!("Failed to convert {icon_name} to ICO\n{err}"))?;
-                },
+    if let Some(ext_os_str) = Path::new(&icon_path).extension() {
+        if let Some(ext) = ext_os_str.to_str() {
+            if ext.to_lowercase() != "ico" {
+                let logo_path_buf = Path::new(&app_date).join(format!("{icon_name}.ico"));
+                let logo_path_string = logo_path_buf.to_string_lossy().to_string();
+            
+                match logo_path_buf.try_exists() {
+                    Ok(true) => icon_path = logo_path_string,
+                    Ok(false) => {
+                        match icongen::convert_ico(PathBuf::from(&icon_path), logo_path_buf, &icon_name) {
+                            Ok(_) => write_log(&mut log_file, format!("Successfully converted {icon_name}.{ext} to ICO"))?,
+                            Err(err) => {
+                                write_log(&mut log_file, format!("Failed to convert {icon_name}.{ext} to ICO: {err}"))?;
+                            },
+                        };
+                        icon_path = logo_path_string;
+                    },
+                    Err(err) => {
+                        write_log(&mut log_file, format!("Error checking if {logo_path_string} exists: {err}"))?;
+                    },
+                };
             };
-            icon_path = logo_path_string;
-        },
-        Err(err) => {
-            write_log(&mut log_file, format!("Error checking if {icon_name} exists: {err}"))?;
-        },
+        };
     };
+
 
     // Set the icon location - 设置图标位置
     shell_link.SetIconLocation(&icon_path, 0)?;
@@ -310,7 +329,7 @@ pub fn change_single_shortcut_icon(link_path: String, link_prop: &mut LinkProp) 
     };
 
     write_log(&mut log_file,
-        format!("Successfully change the shortcut icon:\n{}\n{icon_path}", &link_path)
+        format!("Successfully change the shortcut icon:\n{link_path}\n{icon_path}")
     )?;
 
     Ok(Some(&link_prop.name))
@@ -318,6 +337,8 @@ pub fn change_single_shortcut_icon(link_path: String, link_prop: &mut LinkProp) 
 
 pub fn restore_single_shortcut_icon(link_path: String, link_prop: &mut LinkProp) -> Result<(), Box<dyn std::error::Error>> {
     // 在main.rs里通知是否恢复默认，不恢复则返回Ok(None)
+    //
+
 
     // Skip shortcuts that are not replaced or extend to uwp|app - 跳过未被更换图标或扩展为uwp|app的快捷方式
     if link_prop.status == Status::Unchanged || link_prop.target_ext == String::from("uwp|app") {
@@ -359,7 +380,7 @@ pub fn restore_single_shortcut_icon(link_path: String, link_prop: &mut LinkProp)
     link_prop.status = Status::Unchanged;
 
     write_log(&mut log_file,
-        format!("Successfully restore the shortcut icon:\n{}\n{icon_path}", &link_path)
+        format!("Successfully restore the shortcut icon:\n{link_path}\n{icon_path}")
     )?;
 
     Ok(())

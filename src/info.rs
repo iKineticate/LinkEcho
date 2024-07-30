@@ -1,4 +1,4 @@
-use crate::{utils::{read_log, write_log}, Error, glob, LinkProp, Status, Path, PathBuf};
+use crate::{glob, utils::{read_log, write_log}, Error, LinkProp, Path, PathBuf, Status};
 use winsafe::{IPersistFile, prelude::*, co};
 use std::env;
 
@@ -40,13 +40,13 @@ impl ManageLinkProp {
         shell_link: winsafe::IShellLink,
         persist_file: IPersistFile
     ) -> Result<LinkProp, Box<dyn std::error::Error>> {
-        let link_path = path_buf.to_string_lossy().into_owned();
+        let link_path = path_buf.to_string_lossy().to_string();
 
         // Load the shortcut file (LNK file)
         persist_file.Load(&link_path, co::STGM::READ)?;
 
         let link_name = match path_buf.file_stem() {
-            Some(name) => name.to_string_lossy().into_owned(),
+            Some(name) => name.to_string_lossy().to_string(),
             None => String::from("unnamed_file")
         };
 
@@ -61,8 +61,7 @@ impl ManageLinkProp {
         let link_target_dir = match shell_link.GetWorkingDirectory() {
             Ok(path) => {
                 match Path::new(&path).try_exists() {
-                    Ok(true) => ManageLinkProp::convert_env_to_path(path),    // 开头为环境变量时转换为绝对路径,
-                    Ok(false) => ManageLinkProp::get_working_directory(&link_target_path),
+                    Ok(_) => ManageLinkProp::convert_env_to_path(path),    // 若开头为环境变量则转换其为绝对路径
                     Err(_) => return Err(format!("{link_name}: Failed get the working directory").into()),
                 }
             },
@@ -76,7 +75,7 @@ impl ManageLinkProp {
                 .file_name()
                 .map_or( 
                     String::new(), 
-                    |name| name.to_string_lossy().into_owned()
+                    |name| name.to_string_lossy().to_string().to_lowercase()
                 );
             match &*link_target_file_name {
                 "schtasks.exe"   => String::from("schtasks"), // 任务计划程序
@@ -102,11 +101,13 @@ impl ManageLinkProp {
                 "netscan.exe"    => String::from("netscan"),  // 网络扫描   
                 _ => {
                     let ext = Path::new(&link_target_path).extension();
-                    let is_app = link_target_path.contains("WindowsSubsystemForAndroid");
-                    match (&ext, is_app) {
-                        (_, true) => String::from("app"),
-                        (None, false) => String::new(),
-                        (Some(os_str), false) => os_str.to_string_lossy().into_owned().to_lowercase()
+                    let is_app = link_target_path.to_lowercase().contains("windowssubsystemforandroid");
+                    let is_uwp = link_target_path.to_lowercase().contains(r"appdata\local\microsoft\windowsapps");
+                    match (&ext, is_app, is_uwp) {
+                        (_, true, _) => String::from("app"),
+                        (_, _, true) => String::from("uwp"),
+                        (None, false, false) => String::new(),
+                        (Some(os_str), false, false) => os_str.to_string_lossy().to_string().to_lowercase()
                     }
                 }
             }   
@@ -159,12 +160,10 @@ impl ManageLinkProp {
     fn get_working_directory(path: &String) -> String {
         match path.is_empty() {
             true => String::new(),
-            false => {
-                Path::new(path).parent().map_or(
-                    String::new(),
-                    |path| path.to_string_lossy().into_owned()
-                )
-            }
+            false => Path::new(path).parent().map_or(
+                String::new(),
+                |path| path.to_string_lossy().to_string()
+            )
         }
     }
 
@@ -203,7 +202,7 @@ impl ManageLinkProp {
                     ("%programfiles(arm)%",
                         env::var_os("PROGRAMFILES(Arm)").map_or(
                             "C:/Program Files (Arm)".to_string(),
-                            |path| path.to_string_lossy().into_owned()
+                            |path| path.to_string_lossy().to_string()
                         )
                     ),
                     ("%commonprogramfiles%",
@@ -216,7 +215,7 @@ impl ManageLinkProp {
                     ("%commonprogramfiles(arm)%",
                         env::var_os("CommonProgramFiles(Arm)").map_or(
                             "C:/Program Files (Arm)/Common Files".to_string(),
-                            |path| path.to_string_lossy().into_owned()
+                            |path| path.to_string_lossy().to_string()
                         )
                         ),
                     ("%commonprogramfiles(x86)%",
@@ -243,13 +242,13 @@ impl ManageLinkProp {
                     ("%cmdcmdline%",
                         env::var_os("CMDCMDLINE").map_or(
                             "C:/Windows/System32/cmd.exe".to_string(),
-                            |path| path.to_string_lossy().into_owned()
+                            |path| path.to_string_lossy().to_string()
                         )
                     ),
                     ("%comspec%",
                         env::var_os("COMSPEC").map_or(
                             "C:/Windows/System32/cmd.exe".to_string(),
-                            |path| path.to_string_lossy().into_owned()
+                            |path| path.to_string_lossy().to_string()
                         )
                     ),
                     ("%usersprofile%",
@@ -264,14 +263,20 @@ impl ManageLinkProp {
                             &co::KNOWNFOLDERID::LocalAppData,
                             co::KF::NO_ALIAS,
                             None,
-                        ).unwrap_or(String::new()),
+                        ).unwrap_or(env::var_os("LocalAppData").map_or(
+                            String::new(),
+                            |path| path.to_string_lossy().to_string()
+                        )),
                     ),
                     ("%appdata%",
                         winsafe::SHGetKnownFolderPath(
                             &co::KNOWNFOLDERID::RoamingAppData,
                             co::KF::NO_ALIAS,
                             None,
-                        ).unwrap_or(String::new()),
+                        ).unwrap_or(env::var_os("AppData").map_or(
+                            String::new(),
+                            |path| path.to_string_lossy().to_string()
+                        )),
                     ),
                     ("%public%",
                         winsafe::SHGetKnownFolderPath(
@@ -283,26 +288,24 @@ impl ManageLinkProp {
                     ("%temp%",
                         env::var_os("TEMP").map_or(
                             String::new(),
-                            |path| path.to_string_lossy().into_owned()
+                            |path| path.to_string_lossy().to_string()
                         )
                     ),
                     ("%tmp%",
                         env::var_os("TMP").map_or(
                             String::new(),
-                            |path| path.to_string_lossy().into_owned()
+                            |path| path.to_string_lossy().to_string()
                         )
                     ),
                 ];
                 for (env, root) in envs.iter() {
-                    if Path::new(&env_path.to_lowercase()).starts_with(env) {
-                        let new_path = env_path.replacen(env, root, 1);
-                        match (Path::new(&new_path).is_file(), Path::new(&new_path).is_dir()) {
-                            (false, false) => return env_path,
-                            _ => return new_path
-                        };
+                    let env_path_lowercase = &env_path.to_lowercase();
+                    if Path::new(env_path_lowercase).starts_with(env) {
+                        let new_path = env_path_lowercase.replacen(env, root, 1);
+                        return new_path
                     };
                 };
-                String::new()
+                env_path
             },
             false => env_path
         }
@@ -333,7 +336,7 @@ impl ManageLinkProp {
 
         // Iterate through directories - 遍历快捷方式目录
         for dir in dirs_vec.iter() {
-            let directory = dir.as_ref().join("**\\*.lnk").to_string_lossy().into_owned();
+            let directory = dir.as_ref().join("**\\*.lnk").to_string_lossy().to_string();
             for path_buf in glob(&directory).unwrap().filter_map(Result::ok) {
                 match ManageLinkProp::get_info(path_buf, shell_link.clone(), persist_file.clone()) {
                     Ok(link_prop) => link_vec.push(link_prop),

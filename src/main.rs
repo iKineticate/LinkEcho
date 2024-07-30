@@ -41,7 +41,9 @@ const NORMAL_ROW_BG: Color = Color::Rgb(25, 25, 25);
 const ALT_ROW_BG_COLOR: Color = Color::Rgb(42, 42, 42);
 const SELECTED_STYLE: Style = Style::new().bg(Color::Rgb(66, 66, 66)).add_modifier(Modifier::BOLD);
 const TEXT_FG_COLOR: Color = Color::Rgb(245, 245, 245);
-const CHANGED_TEXT_FG_COLOR: Color = Color::Rgb(54, 161, 92);
+const TEXT_SPECIAL_COLOR: Color = Color::Rgb(198, 120, 84);
+const TEXT_ERROR_COLOR: Color = Color::Rgb(236, 70, 69);
+const TEXT_CHANGED_COLOR: Color = Color::Rgb(54, 161, 92);
 
 fn main() -> Result<(), Box<dyn Error>> {
     // Properties for storing shortcuts - 存储快捷方式的属性
@@ -326,7 +328,7 @@ impl App {
                                 "Failed to load shortcut from {}",
                                 path_buf.file_name().map_or_else(
                                     || "Unable to get the directory name".to_string(),
-                                    |n| n.to_string_lossy().into_owned()
+                                    |n| n.to_string_lossy().to_string()
                             )),
                             &format!("{err}"),
                     ]);
@@ -464,8 +466,40 @@ impl App {
                 format!("8.运行参数: {}", self.link_list.items[i].arguments),
             ];
     
+            let extensions = vec![
+                "schtasks", "taskmgr", "explorer", "msconfig", "services", "netscan",
+                "cmd", "psh", "wscript", "cscript", "regedit", "mstsc", "mshta", "sc",
+                "regsvr32", "rundll32", "msiexec", "control", "msdt", "wmic", "net",
+            ];
+
             for (index, text) in texts.iter().enumerate() {
-                Paragraph::new(text.as_str()).fg(TEXT_FG_COLOR).render(area_vec[index], buf);
+                let color = match index {
+                    2 => match extensions.contains(&self.link_list.items[i].target_ext.as_str()) {
+                        true => TEXT_SPECIAL_COLOR,
+                        false => TEXT_FG_COLOR,
+                    },
+                    3 => match Path::new(&self.link_list.items[i].target_dir).is_dir() {
+                        false if !self.link_list.items[i].target_dir.is_empty() => TEXT_ERROR_COLOR,
+                        _ => TEXT_FG_COLOR,
+                    },
+                    4 => match Path::new(&self.link_list.items[i].target_path).is_file() {
+                        false if !self.link_list.items[i].target_path.is_empty() => TEXT_ERROR_COLOR,
+                        _ => TEXT_FG_COLOR,
+                    },
+                    5 => {
+                        let icon_location = &self.link_list.items[i].icon_location;
+                        match (Path::new(icon_location).is_file(), icon_location.is_empty()) {
+                            (false, false) => match icon_location.contains(".dll") {
+                                true => TEXT_FG_COLOR,
+                                false => TEXT_ERROR_COLOR,
+                            }
+                            _ => TEXT_FG_COLOR,
+                        }
+                    }
+                    _ => TEXT_FG_COLOR,
+                };
+
+                Paragraph::new(text.as_str()).fg(color).render(area_vec[index], buf);
             };
         } else {
             Paragraph::new("Nothing selected...").fg(TEXT_FG_COLOR).render(area_vec[0], buf);
@@ -528,12 +562,36 @@ impl App {
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded);
 
-        let changed_text = format!("Changed: {}",
+        let extensions = vec![
+            "schtasks", "taskmgr", "explorer", "msconfig", "services", "netscan",
+            "cmd", "psh", "wscript", "cscript", "regedit", "mstsc", "mshta", "sc",
+            "regsvr32", "rundll32", "msiexec", "control", "msdt", "wmic", "net",
+        ];
+
+        let changed_text = format!("{}",
             self.link_list.items.iter().filter(|prop| prop.status == Status::Changed).count()
         );
-        let total_text = format!(" | Total: {}", self.link_list.items.len());
+
+        let special_text = format!("{}",
+            self.link_list.items.iter().filter(|prop| extensions.contains(&prop.target_ext.as_str())).count()
+        );
+
+        let error_text = format!("{}",
+            self.link_list.items.iter().filter(|prop|
+                !prop.target_path.is_empty()
+                && !Path::new(&prop.target_path).is_file()
+            ).count()
+        );
+
+        let total_text = format!("{}", self.link_list.items.len());
+
         let text = vec![
-            Span::styled(changed_text, Style::default().fg(CHANGED_TEXT_FG_COLOR)),
+            Span::styled(changed_text, Style::default().fg(TEXT_CHANGED_COLOR)),
+            Span::styled(" | ", Style::default().fg(TEXT_FG_COLOR)),
+            Span::styled(special_text, Style::default().fg(TEXT_SPECIAL_COLOR)),
+            Span::styled(" | ", Style::default().fg(TEXT_FG_COLOR)),
+            Span::styled(error_text, Style::default().fg(TEXT_ERROR_COLOR)),
+            Span::styled(" | ", Style::default().fg(TEXT_FG_COLOR)),
             Span::styled(total_text, Style::default().fg(TEXT_FG_COLOR)),
         ];
 
@@ -556,12 +614,27 @@ const fn alternate_colors(i: usize) -> Color {
 impl From<&LinkProp> for ListItem<'_> {
     fn from(link_prop: &LinkProp) -> Self {
         let line = match link_prop.status {
-            // 若扩展名特殊，则标记__颜色------------------------------------
             Status::Unchanged => Line::styled(format!(" ☐ {}", link_prop.name), TEXT_FG_COLOR),
             Status::Changed => {
-                Line::styled(format!(" ✓ {}", link_prop.name), CHANGED_TEXT_FG_COLOR)
+                Line::styled(format!(" ✓ {}", link_prop.name), TEXT_CHANGED_COLOR)
             }
         };
-        ListItem::new(line)
+
+        let extensions = vec![
+            "schtasks", "taskmgr", "explorer", "msconfig", "services", "netscan",
+            "cmd", "psh", "wscript", "cscript", "regedit", "mstsc", "mshta", "sc",
+            "regsvr32", "rundll32", "msiexec", "control", "msdt", "wmic", "net",
+        ];
+
+        match extensions.contains(&link_prop.target_ext.as_str()) {
+            true => ListItem::new(line.style(TEXT_SPECIAL_COLOR)),
+            false => {
+                if Path::new(&link_prop.target_path).is_file() || link_prop.target_path.is_empty() {
+                    ListItem::new(line).style(TEXT_FG_COLOR)
+                } else {
+                    ListItem::new(line.style(TEXT_ERROR_COLOR))
+                }
+            }
+        }
     }
 }
