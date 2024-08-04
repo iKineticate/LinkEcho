@@ -35,7 +35,7 @@ use ratatui::{
         Scrollbar, ScrollbarState, ScrollbarOrientation,
     },
 };
-use crate::utils::show_notify;
+use crate::utils::{show_notify, ensure_image_exists};
 
 const NORMAL_ROW_BG: Color = Color::Rgb(25, 25, 25);
 const ALT_ROW_BG_COLOR: Color = Color::Rgb(42, 42, 42);
@@ -44,8 +44,12 @@ const TEXT_FG_COLOR: Color = Color::Rgb(245, 245, 245);
 const TEXT_SPECIAL_COLOR: Color = Color::Rgb(198, 120, 84);
 const TEXT_ERROR_COLOR: Color = Color::Rgb(236, 70, 69);
 const TEXT_CHANGED_COLOR: Color = Color::Rgb(54, 161, 92);
+const LOGO_IMAGE: &[u8] = include_bytes!("../resources/linkecho.png");
 
 fn main() -> Result<(), Box<dyn Error>> {
+    let logo_path = env::temp_dir().join("linkecho.png");
+    ensure_image_exists(logo_path, LOGO_IMAGE);
+
     // Properties for storing shortcuts - 存储快捷方式的属性
     let mut link_vec: Vec<LinkProp> = Vec::with_capacity(100);
 
@@ -89,6 +93,10 @@ pub struct LinkProp {
     icon_location: String,
     icon_index: String,
     arguments: String,
+    file_size: String,
+    created_at: String,
+    updated_at: String,
+    accessed_at: String,
 }
 
 #[derive(PartialEq)]
@@ -134,7 +142,7 @@ impl App {
                 KeyCode::Up => self.select_previous(),
                 KeyCode::Char('c') | KeyCode::Char('C') => self.change_all_shortcuts_icons(),
                 KeyCode::Char('r') | KeyCode::Char('R') => self.restore_all_shortcuts_icons(),
-                KeyCode::Char('t') | KeyCode::Char('T') => modify::clear_thumbnails(),
+                KeyCode::Char('t') | KeyCode::Char('T') => modify::clear_icon_cache(),
                 KeyCode::Char('l') | KeyCode::Char('L') => self.open_log_file(),
                 KeyCode::Char('s') | KeyCode::Char('S') => self.load_start_menu(),
                 KeyCode::Char('o') | KeyCode::Char('O') => self.load_other_dir(),
@@ -359,8 +367,7 @@ impl App {
 
 impl Widget for &mut App {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let [header_area, main_area, footer_area] = Layout::vertical([
-            Constraint::Length(1),
+        let [main_area, footer_area] = Layout::vertical([
             Constraint::Fill(1),
             Constraint::Length(1),
         ])
@@ -376,7 +383,6 @@ impl Widget for &mut App {
             Constraint::Length(3),
         ]).areas(left_area);
 
-        App::render_header(header_area, buf);
         App::render_footer(footer_area, buf);
         self.render_list(list_area, buf);
         self.render_scrollbar(list_area, buf);
@@ -388,13 +394,6 @@ impl Widget for &mut App {
 
 /// Rendering logic for the app
 impl App {
-    fn render_header(area: Rect, buf: &mut Buffer) {
-        Paragraph::new("LinkEcho v1.0.0")
-            .fg(TEXT_FG_COLOR)
-            .bold()
-            .render(area, buf);
-    }
-
     fn render_footer(area: Rect, buf: &mut Buffer) {
         Paragraph::new("退出[Q] | 更换[C] | 恢复[R] | 功能[F] | 搜索[/] | 返回顶部/底部[T/B] | 帮助[H]")
             .fg(TEXT_FG_COLOR)
@@ -435,8 +434,8 @@ impl App {
     }
 
     fn render_info(&self, area: Rect, buf: &mut Buffer) {
-        let area_vec: [ratatui::layout::Rect; 8] = Layout::vertical(
-        vec![Constraint::Length(1); 7]
+        let area_vec: [ratatui::layout::Rect; 13] = Layout::vertical(
+            vec![Constraint::Length(1); 12]
                 .into_iter()
                 .chain(vec![Constraint::Fill(1)])
                 .collect::<Vec<Constraint>>()
@@ -453,7 +452,7 @@ impl App {
             .border_type(BorderType::Rounded)
             .padding(Padding::horizontal(2))
             .render(area, buf);
-        
+    
         if let Some(i) = self.link_list.state.selected() {
             let texts = vec![
                 format!("1.名称: {}", self.link_list.items[i].name),
@@ -464,6 +463,10 @@ impl App {
                 format!("6.图标位置: {}", self.link_list.items[i].icon_location),
                 format!("7.图标索引: {}", self.link_list.items[i].icon_index),
                 format!("8.运行参数: {}", self.link_list.items[i].arguments),
+                format!("9.文件大小: {}", self.link_list.items[i].file_size),
+                format!("10.创建时间: {}", self.link_list.items[i].created_at),
+                format!("11.修改时间: {}", self.link_list.items[i].updated_at),
+                format!("12.访问时间: {}", self.link_list.items[i].accessed_at),
             ];
     
             let extensions = vec![
@@ -499,10 +502,29 @@ impl App {
                     _ => TEXT_FG_COLOR,
                 };
 
-                Paragraph::new(text.as_str()).fg(color).render(area_vec[index], buf);
+                Paragraph::new(text.as_str())
+                    .fg(color)
+                    .render(area_vec[index], buf);
             };
         } else {
-            Paragraph::new("Nothing selected...").fg(TEXT_FG_COLOR).render(area_vec[0], buf);
+            let [_, logo_area, _] = Layout::vertical([
+                Constraint::Fill(1),
+                Constraint::Length(7),
+                Constraint::Fill(1),
+            ]).areas(area);
+            
+            let logo_art = "
+██╗     ██╗███╗   ██╗██╗  ██╗    ███████╗ ██████╗██╗  ██╗ ██████╗ 
+██║     ██║████╗  ██║██║ ██╔╝    ██╔════╝██╔════╝██║  ██║██╔═══██╗
+██║     ██║██╔██╗ ██║█████╔╝     █████╗  ██║     ███████║██║   ██║
+██║     ██║██║╚██╗██║██╔═██╗     ██╔══╝  ██║     ██╔══██║██║   ██║
+███████╗██║██║ ╚████║██║  ██╗    ███████╗╚██████╗██║  ██║╚██████╔╝
+╚══════╝╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝    ╚══════╝ ╚═════╝╚═╝  ╚═╝ ╚═════╝ ";
+
+            Paragraph::new(logo_art)
+                .centered()
+                .fg(TEXT_FG_COLOR)
+                .render(logo_area, buf);
         }
     }
 
@@ -525,7 +547,7 @@ impl App {
             ]).areas(popup_area);
 
             let popup_vec = vec![
-                (revise_area, "Revise", "更换所有快捷方式[C]\n恢复所有快捷方式[R]\n复制快捷方式属性[1~8]"),
+                (revise_area, "Revise", "更换所有快捷方式图标[C]\n恢复所有快捷方式图标[R]\n复制快捷方式属性[1~8]"),
                 (load_area, "Load", "载入开始菜单快捷方式[S]\n载入其他目录快捷方式[O]\n载入所有桌面快捷方式[D]"),
                 (other_area, "Other", "打开记录日志[L]\n打开转换图标文件[I]\n清理桌面图标缓存[T]")
             ];
@@ -568,22 +590,22 @@ impl App {
             "regsvr32", "rundll32", "msiexec", "control", "msdt", "wmic", "net",
         ];
 
-        let changed_text = format!("{}",
+        let changed_text = format!("·{}",
             self.link_list.items.iter().filter(|prop| prop.status == Status::Changed).count()
         );
 
-        let special_text = format!("{}",
+        let special_text = format!("·{}",
             self.link_list.items.iter().filter(|prop| extensions.contains(&prop.target_ext.as_str())).count()
         );
 
-        let error_text = format!("{}",
+        let error_text = format!("·{}",
             self.link_list.items.iter().filter(|prop|
                 !prop.target_path.is_empty()
                 && !Path::new(&prop.target_path).is_file()
             ).count()
         );
 
-        let total_text = format!("{}", self.link_list.items.len());
+        let total_text = format!("·{}", self.link_list.items.len());
 
         let text = vec![
             Span::styled(changed_text, Style::default().fg(TEXT_CHANGED_COLOR)),

@@ -1,5 +1,5 @@
 use std::process::Command;
-use crate::{Path, PathBuf, glob, utils::{read_log, write_log, show_notify}, FileDialog, LinkProp, Status, icongen};
+use crate::{env, Path, PathBuf, glob, utils::{read_log, write_log, show_notify}, FileDialog, LinkProp, Status, icongen};
 use winsafe::{co, prelude::*, IPersistFile};
 
 pub fn change_all_shortcuts_icons(link_vec: &mut Vec<LinkProp>) -> Result<Option<&str>, Box<dyn std::error::Error>> {
@@ -312,7 +312,6 @@ pub fn change_single_shortcut_icon(link_path: String, link_prop: &mut LinkProp) 
         };
     };
 
-
     // Set the icon location - 设置图标位置
     shell_link.SetIconLocation(&icon_path, 0)?;
 
@@ -380,28 +379,66 @@ pub fn restore_single_shortcut_icon(link_path: String, link_prop: &mut LinkProp)
     link_prop.status = Status::Unchanged;
 
     write_log(&mut log_file,
-        format!("Successfully restore the shortcut icon:\n{link_path}\n{icon_path}")
+        format!("Successfully restore the shortcut icon:\n{link_path}")
     )?;
 
     Ok(())
 }
 
-// https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/cleanmgr
-pub fn clear_thumbnails() {
-   match Command::new("powershell").arg("cleanmgr").status() {
-        Ok(status) => {
-            if status.success() {
-                show_notify(vec![
-                    "Choose C, uncheck all the entries except Thumbnails",
-                    "Click OK and click Delete Files to confirm",
-                    "Restart Explorer",
-                ]);
-            } else {
-                // -------------------------------
-                // 通知+延长时间+按钮重启资源管理器
-                show_notify(vec!["Failed to open cleanmgr"])
+pub fn clear_icon_cache() {
+    let mut log_file = read_log().expect("Failed to open 'LinkEcho.log'");
+    
+    let local_app_data = winsafe::SHGetKnownFolderPath(
+    &co::KNOWNFOLDERID::LocalAppData,
+    co::KF::NO_ALIAS,
+    None,
+    ).unwrap_or(match env::var_os("LocalAppData") {
+        Some(path) => path.to_string_lossy().to_string(),
+        None => return show_notify(vec![&format!("Failed to get icon cache path")]),
+    });
+
+    let explorer_path = Path::new(&local_app_data).join("Microsoft\\Windows\\Explorer");
+
+    match explorer_path.try_exists() {
+        Ok(true) => {
+            if explorer_path.is_dir() {
+                if let Ok(entries) = std::fs::read_dir(&explorer_path) {
+                    for entry in entries {
+                        let entry = entry.expect("");
+                        let path = entry.path();
+
+                        if path.is_file() 
+                        && path.file_name().unwrap_or_default().to_string_lossy().starts_with("iconcache_") 
+                        && path.extension().map_or(false, |ext| ext == "db") {
+                            if std::fs::remove_file(&path).is_err() {
+                                let text = format!("Failed to delete the icon cache file\n{}", path.display());
+                                write_log(&mut log_file, text.clone()).expect("Failure to write to the log");
+                                return show_notify(vec![&text]);
+                            }
+                        }
+                    }
+
+                    let status = Command::new("PowerShell")
+                        .args(["taskkill", "/IM", "explorer.exe", "/F;", "explorer"])
+                        .stdout(std::process::Stdio::null())
+                        .stderr(std::process::Stdio::null())
+                        .status()
+                        .expect("failed to execute process");
+
+                    if status.success() {
+                        write_log(&mut log_file, 
+                            "Successfully cleared the icon cache".to_string()
+                        ).expect("Failure to write to the log");
+                        return show_notify(vec!["Successfully cleared the icon cache"])
+                    } else {
+                        return show_notify(vec!["Failed to restart Explorer"])
+                    }
+                } else {
+                    return show_notify(vec!["Failed iterator to return entries in the explorer dir"])
+                }
             }
         },
-        Err(err) => show_notify(vec![&format!("Failed to open cleanmgr: {err}")]),
-   }
+        Ok(false) => return show_notify(vec!["Explorer directory does not exist"]),
+        Err(err) => return show_notify(vec![&format!("Failed get the explorer directory: {err}")]),
+    }
 }

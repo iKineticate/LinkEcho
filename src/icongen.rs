@@ -21,7 +21,7 @@ use std::ffi::OsStr;
 use crate::{PathBuf, utils::show_notify};
 
 pub fn convert_ico(image: PathBuf, output: PathBuf, name: &str) -> Result<()> {
-    let sizes = vec![16, 20, 24, 32, 40, 48, 64, 96, 128, 256];
+    let sizes = vec![16, 32, 48, 64, 128, 256];
 
     let filter = image::imageops::FilterType::CatmullRom;
 

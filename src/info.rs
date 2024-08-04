@@ -1,5 +1,6 @@
 use crate::{glob, utils::{read_log, write_log}, Error, LinkProp, Path, PathBuf, Status};
 use winsafe::{IPersistFile, prelude::*, co};
+use chrono::{DateTime, Local};
 use std::env;
 
 #[allow(unused)]
@@ -52,17 +53,17 @@ impl ManageLinkProp {
 
         let link_target_path = match shell_link.GetPath(
             Some(&mut winsafe::WIN32_FIND_DATA::default()),
-            co::SLGP::RAWPATH   // Absolute path - 绝对路径
+            co::SLGP::RAWPATH    // Absolute path - 绝对路径
         ) {
             Ok(path) => ManageLinkProp::convert_env_to_path(path),    // 开头为环境变量时转换为绝对路径
-            Err(_) => String::new(),
+            Err(_) => String::new(),    // UWP and APP shortcuts cannot obtain the target path - UWP和APP无法获取目标路径
         };
 
         let link_target_dir = match shell_link.GetWorkingDirectory() {
             Ok(path) => {
                 match Path::new(&path).try_exists() {
                     Ok(_) => ManageLinkProp::convert_env_to_path(path),    // 若开头为环境变量则转换其为绝对路径
-                    Err(_) => return Err(format!("{link_name}: Failed get the working directory").into()),
+                    Err(err) => return Err(format!("{link_name}: Failed get the working directory: {err}").into()),
                 }
             },
             Err(_) => ManageLinkProp::get_working_directory(&link_target_path)
@@ -125,24 +126,49 @@ impl ManageLinkProp {
                     _ => (ManageLinkProp::convert_env_to_path(icon_path), icon_index.to_string())    // 开头为环境变量（如%windir%）时修改为路径
                 }
             },
-            Err(err) => return Err(format!("{err}\n{link_name}: Failed get the icon location").into()), // (String::new(), String::new()),
+            Err(err) => return Err(format!("{link_name}: Failed get the icon location: {err}").into()),
         };
 
-        let link_icon_status = if link_icon_location.is_empty()    // unchanged、non-existent、inaccessible - 未更换图标、图标不存在、图标不可访问（UWP/APP）
-            || link_icon_location == link_target_path    // unchanged(from target file) - 未更换图标（图标源于目标文件）
-            || link_icon_location.contains("WindowsSubsystemForAndroid")   //Android App - WSA应用
-            || unconverted_icon_path.starts_with("%")    // System icon - 系统图标(如%windir%/.../powershell.exe)
-            || (Path::new(&link_icon_location).parent().unwrap_or(Path::new("")) == Path::new(&link_target_dir)    // Icons come from the target file's (sub)directory - 图标来源于目标文件的(子)目录
-                && !link_target_dir.is_empty()) {
-            Status::Unchanged
-        } else {
-            Status::Changed
+        let link_icon_parent_path = Path::new(&link_icon_location).parent().unwrap_or(Path::new(""));
+        let link_target_dir_path = Path::new(&link_target_dir);
+
+        let link_icon_status = match () {
+            // unchanged、non-existent、inaccessible - 未更换图标、图标不存在、图标不可访问（UWP/APP）
+            _ if link_icon_location.is_empty() => Status::Unchanged,
+            // unchanged(from target file) - 图标源于目标文件
+            _ if link_icon_location == link_target_path => Status::Unchanged,
+            // Windows Subsystem for Android - WSA应用
+            _ if link_icon_location.contains("WindowsSubsystemForAndroid") => Status::Unchanged,
+            // System icon - 系统图标(如%windir%/.../powershell.exe或%windir%/.../imageres.dll)
+            _ if unconverted_icon_path.starts_with("%") => Status::Unchanged,
+            // Icons come from the target file's (sub)directory - 图标来源于目标文件的(子)目录
+            _ if link_icon_parent_path == link_target_dir_path 
+                && link_target_dir_path.is_dir() => Status::Unchanged,
+            _ => Status::Changed,
         };
 
-        let link_arguments = match shell_link.GetArguments() {
-            Ok(arguments) => arguments,
-            Err(err) => return Err(format!("{err}\n{link_name}: Failed get the Arguments").into()),
-        };
+        let link_arguments = shell_link.GetArguments()
+            .map_err(|err| format!("{link_name}: Failed to get the arguments: {err}"))?;
+
+        let metadata = std::fs::metadata(&link_path)
+            .map_err(|err| format!("{link_name}: Failed to get the metadata: {err}"))?;
+
+        let link_file_size = format!("{:.2} KB", metadata.len() as f64 / 1024.0);
+
+        let link_created_at = metadata.created().map(|time| {
+            let datetime: DateTime<Local> = time.into();
+            datetime.format("%Y-%m-%d %H:%M:%S").to_string()  
+        }).map_err(|err| format!("{link_name}: Failed to get the creation time: {err}"))?;
+
+        let link_updated_at = metadata.created().map(|time| {
+            let datetime: DateTime<Local> = time.into();
+            datetime.format("%Y-%m-%d %H:%M:%S").to_string()  
+        }).map_err(|err| format!("{link_name}: Failed to get the updated time: {err}"))?;
+
+        let link_accessed_at = metadata.created().map(|time| {
+            let datetime: DateTime<Local> = time.into();
+            datetime.format("%Y-%m-%d %H:%M:%S").to_string()  
+        }).map_err(|err| format!("{link_name}: Failed to get the accessed time: {err}"))?;
 
         Ok(LinkProp {
             name: link_name,
@@ -154,6 +180,10 @@ impl ManageLinkProp {
             icon_location: link_icon_location,
             icon_index: link_icon_index,
             arguments: link_arguments,
+            file_size: link_file_size,
+            created_at: link_created_at,
+            updated_at: link_updated_at,
+            accessed_at: link_accessed_at,
         })
     }
 
@@ -167,137 +197,66 @@ impl ManageLinkProp {
         }
     }
 
+    fn get_path_from_env(known_folder_id: Option<&co::KNOWNFOLDERID>, env: &str) -> String {
+        if let Some(id) = known_folder_id {
+            winsafe::SHGetKnownFolderPath(
+                id,
+                co::KF::NO_ALIAS,
+                None,
+            ).unwrap_or(env::var_os(env).map_or(
+                String::new(),
+                |path| path.to_string_lossy().to_string()
+            ))
+        } else {
+            env::var_os(env).map_or(
+                String::new(),
+                |path| path.to_string_lossy().to_string()
+            )
+        }
+    }
+
     fn convert_env_to_path(env_path: String) -> String {
         match env_path.starts_with("%") {
             true => {
                 let envs = vec![
-                    ("%windir%",
-                        winsafe::SHGetKnownFolderPath(
-                            &co::KNOWNFOLDERID::Windows,
-                            co::KF::NO_ALIAS,
-                            None,
-                        ).unwrap_or("C:/Windows".to_string()),
-                    ),
-                    ("%systemroot%",
-                        winsafe::SHGetKnownFolderPath(
-                            &co::KNOWNFOLDERID::Windows,
-                            co::KF::NO_ALIAS,
-                            None,
-                        ).unwrap_or("C:/Windows".to_string()),
-                    ),
-                    ("%programfiles%",
-                        winsafe::SHGetKnownFolderPath(
-                            &co::KNOWNFOLDERID::ProgramFiles,
-                            co::KF::NO_ALIAS,
-                            None,
-                        ).unwrap_or("C:/Windows/Program Files".to_string()),
-                    ),
+                    ("%windir%", 
+                        ManageLinkProp::get_path_from_env(Some(&co::KNOWNFOLDERID::Windows), "WinDir")),
+                    ("%systemroot%", 
+                        ManageLinkProp::get_path_from_env(Some(&co::KNOWNFOLDERID::Windows), "SystemRoot")),
+                    ("%programfiles%", 
+                        ManageLinkProp::get_path_from_env(Some(&co::KNOWNFOLDERID::ProgramFiles), "ProgramFiles")),
                     ("%programfiles(x86)%",
-                        winsafe::SHGetKnownFolderPath(
-                            &co::KNOWNFOLDERID::ProgramFilesX86,
-                            co::KF::NO_ALIAS,
-                            None,
-                        ).unwrap_or("C:/Windows/Program Files(x86)".to_string()),
-                    ),
+                        ManageLinkProp::get_path_from_env(Some(&co::KNOWNFOLDERID::ProgramFiles), "ProgramFiles(x86)")),
                     ("%programfiles(arm)%",
-                        env::var_os("PROGRAMFILES(Arm)").map_or(
-                            "C:/Program Files (Arm)".to_string(),
-                            |path| path.to_string_lossy().to_string()
-                        )
-                    ),
+                        ManageLinkProp::get_path_from_env(None, "ProgramFiles(x86)")),
                     ("%commonprogramfiles%",
-                        winsafe::SHGetKnownFolderPath(
-                            &co::KNOWNFOLDERID::ProgramFilesCommonX64,
-                            co::KF::NO_ALIAS,
-                            None,
-                        ).unwrap_or("C:/Program Files/Common Files".into()),
-                    ),
+                        ManageLinkProp::get_path_from_env(Some(&co::KNOWNFOLDERID::ProgramFilesCommonX64), "CommonProgramFiles")),
                     ("%commonprogramfiles(arm)%",
-                        env::var_os("CommonProgramFiles(Arm)").map_or(
-                            "C:/Program Files (Arm)/Common Files".to_string(),
-                            |path| path.to_string_lossy().to_string()
-                        )
-                        ),
+                        ManageLinkProp::get_path_from_env(None, "CommonProgramFiles(Arm)")),
                     ("%commonprogramfiles(x86)%",
-                        winsafe::SHGetKnownFolderPath(
-                            &co::KNOWNFOLDERID::ProgramFilesCommonX86,
-                            co::KF::NO_ALIAS,
-                            None,
-                        ).unwrap_or("C:/Program Files (x86)/Common Files".into()),
-                    ),
+                        ManageLinkProp::get_path_from_env(Some(&co::KNOWNFOLDERID::ProgramFilesCommonX86), "CommonProgramFiles(x86)")),
                     ("%programdata%",
-                        winsafe::SHGetKnownFolderPath(
-                            &co::KNOWNFOLDERID::ProgramData,
-                            co::KF::NO_ALIAS,
-                            None,
-                        ).unwrap_or("C:/ProgramData".into()),
-                    ),
+                        ManageLinkProp::get_path_from_env(Some(&co::KNOWNFOLDERID::ProgramData), "ProgramData")),
                     ("%allusersprofile%",
-                        winsafe::SHGetKnownFolderPath(
-                            &co::KNOWNFOLDERID::ProgramData,
-                            co::KF::NO_ALIAS,
-                            None,
-                        ).unwrap_or("C:/ProgramData".into()),
-                    ),
+                        ManageLinkProp::get_path_from_env(Some(&co::KNOWNFOLDERID::ProgramData), "AllUsersProfile")),
                     ("%cmdcmdline%",
-                        env::var_os("CMDCMDLINE").map_or(
-                            "C:/Windows/System32/cmd.exe".to_string(),
-                            |path| path.to_string_lossy().to_string()
-                        )
-                    ),
+                        ManageLinkProp::get_path_from_env(None, "CMDCMDLINE")),
                     ("%comspec%",
-                        env::var_os("COMSPEC").map_or(
-                            "C:/Windows/System32/cmd.exe".to_string(),
-                            |path| path.to_string_lossy().to_string()
-                        )
-                    ),
+                        ManageLinkProp::get_path_from_env(None, "COMSPEC")),
                     ("%usersprofile%",
-                        winsafe::SHGetKnownFolderPath(
-                            &co::KNOWNFOLDERID::Profile,
-                            co::KF::NO_ALIAS,
-                            None,
-                        ).unwrap_or(String::new()),
-                    ),
+                        ManageLinkProp::get_path_from_env(Some(&co::KNOWNFOLDERID::Profile), "UsersProfile")),
                     ("%localappdata%",
-                        winsafe::SHGetKnownFolderPath(
-                            &co::KNOWNFOLDERID::LocalAppData,
-                            co::KF::NO_ALIAS,
-                            None,
-                        ).unwrap_or(env::var_os("LocalAppData").map_or(
-                            String::new(),
-                            |path| path.to_string_lossy().to_string()
-                        )),
-                    ),
+                        ManageLinkProp::get_path_from_env(Some(&co::KNOWNFOLDERID::LocalAppData), "LocalAppData")),
                     ("%appdata%",
-                        winsafe::SHGetKnownFolderPath(
-                            &co::KNOWNFOLDERID::RoamingAppData,
-                            co::KF::NO_ALIAS,
-                            None,
-                        ).unwrap_or(env::var_os("AppData").map_or(
-                            String::new(),
-                            |path| path.to_string_lossy().to_string()
-                        )),
-                    ),
+                        ManageLinkProp::get_path_from_env(Some(&co::KNOWNFOLDERID::RoamingAppData), "Appdate")),
                     ("%public%",
-                        winsafe::SHGetKnownFolderPath(
-                            &co::KNOWNFOLDERID::Public,
-                            co::KF::NO_ALIAS,
-                            None,
-                        ).unwrap_or(String::new()),
-                    ),
+                        ManageLinkProp::get_path_from_env(Some(&co::KNOWNFOLDERID::Public), "Public")),
                     ("%temp%",
-                        env::var_os("TEMP").map_or(
-                            String::new(),
-                            |path| path.to_string_lossy().to_string()
-                        )
-                    ),
+                        ManageLinkProp::get_path_from_env(None, "TEMP")),
                     ("%tmp%",
-                        env::var_os("TMP").map_or(
-                            String::new(),
-                            |path| path.to_string_lossy().to_string()
-                        )
-                    ),
+                        ManageLinkProp::get_path_from_env(None, "TMP")),
                 ];
+                
                 for (env, root) in envs.iter() {
                     let env_path_lowercase = &env_path.to_lowercase();
                     if Path::new(env_path_lowercase).starts_with(env) {
@@ -347,6 +306,13 @@ impl ManageLinkProp {
                 }
             }
         }
+
+        // Sort `Vec<LinkProp>` by the first letter of `name` field
+        link_vec.sort_by(|a, b| {
+            let a_first_char = a.name.chars().next().unwrap_or('\0');
+            let b_first_char = b.name.chars().next().unwrap_or('\0');
+            a_first_char.cmp(&b_first_char)
+        });
 
         Ok(())
     }

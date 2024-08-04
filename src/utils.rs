@@ -1,9 +1,9 @@
-use std::fs::{OpenOptions, File};
-use std::env;
+use crate::{env, PathBuf};
+use std::fs::{OpenOptions, File, write};
 use std::io::{Error, Write};
 use chrono::Local;
 use color_eyre::eyre::Result;
-use win_toast_notify::WinToastNotify;
+use win_toast_notify::{WinToastNotify, CropCircle};
 
 pub fn read_log() -> Result<File, Error> {
     let log_path = env::temp_dir().join("LinkEcho.log");
@@ -25,9 +25,27 @@ pub fn write_log(log_file: &mut File, text: String) -> Result<(), Error> {
 }
 
 pub fn show_notify(messages: Vec<&str>) {
+    let logo_path = env::temp_dir().join("linkecho.png");
+    let logo_path = logo_path.to_string_lossy();
+    
     WinToastNotify::new()
         .set_title("LinkEcho")
         .set_messages(messages)
+        .set_logo(&logo_path, CropCircle::False)
         .show()
         .expect("Failed to show toast notification");
+}
+
+pub fn ensure_image_exists(logo_path: PathBuf, LOGO_IMAGE: &[u8]) {
+    match logo_path.try_exists() {
+        Ok(true) => {
+            if !logo_path.is_file() {
+                write(&logo_path, LOGO_IMAGE).expect("Unable to write file");
+            }
+        },
+        Ok(false) => {
+            write(&logo_path, LOGO_IMAGE).expect("Unable to write file");
+        },
+        _ => (),
+    };
 }
