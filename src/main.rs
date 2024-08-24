@@ -29,8 +29,8 @@ use ratatui::{
     terminal::Terminal,
     text::{Line, Span},
     widgets::{
-        Block, Borders, BorderType, Paragraph,
-        List, ListItem, ListState, Padding, HighlightSpacing,
+        Block, BorderType, Paragraph,
+        List, ListItem, ListState, HighlightSpacing,
         StatefulWidget, Widget,
         Scrollbar, ScrollbarState, ScrollbarOrientation,
     },
@@ -46,6 +46,12 @@ const TEXT_ERROR_COLOR: Color = Color::Rgb(236, 70, 69);
 const TEXT_CHANGED_COLOR: Color = Color::Rgb(54, 161, 92);
 const LOGO_IMAGE: &[u8] = include_bytes!("../resources/linkecho.png");
 
+static EXTENSIONS: &[&str] = &[
+    "schtasks", "taskmgr", "explorer", "msconfig", "services", "netscan",
+    "cmd", "psh", "wscript", "cscript", "regedit", "mstsc", "mshta", "sc",
+    "regsvr32", "rundll32", "msiexec", "control", "msdt", "wmic", "net"
+];
+
 fn main() -> Result<(), Box<dyn Error>> {
     let logo_path = env::temp_dir().join("linkecho.png");
     ensure_image_exists(logo_path, LOGO_IMAGE);
@@ -56,7 +62,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Get the full path to the current and public user's "desktop folders"
     // and collect the properties of the shortcuts in these folders
     // - 获取当前和公共用户的"桌面文件夹"的完整路径并收集属性
-    let desktop_path = SystemLinkDirs::Desktop.get_path().expect("Failed to get desktops path");
+    let desktop_path = SystemLinkDirs::Desktop
+        .get_path()
+        .expect("Failed to get desktops path");
     ManageLinkProp::collect(desktop_path, &mut link_vec)
         .expect("Failed to get properties of desktop shortcut");
 
@@ -337,7 +345,8 @@ impl App {
                                 path_buf.file_name().map_or_else(
                                     || "Unable to get the directory name".to_string(),
                                     |n| n.to_string_lossy().to_string()
-                            )),
+                                )
+                            ),
                             &format!("{err}"),
                     ]);
                 };
@@ -395,7 +404,7 @@ impl Widget for &mut App {
 /// Rendering logic for the app
 impl App {
     fn render_footer(area: Rect, buf: &mut Buffer) {
-        Paragraph::new("退出[Q] | 更换[C] | 恢复[R] | 功能[F] | 搜索[/] | 返回顶部/底部[T/B] | 帮助[H]")
+        Paragraph::new("退出[Q] | 更换[C] | 恢复[R] | 功能[F] | 返回顶部/底部[T/B]")
             .fg(TEXT_FG_COLOR)
             .bg(NORMAL_ROW_BG)
             .centered()
@@ -403,11 +412,10 @@ impl App {
     }
 
     fn render_list(&mut self, area: Rect, buf: &mut Buffer) {
-        let block = Block::new()
+        let block = Block::bordered()
             .title("Name")
             .fg(TEXT_FG_COLOR)
             .bg(NORMAL_ROW_BG)
-            .borders(Borders::ALL)
             .border_type(BorderType::Rounded);
 
         // 遍历"项目"(App的items)中的所有元素，并对其进行风格化处理在收集
@@ -417,8 +425,11 @@ impl App {
             .iter()
             .enumerate()
             .map(|(i, link_item)| {
-                let color = alternate_colors(i);    // 根据奇偶数赋予不同背景颜色
-                ListItem::from(link_item).bg(color)    // 重新设置字符串和颜色
+                if i % 2 == 0 {   // 根据奇偶数赋予不同背景颜色
+                    ListItem::from(link_item).bg(NORMAL_ROW_BG)
+                } else {
+                    ListItem::from(link_item).bg(ALT_ROW_BG_COLOR)
+                }
             })
             .collect();
 
@@ -444,17 +455,15 @@ impl App {
         .horizontal_margin(2)
         .areas(area);
 
-        Block::new()
+        Block::bordered()
             .title("Properties")
             .bg(NORMAL_ROW_BG)
             .fg(TEXT_FG_COLOR)
-            .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
-            .padding(Padding::horizontal(2))
             .render(area, buf);
     
         if let Some(i) = self.link_list.state.selected() {
-            let texts = vec![
+            vec![
                 format!("1.名称: {}", self.link_list.items[i].name),
                 format!("2.路径: {}", self.link_list.items[i].path),
                 format!("3.目标扩展: {}", self.link_list.items[i].target_ext),
@@ -467,17 +476,12 @@ impl App {
                 format!("10.创建时间: {}", self.link_list.items[i].created_at),
                 format!("11.修改时间: {}", self.link_list.items[i].updated_at),
                 format!("12.访问时间: {}", self.link_list.items[i].accessed_at),
-            ];
-    
-            let extensions = vec![
-                "schtasks", "taskmgr", "explorer", "msconfig", "services", "netscan",
-                "cmd", "psh", "wscript", "cscript", "regedit", "mstsc", "mshta", "sc",
-                "regsvr32", "rundll32", "msiexec", "control", "msdt", "wmic", "net",
-            ];
-
-            for (index, text) in texts.iter().enumerate() {
+            ]
+            .into_iter()
+            .enumerate()
+            .for_each(|(index, text)| {
                 let color = match index {
-                    2 => match extensions.contains(&self.link_list.items[i].target_ext.as_str()) {
+                    2 => match EXTENSIONS.contains(&self.link_list.items[i].target_ext.as_str()) {
                         true => TEXT_SPECIAL_COLOR,
                         false => TEXT_FG_COLOR,
                     },
@@ -502,10 +506,10 @@ impl App {
                     _ => TEXT_FG_COLOR,
                 };
 
-                Paragraph::new(text.as_str())
+                Paragraph::new(text)
                     .fg(color)
                     .render(area_vec[index], buf);
-            };
+            });
         } else {
             let [_, logo_area, _] = Layout::vertical([
                 Constraint::Fill(1),
@@ -581,40 +585,39 @@ impl App {
             .title("Status")
             .fg(TEXT_FG_COLOR)
             .bg(NORMAL_ROW_BG)
-            .borders(Borders::ALL)
             .border_type(BorderType::Rounded);
 
-        let extensions = vec![
-            "schtasks", "taskmgr", "explorer", "msconfig", "services", "netscan",
-            "cmd", "psh", "wscript", "cscript", "regedit", "mstsc", "mshta", "sc",
-            "regsvr32", "rundll32", "msiexec", "control", "msdt", "wmic", "net",
-        ];
-
         let changed_text = format!("·{}",
-            self.link_list.items.iter().filter(|prop| prop.status == Status::Changed).count()
+            self.link_list.items
+                .iter()
+                .filter(|prop| prop.status == Status::Changed)
+                .count()
         );
 
         let special_text = format!("·{}",
-            self.link_list.items.iter().filter(|prop| extensions.contains(&prop.target_ext.as_str())).count()
+            self.link_list.items
+                .iter()
+                .filter(|prop| EXTENSIONS.contains(&prop.target_ext.as_str()))
+                .count()
         );
 
         let error_text = format!("·{}",
-            self.link_list.items.iter().filter(|prop|
-                !prop.target_path.is_empty()
-                && !Path::new(&prop.target_path).is_file()
-            ).count()
+            self.link_list.items
+                .iter()
+                .filter(|prop| !prop.target_path.is_empty() && !Path::new(&prop.target_path).is_file())
+                .count()
         );
 
         let total_text = format!("·{}", self.link_list.items.len());
 
         let text = vec![
-            Span::styled(changed_text, Style::default().fg(TEXT_CHANGED_COLOR)),
-            Span::styled(" | ", Style::default().fg(TEXT_FG_COLOR)),
-            Span::styled(special_text, Style::default().fg(TEXT_SPECIAL_COLOR)),
-            Span::styled(" | ", Style::default().fg(TEXT_FG_COLOR)),
-            Span::styled(error_text, Style::default().fg(TEXT_ERROR_COLOR)),
-            Span::styled(" | ", Style::default().fg(TEXT_FG_COLOR)),
-            Span::styled(total_text, Style::default().fg(TEXT_FG_COLOR)),
+            Span::styled(changed_text, Style::new().fg(TEXT_CHANGED_COLOR)),
+            Span::styled(" | ", Style::new().fg(TEXT_FG_COLOR)),
+            Span::styled(special_text, Style::new().fg(TEXT_SPECIAL_COLOR)),
+            Span::styled(" | ", Style::new().fg(TEXT_FG_COLOR)),
+            Span::styled(error_text, Style::new().fg(TEXT_ERROR_COLOR)),
+            Span::styled(" | ", Style::new().fg(TEXT_FG_COLOR)),
+            Span::styled(total_text, Style::new().fg(TEXT_FG_COLOR)),
         ];
 
         Paragraph::new(Line::default().spans(text))
@@ -622,14 +625,6 @@ impl App {
             .block(block)
             .centered()
             .render(area, buf);
-    }
-}
-
-const fn alternate_colors(i: usize) -> Color {
-    if i % 2 == 0 {
-        NORMAL_ROW_BG
-    } else {
-        ALT_ROW_BG_COLOR
     }
 }
 
@@ -642,17 +637,11 @@ impl From<&LinkProp> for ListItem<'_> {
             }
         };
 
-        let extensions = vec![
-            "schtasks", "taskmgr", "explorer", "msconfig", "services", "netscan",
-            "cmd", "psh", "wscript", "cscript", "regedit", "mstsc", "mshta", "sc",
-            "regsvr32", "rundll32", "msiexec", "control", "msdt", "wmic", "net",
-        ];
-
-        match extensions.contains(&link_prop.target_ext.as_str()) {
+        match EXTENSIONS.contains(&link_prop.target_ext.as_str()) {
             true => ListItem::new(line.style(TEXT_SPECIAL_COLOR)),
             false => {
                 if Path::new(&link_prop.target_path).is_file() || link_prop.target_path.is_empty() {
-                    ListItem::new(line).style(TEXT_FG_COLOR)
+                    ListItem::new(line)
                 } else {
                     ListItem::new(line.style(TEXT_ERROR_COLOR))
                 }

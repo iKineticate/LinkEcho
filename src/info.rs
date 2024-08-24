@@ -15,9 +15,12 @@ impl SystemLinkDirs {
 
         // Get the GUID of the shortcut's folder - 获取快捷方式文件夹的GUID
         let know_folder_id_vec = match self {
-            SystemLinkDirs::Desktop => vec![&co::KNOWNFOLDERID::Desktop, &co::KNOWNFOLDERID::PublicDesktop],
-            SystemLinkDirs::StartMenu => vec![&co::KNOWNFOLDERID::StartMenu, &co::KNOWNFOLDERID::CommonStartMenu],
-            SystemLinkDirs::StartUp => vec![&co::KNOWNFOLDERID::Startup, &co::KNOWNFOLDERID::CommonStartup],
+            SystemLinkDirs::Desktop => 
+                vec![&co::KNOWNFOLDERID::Desktop, &co::KNOWNFOLDERID::PublicDesktop],
+            SystemLinkDirs::StartMenu => 
+                vec![&co::KNOWNFOLDERID::StartMenu, &co::KNOWNFOLDERID::CommonStartMenu],
+            SystemLinkDirs::StartUp => 
+                vec![&co::KNOWNFOLDERID::Startup, &co::KNOWNFOLDERID::CommonStartup],
         };
 
         // Get the path to the shortcut's folder - 获取快捷方式文件夹的路径
@@ -309,8 +312,8 @@ impl ManageLinkProp {
 
         // Sort `Vec<LinkProp>` by the first letter of `name` field
         link_vec.sort_by(|a, b| {
-            let a_first_char = a.name.chars().next().unwrap_or('\0');
-            let b_first_char = b.name.chars().next().unwrap_or('\0');
+            let a_first_char = a.name.to_lowercase().chars().next().unwrap_or('\0');
+            let b_first_char = b.name.to_lowercase().chars().next().unwrap_or('\0');
             a_first_char.cmp(&b_first_char)
         });
 

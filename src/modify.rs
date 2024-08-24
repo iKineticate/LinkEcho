@@ -398,6 +398,19 @@ pub fn clear_icon_cache() {
     });
 
     let explorer_path = Path::new(&local_app_data).join("Microsoft\\Windows\\Explorer");
+    // let icon_cache_path = Path::new(&local_app_data).join("IconCache.db");
+
+    // match icon_cache_path.try_exists() {
+    //     Ok(true) => {
+    //         if std::fs::remove_file(&icon_cache_path).is_err() {
+    //             let text = format!("Failed to delete the conCache.db");
+    //             write_log(&mut log_file, text.clone()).expect("Failure to write to the log");
+    //             return show_notify(vec![&text]);
+    //         }
+    //     },
+    //     Ok(false) => return show_notify(vec!["IconCache.d does not exist"]),
+    //     Err(err) => return show_notify(vec![&format!("Failed get the IconCache.db path: {err}")]),
+    // };
 
     match explorer_path.try_exists() {
         Ok(true) => {
@@ -408,8 +421,9 @@ pub fn clear_icon_cache() {
                         let path = entry.path();
 
                         if path.is_file() 
-                        && path.file_name().unwrap_or_default().to_string_lossy().starts_with("iconcache_") 
-                        && path.extension().map_or(false, |ext| ext == "db") {
+                        && path.extension().map_or(false, |ext| ext == "db")
+                        && (path.file_name().unwrap_or_default().to_string_lossy().starts_with("iconcache_")
+                        || path.file_name().unwrap_or_default().to_string_lossy().starts_with("thumbcache_")) {
                             if std::fs::remove_file(&path).is_err() {
                                 let text = format!("Failed to delete the icon cache file\n{}", path.display());
                                 write_log(&mut log_file, text.clone()).expect("Failure to write to the log");
