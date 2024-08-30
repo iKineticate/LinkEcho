@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use crate::{utils::show_notify, PathBuf};
 use anyhow::{Context, Result};
 use image::codecs::ico::{IcoEncoder, IcoFrame};
 use image::io::Reader as ImageReader;
 use image::{DynamicImage, Rgba, RgbaImage};
 use rayon::prelude::*;
 use std::ffi::OsStr;
-use crate::{PathBuf, utils::show_notify};
 
 pub fn convert_ico(image: PathBuf, output: PathBuf, name: &str) -> Result<()> {
     let sizes = vec![16, 32, 48, 64, 128, 256];
@@ -46,7 +46,9 @@ pub fn convert_ico(image: PathBuf, output: PathBuf, name: &str) -> Result<()> {
         let pixmap_size = rtree.svg_node().size.to_screen_size();
 
         if pixmap_size.width() != pixmap_size.height() {
-            show_notify(vec!["Warning: your {name} is not square, and will appear squished!"])
+            show_notify(vec![
+                "Warning: your {name} is not square, and will appear squished!",
+            ])
         }
 
         let mut pixmap = tiny_skia::Pixmap::new(pixmap_size.width(), pixmap_size.height())
@@ -81,9 +83,9 @@ pub fn convert_ico(image: PathBuf, output: PathBuf, name: &str) -> Result<()> {
     };
 
     if im.width() != im.height() {
-        show_notify(
-            vec![&format!("Warning: {name} is not square, and will appear squished!")]
-        );
+        show_notify(vec![&format!(
+            "Warning: {name} is not square, and will appear squished!"
+        )]);
     }
 
     if im.width() < sizes.iter().max().map(|&v| v).unwrap_or_default() {

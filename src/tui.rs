@@ -4,9 +4,7 @@ use color_eyre::config::HookBuilder;
 use ratatui::{
     backend::{Backend, CrosstermBackend},
     crossterm::{
-        terminal::{
-            disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
-        },
+        terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
         ExecutableCommand,
     },
     terminal::Terminal,

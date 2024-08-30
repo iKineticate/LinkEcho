@@ -1,25 +1,25 @@
 #![allow(non_snake_case)]
 #![cfg(target_os = "windows")]
 
+mod icongen;
 mod info;
 mod modify;
 mod tui;
 mod utils;
-mod icongen;
 
 use std::{
-    io,
     env,
     error::Error,
+    io,
     path::{Path, PathBuf},
     process::Command,
 };
 
-use rfd::FileDialog;
-use glob::glob;
-use info::{SystemLinkDirs, ManageLinkProp};
+use crate::utils::{ensure_image_exists, show_notify};
 use copypasta::{ClipboardContext, ClipboardProvider};
 use crossterm::event::KeyEvent;
+use glob::glob;
+use info::{ManageLinkProp, SystemLinkDirs};
 use ratatui::{
     backend::Backend,
     buffer::Buffer,
@@ -29,17 +29,17 @@ use ratatui::{
     terminal::Terminal,
     text::{Line, Span},
     widgets::{
-        Block, BorderType, Paragraph,
-        List, ListItem, ListState, HighlightSpacing,
-        StatefulWidget, Widget,
-        Scrollbar, ScrollbarState, ScrollbarOrientation,
+        Block, BorderType, HighlightSpacing, List, ListItem, ListState, Paragraph, Scrollbar,
+        ScrollbarOrientation, ScrollbarState, StatefulWidget, Widget,
     },
 };
-use crate::utils::{show_notify, ensure_image_exists};
+use rfd::FileDialog;
 
 const NORMAL_ROW_BG: Color = Color::Rgb(25, 25, 25);
 const ALT_ROW_BG_COLOR: Color = Color::Rgb(42, 42, 42);
-const SELECTED_STYLE: Style = Style::new().bg(Color::Rgb(66, 66, 66)).add_modifier(Modifier::BOLD);
+const SELECTED_STYLE: Style = Style::new()
+    .bg(Color::Rgb(66, 66, 66))
+    .add_modifier(Modifier::BOLD);
 const TEXT_FG_COLOR: Color = Color::Rgb(245, 245, 245);
 const TEXT_SPECIAL_COLOR: Color = Color::Rgb(198, 120, 84);
 const TEXT_ERROR_COLOR: Color = Color::Rgb(236, 70, 69);
@@ -47,9 +47,9 @@ const TEXT_CHANGED_COLOR: Color = Color::Rgb(54, 161, 92);
 const LOGO_IMAGE: &[u8] = include_bytes!("../resources/linkecho.png");
 
 static EXTENSIONS: &[&str] = &[
-    "schtasks", "taskmgr", "explorer", "msconfig", "services", "netscan",
-    "cmd", "psh", "wscript", "cscript", "regedit", "mstsc", "mshta", "sc",
-    "regsvr32", "rundll32", "msiexec", "control", "msdt", "wmic", "net"
+    "schtasks", "taskmgr", "explorer", "msconfig", "services", "netscan", "cmd", "psh", "wscript",
+    "cscript", "regedit", "mstsc", "mshta", "sc", "regsvr32", "rundll32", "msiexec", "control",
+    "msdt", "wmic", "net",
 ];
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -120,7 +120,7 @@ impl App {
             should_exit: false,
             link_list: LinkList {
                 items: link_vec,
-                state: ListState::default()
+                state: ListState::default(),
             },
             scroll_state: ScrollbarState::default().content_length(items_len),
             scroll_position: 0,
@@ -145,39 +145,44 @@ impl App {
             return;
         };
         match self.show_func_popup {
-            true => { match key.code {
-                KeyCode::Down => self.select_next(),
-                KeyCode::Up => self.select_previous(),
-                KeyCode::Char('c') | KeyCode::Char('C') => self.change_all_shortcuts_icons(),
-                KeyCode::Char('r') | KeyCode::Char('R') => self.restore_all_shortcuts_icons(),
-                KeyCode::Char('t') | KeyCode::Char('T') => modify::clear_icon_cache(),
-                KeyCode::Char('l') | KeyCode::Char('L') => self.open_log_file(),
-                KeyCode::Char('s') | KeyCode::Char('S') => self.load_start_menu(),
-                KeyCode::Char('o') | KeyCode::Char('O') => self.load_other_dir(),
-                KeyCode::Char('d') | KeyCode::Char('D') => self.load_desktop(),
-                KeyCode::Char('w') | KeyCode::Char('W') => self.open_working_dir(),
-                KeyCode::Char('i') | KeyCode::Char('I') => self.open_icon_parent(),
-                KeyCode::Char('1') => self.copy_prop(1),
-                KeyCode::Char('2') => self.copy_prop(2),
-                KeyCode::Char('3') => self.copy_prop(3),
-                KeyCode::Char('4') => self.copy_prop(4),
-                KeyCode::Char('5') => self.copy_prop(5),
-                KeyCode::Char('6') => self.copy_prop(6),
-                KeyCode::Char('7') => self.copy_prop(7),
-                KeyCode::Char('8') => self.copy_prop(8),
-                _ => ()
+            true => {
+                match key.code {
+                    KeyCode::Down => self.select_next(),
+                    KeyCode::Up => self.select_previous(),
+                    KeyCode::Char('c') | KeyCode::Char('C') => self.change_all_shortcuts_icons(),
+                    KeyCode::Char('r') | KeyCode::Char('R') => self.restore_all_shortcuts_icons(),
+                    KeyCode::Char('t') | KeyCode::Char('T') => modify::clear_icon_cache(),
+                    KeyCode::Char('l') | KeyCode::Char('L') => self.open_log_file(),
+                    KeyCode::Char('s') | KeyCode::Char('S') => self.load_start_menu(),
+                    KeyCode::Char('o') | KeyCode::Char('O') => self.load_other_dir(),
+                    KeyCode::Char('d') | KeyCode::Char('D') => self.load_desktop(),
+                    KeyCode::Char('w') | KeyCode::Char('W') => self.open_working_dir(),
+                    KeyCode::Char('i') | KeyCode::Char('I') => self.open_icon_parent(),
+                    KeyCode::Char('1') => self.copy_prop(1),
+                    KeyCode::Char('2') => self.copy_prop(2),
+                    KeyCode::Char('3') => self.copy_prop(3),
+                    KeyCode::Char('4') => self.copy_prop(4),
+                    KeyCode::Char('5') => self.copy_prop(5),
+                    KeyCode::Char('6') => self.copy_prop(6),
+                    KeyCode::Char('7') => self.copy_prop(7),
+                    KeyCode::Char('8') => self.copy_prop(8),
+                    _ => (),
                 };
                 self.show_func_popup = !self.show_func_popup;
-            },
+            }
             false => match key.code {
                 KeyCode::Char('q') | KeyCode::Char('Q') | KeyCode::Esc => self.should_exit = true,
-                KeyCode::Char('c') | KeyCode::Char('C') | KeyCode::Enter => self.change_single_link_icon(),
+                KeyCode::Char('c') | KeyCode::Char('C') | KeyCode::Enter => {
+                    self.change_single_link_icon()
+                }
                 KeyCode::Char('r') | KeyCode::Char('R') => self.restore_single_link_icon(),
                 KeyCode::Char('j') | KeyCode::Char('J') | KeyCode::Down => self.select_next(),
                 KeyCode::Char('k') | KeyCode::Char('K') | KeyCode::Up => self.select_previous(),
                 KeyCode::Char('t') | KeyCode::Char('T') | KeyCode::Home => self.select_first(),
                 KeyCode::Char('b') | KeyCode::Char('B') | KeyCode::End => self.select_last(),
-                KeyCode::Char('f') | KeyCode::Char('F')=> self.show_func_popup = !self.show_func_popup,
+                KeyCode::Char('f') | KeyCode::Char('F') => {
+                    self.show_func_popup = !self.show_func_popup
+                }
                 _ => {}
             },
         };
@@ -191,7 +196,7 @@ impl App {
                 } else {
                     i + 1
                 }
-            },
+            }
             None => 0,
         };
         self.link_list.state.select(Some(i));
@@ -206,7 +211,7 @@ impl App {
                 } else {
                     i - 1
                 }
-            },
+            }
             None => 0,
         };
         self.link_list.state.select(Some(i));
@@ -247,17 +252,15 @@ impl App {
     fn change_single_link_icon(&mut self) {
         if let Some(i) = self.link_list.state.selected() {
             let link_path = self.link_list.items[i].path.clone();
-            match modify::change_single_shortcut_icon(link_path,&mut self.link_list.items[i]) {
-                Ok(Some(name)) => show_notify(vec![
-                    &format!("Successfully changed the icon of {name}")
-                ]),
+            match modify::change_single_shortcut_icon(link_path, &mut self.link_list.items[i]) {
+                Ok(Some(name)) => {
+                    show_notify(vec![&format!("Successfully changed the icon of {name}")])
+                }
                 Ok(None) => (),
-                Err(err) => show_notify(vec![
-                    &format!(
-                        "Successfully changed the icon of {}\n{err}",
-                        &self.link_list.items[i].name
-                    )
-                ]),
+                Err(err) => show_notify(vec![&format!(
+                    "Successfully changed the icon of {}\n{err}",
+                    &self.link_list.items[i].name
+                )]),
             };
         };
     }
@@ -265,13 +268,15 @@ impl App {
     fn restore_single_link_icon(&mut self) {
         if let Some(i) = self.link_list.state.selected() {
             let link_path = self.link_list.items[i].path.clone();
-            match modify::restore_single_shortcut_icon(link_path,&mut self.link_list.items[i]) {
-                Ok(_) => show_notify(vec![
-                    &format!("Successfully set {}'s icon as default icon", &self.link_list.items[i].name)
-                ]),
-                Err(err) => show_notify(vec![
-                    &format!("Failed to restore the icon of {}\n{err}", &self.link_list.items[i].name)
-                ]),
+            match modify::restore_single_shortcut_icon(link_path, &mut self.link_list.items[i]) {
+                Ok(_) => show_notify(vec![&format!(
+                    "Successfully set {}'s icon as default icon",
+                    &self.link_list.items[i].name
+                )]),
+                Err(err) => show_notify(vec![&format!(
+                    "Failed to restore the icon of {}\n{err}",
+                    &self.link_list.items[i].name
+                )]),
             };
         };
     }
@@ -280,25 +285,24 @@ impl App {
         match Command::new("cmd")
             .args(["/C", "start"])
             .arg(path.as_ref())
-            .status() {
-                Ok(status) => {
-                    if !status.success() {
-                        show_notify(vec![
-                            "Failed to open the file",
-                            &path.as_ref().to_string_lossy()
-                        ]);
-                    };
-                },
-                Err(_) => show_notify(vec!["Failed to execute process"]),
+            .status()
+        {
+            Ok(status) => {
+                if !status.success() {
+                    show_notify(vec![
+                        "Failed to open the file",
+                        &path.as_ref().to_string_lossy(),
+                    ]);
+                };
             }
+            Err(_) => show_notify(vec!["Failed to execute process"]),
+        }
     }
 
     fn open_log_file(&mut self) {
         let log_path = env::temp_dir().join("LinkEcho.log");
         match log_path.try_exists() {
-            Ok(true) => {
-                App::open_file(log_path)
-            },
+            Ok(true) => App::open_file(log_path),
             Ok(false) => show_notify(vec!["Log file does not exist and cannot be created"]),
             Err(err) => show_notify(vec![&format!("Error checking if log file exists: {err}")]),
         };
@@ -308,7 +312,7 @@ impl App {
         if let Some(i) = self.link_list.state.selected() {
             match Path::new(&self.link_list.items[i].icon_location).parent() {
                 Some(parent) => App::open_file(parent),
-                None => show_notify(vec!["Failed to get the directory of the ICON"])
+                None => show_notify(vec!["Failed to get the directory of the ICON"]),
             }
         }
     }
@@ -320,37 +324,50 @@ impl App {
     }
 
     fn load_desktop(&mut self) {
-        let start_menu_path = SystemLinkDirs::Desktop.get_path().expect("Failed to get desktops path");
-        if let Err (err) = ManageLinkProp::collect(start_menu_path, &mut self.link_list.items) {
-            show_notify(vec!["Failed to load shortcut from Start menu", &format!("{err}")]);
+        let start_menu_path = SystemLinkDirs::Desktop
+            .get_path()
+            .expect("Failed to get desktops path");
+        if let Err(err) = ManageLinkProp::collect(start_menu_path, &mut self.link_list.items) {
+            show_notify(vec![
+                "Failed to load shortcut from Start menu",
+                &format!("{err}"),
+            ]);
         };
     }
 
     fn load_start_menu(&mut self) {
-        let start_menu_path = SystemLinkDirs::StartMenu.get_path().expect("Failed to get desktops path");
-        if let Err (err) = ManageLinkProp::collect(start_menu_path, &mut self.link_list.items) {
-            show_notify(vec!["Failed to load shortcut from Start menu", &format!("{err}")]);
+        let start_menu_path = SystemLinkDirs::StartMenu
+            .get_path()
+            .expect("Failed to get desktops path");
+        if let Err(err) = ManageLinkProp::collect(start_menu_path, &mut self.link_list.items) {
+            show_notify(vec![
+                "Failed to load shortcut from Start menu",
+                &format!("{err}"),
+            ]);
         };
     }
 
     fn load_other_dir(&mut self) {
         match FileDialog::new()
-        .set_title("Please select the directory where shortcuts are stored")
-        .pick_folder() {
+            .set_title("Please select the directory where shortcuts are stored")
+            .pick_folder()
+        {
             Some(path_buf) => {
-                if let Err (err) = ManageLinkProp::collect(vec![&path_buf], &mut self.link_list.items) {
+                if let Err(err) =
+                    ManageLinkProp::collect(vec![&path_buf], &mut self.link_list.items)
+                {
                     show_notify(vec![
-                            &format!(
-                                "Failed to load shortcut from {}",
-                                path_buf.file_name().map_or_else(
-                                    || "Unable to get the directory name".to_string(),
-                                    |n| n.to_string_lossy().to_string()
-                                )
-                            ),
-                            &format!("{err}"),
+                        &format!(
+                            "Failed to load shortcut from {}",
+                            path_buf.file_name().map_or_else(
+                                || "Unable to get the directory name".to_string(),
+                                |n| n.to_string_lossy().to_string()
+                            )
+                        ),
+                        &format!("{err}"),
                     ]);
                 };
-            },
+            }
             None => return,
         };
     }
@@ -370,27 +387,20 @@ impl App {
                 _ => String::new(),
             };
             ctx.set_contents(text).unwrap();
-        };  
+        };
     }
 }
 
 impl Widget for &mut App {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let [main_area, footer_area] = Layout::vertical([
-            Constraint::Fill(1),
-            Constraint::Length(1),
-        ])
-        .areas(area);
+        let [main_area, footer_area] =
+            Layout::vertical([Constraint::Fill(1), Constraint::Length(1)]).areas(area);
 
-        let [left_area, info_area] = Layout::horizontal([
-            Constraint::Fill(1),
-            Constraint::Fill(3),
-        ]).areas(main_area);
+        let [left_area, info_area] =
+            Layout::horizontal([Constraint::Fill(1), Constraint::Fill(3)]).areas(main_area);
 
-        let [list_area, status_area] = Layout::vertical([
-            Constraint::Fill(1),
-            Constraint::Length(3),
-        ]).areas(left_area);
+        let [list_area, status_area] =
+            Layout::vertical([Constraint::Fill(1), Constraint::Length(3)]).areas(left_area);
 
         App::render_footer(footer_area, buf);
         self.render_list(list_area, buf);
@@ -425,7 +435,8 @@ impl App {
             .iter()
             .enumerate()
             .map(|(i, link_item)| {
-                if i % 2 == 0 {   // 根据奇偶数赋予不同背景颜色
+                if i % 2 == 0 {
+                    // 根据奇偶数赋予不同背景颜色
                     ListItem::from(link_item).bg(NORMAL_ROW_BG)
                 } else {
                     ListItem::from(link_item).bg(ALT_ROW_BG_COLOR)
@@ -449,7 +460,7 @@ impl App {
             vec![Constraint::Length(1); 12]
                 .into_iter()
                 .chain(vec![Constraint::Fill(1)])
-                .collect::<Vec<Constraint>>()
+                .collect::<Vec<Constraint>>(),
         )
         .vertical_margin(1)
         .horizontal_margin(2)
@@ -461,7 +472,7 @@ impl App {
             .fg(TEXT_FG_COLOR)
             .border_type(BorderType::Rounded)
             .render(area, buf);
-    
+
         if let Some(i) = self.link_list.state.selected() {
             vec![
                 format!("1.名称: {}", self.link_list.items[i].name),
@@ -490,7 +501,9 @@ impl App {
                         _ => TEXT_FG_COLOR,
                     },
                     4 => match Path::new(&self.link_list.items[i].target_path).is_file() {
-                        false if !self.link_list.items[i].target_path.is_empty() => TEXT_ERROR_COLOR,
+                        false if !self.link_list.items[i].target_path.is_empty() => {
+                            TEXT_ERROR_COLOR
+                        }
                         _ => TEXT_FG_COLOR,
                     },
                     5 => {
@@ -499,24 +512,23 @@ impl App {
                             (false, false) => match icon_location.contains(".dll") {
                                 true => TEXT_FG_COLOR,
                                 false => TEXT_ERROR_COLOR,
-                            }
+                            },
                             _ => TEXT_FG_COLOR,
                         }
                     }
                     _ => TEXT_FG_COLOR,
                 };
 
-                Paragraph::new(text)
-                    .fg(color)
-                    .render(area_vec[index], buf);
+                Paragraph::new(text).fg(color).render(area_vec[index], buf);
             });
         } else {
             let [_, logo_area, _] = Layout::vertical([
                 Constraint::Fill(1),
                 Constraint::Length(7),
                 Constraint::Fill(1),
-            ]).areas(area);
-            
+            ])
+            .areas(area);
+
             let logo_art = "
 ██╗     ██╗███╗   ██╗██╗  ██╗    ███████╗ ██████╗██╗  ██╗ ██████╗ 
 ██║     ██║████╗  ██║██║ ██╔╝    ██╔════╝██╔════╝██║  ██║██╔═══██╗
@@ -548,12 +560,25 @@ impl App {
                 Constraint::Fill(1),
                 Constraint::Fill(1),
                 Constraint::Fill(1),
-            ]).areas(popup_area);
+            ])
+            .areas(popup_area);
 
             let popup_vec = vec![
-                (revise_area, "Revise", "更换所有快捷方式图标[C]\n恢复所有快捷方式图标[R]\n复制快捷方式属性[1~8]"),
-                (load_area, "Load", "载入开始菜单快捷方式[S]\n载入其他目录快捷方式[O]\n载入所有桌面快捷方式[D]"),
-                (other_area, "Other", "打开记录日志[L]\n打开转换图标文件[I]\n清理桌面图标缓存[T]")
+                (
+                    revise_area,
+                    "Revise",
+                    "更换所有快捷方式图标[C]\n恢复所有快捷方式图标[R]\n复制快捷方式属性[1~8]",
+                ),
+                (
+                    load_area,
+                    "Load",
+                    "载入开始菜单快捷方式[S]\n载入其他目录快捷方式[O]\n载入所有桌面快捷方式[D]",
+                ),
+                (
+                    other_area,
+                    "Other",
+                    "打开记录日志[L]\n打开转换图标文件[I]\n清理桌面图标缓存[T]",
+                ),
             ];
 
             for (area, title, text) in popup_vec {
@@ -567,7 +592,7 @@ impl App {
                     .fg(color)
                     .centered()
                     .render(area, buf);
-            };
+            }
         }
     }
 
@@ -576,8 +601,11 @@ impl App {
             .content_length(self.link_list.items.len())
             .position(self.scroll_position);
 
-        Scrollbar::new(ScrollbarOrientation::VerticalRight)
-            .render(area, buf, &mut self.scroll_state);
+        Scrollbar::new(ScrollbarOrientation::VerticalRight).render(
+            area,
+            buf,
+            &mut self.scroll_state,
+        );
     }
 
     fn render_status(&self, area: Rect, buf: &mut Buffer) {
@@ -587,24 +615,32 @@ impl App {
             .bg(NORMAL_ROW_BG)
             .border_type(BorderType::Rounded);
 
-        let changed_text = format!("·{}",
-            self.link_list.items
+        let changed_text = format!(
+            "·{}",
+            self.link_list
+                .items
                 .iter()
                 .filter(|prop| prop.status == Status::Changed)
                 .count()
         );
 
-        let special_text = format!("·{}",
-            self.link_list.items
+        let special_text = format!(
+            "·{}",
+            self.link_list
+                .items
                 .iter()
                 .filter(|prop| EXTENSIONS.contains(&prop.target_ext.as_str()))
                 .count()
         );
 
-        let error_text = format!("·{}",
-            self.link_list.items
+        let error_text = format!(
+            "·{}",
+            self.link_list
+                .items
                 .iter()
-                .filter(|prop| !prop.target_path.is_empty() && !Path::new(&prop.target_path).is_file())
+                .filter(
+                    |prop| !prop.target_path.is_empty() && !Path::new(&prop.target_path).is_file()
+                )
                 .count()
         );
 
@@ -632,9 +668,7 @@ impl From<&LinkProp> for ListItem<'_> {
     fn from(link_prop: &LinkProp) -> Self {
         let line = match link_prop.status {
             Status::Unchanged => Line::styled(format!(" ☐ {}", link_prop.name), TEXT_FG_COLOR),
-            Status::Changed => {
-                Line::styled(format!(" ✓ {}", link_prop.name), TEXT_CHANGED_COLOR)
-            }
+            Status::Changed => Line::styled(format!(" ✓ {}", link_prop.name), TEXT_CHANGED_COLOR),
         };
 
         match EXTENSIONS.contains(&link_prop.target_ext.as_str()) {
