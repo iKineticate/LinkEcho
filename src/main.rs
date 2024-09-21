@@ -84,6 +84,9 @@ struct App {
     scroll_state: ScrollbarState,
     scroll_position: usize,
     show_func_popup: bool,
+    show_confirm_popup: bool,
+    confirm_content: Option<String>,
+    confirm_execute: Option<Execute>,
 }
 
 struct LinkList {
@@ -126,6 +129,12 @@ enum ShortcutSource {
     OtherDir,
 }
 
+enum Execute {
+    RestoreAll,
+    RestoreSingle,
+    ClearIconCache,
+}
+
 impl App {
     fn new(link_vec: Vec<LinkProp>) -> Self {
         let items_len = link_vec.len();
@@ -138,6 +147,9 @@ impl App {
             scroll_state: ScrollbarState::default().content_length(items_len),
             scroll_position: 0,
             show_func_popup: false,
+            show_confirm_popup: false,
+            confirm_content: None,
+            confirm_execute: None
         }
     }
 }
@@ -164,7 +176,9 @@ impl App {
                     KeyCode::Up => self.select(Move::Up),
                     KeyCode::Char('c') | KeyCode::Char('C') => self.change_all_shortcuts_icons(),
                     KeyCode::Char('r') | KeyCode::Char('R') => self.restore_all_shortcuts_icons(),
-                    KeyCode::Char('t') | KeyCode::Char('T') => modify::clear_icon_cache(),
+                    KeyCode::Char('t') | KeyCode::Char('T') => self.clear_icon_cache(),
+                    KeyCode::Char('y') | KeyCode::Char('Y') => self.confirm_execute(true),
+                    KeyCode::Char('n') | KeyCode::Char('N') => self.confirm_execute(false),
                     KeyCode::Char('l') | KeyCode::Char('L') => self.open_log_file(),
                     KeyCode::Char('s') | KeyCode::Char('S') => self.load_shortcuts(ShortcutSource::StartMenu),
                     KeyCode::Char('o') | KeyCode::Char('O') => self.load_shortcuts(ShortcutSource::OtherDir),
@@ -184,17 +198,28 @@ impl App {
                 self.show_func_popup = !self.show_func_popup;
             }
             false => match key.code {
-                KeyCode::Char('q') | KeyCode::Char('Q') | KeyCode::Esc => self.should_exit = true,
+                KeyCode::Char('q') | KeyCode::Char('Q') | KeyCode::Esc => {
+                    if self.show_confirm_popup {
+                        self.show_confirm_popup = !self.show_confirm_popup;
+                    } else {
+                        self.should_exit = true
+                    }
+                },
                 KeyCode::Char('c') | KeyCode::Char('C') | KeyCode::Enter => {
                     self.change_single_link_icon()
                 }
                 KeyCode::Char('r') | KeyCode::Char('R') => self.restore_single_link_icon(),
+                KeyCode::Char('y') | KeyCode::Char('Y') => self.confirm_execute(true),
+                KeyCode::Char('n') | KeyCode::Char('N') => self.confirm_execute(false),
                 KeyCode::Char('j') | KeyCode::Char('J') | KeyCode::Down => self.select(Move::Down),
                 KeyCode::Char('k') | KeyCode::Char('K') | KeyCode::Up => self.select(Move::Up),
                 KeyCode::Char('t') | KeyCode::Char('T') | KeyCode::Home => self.select(Move::First),
                 KeyCode::Char('b') | KeyCode::Char('B') | KeyCode::End => self.select(Move::Last),
                 KeyCode::Char('f') | KeyCode::Char('F') => {
-                    self.show_func_popup = !self.show_func_popup
+                    self.show_func_popup = !self.show_func_popup;
+                    self.show_confirm_popup = false;
+                    self.confirm_content = None;
+                    self.confirm_execute = None;
                 }
                 _ => {}
             },
@@ -235,16 +260,6 @@ impl App {
         };
     }
 
-    fn restore_all_shortcuts_icons(&mut self) {
-        match modify::restore_all_shortcuts_icons(&mut self.link_list.items) {
-            Ok(_) => show_notify(vec!["Successfully set all shortcut icons as default icons"]),
-            Err(err) => show_notify(vec![
-                "Failed to restore icons of all shortcuts",
-                &format!("{err}"),
-            ]),
-        };
-    }
-
     fn change_single_link_icon(&mut self) {
         if let Some(i) = self.link_list.state.selected() {
             let link_path = self.link_list.items[i].path.clone();
@@ -261,20 +276,61 @@ impl App {
         };
     }
 
-    fn restore_single_link_icon(&mut self) {
-        if let Some(i) = self.link_list.state.selected() {
-            let link_path = self.link_list.items[i].path.clone();
-            match modify::restore_single_shortcut_icon(link_path, &mut self.link_list.items[i]) {
-                Ok(_) => show_notify(vec![&format!(
-                    "Successfully set {}'s icon as default icon",
-                    &self.link_list.items[i].name
-                )]),
-                Err(err) => show_notify(vec![&format!(
-                    "Failed to restore the icon of {}\n{err}",
-                    &self.link_list.items[i].name
-                )]),
+    fn confirm_execute(&mut self, should_execute: bool) {
+        if self.show_confirm_popup && should_execute {
+            match self.confirm_execute {
+                Some(Execute::RestoreAll) => {
+                    match modify::restore_all_shortcuts_icons(&mut self.link_list.items) {
+                        Ok(_) => show_notify(vec!["Successfully set all shortcut icons as default icons"]),
+                        Err(err) => show_notify(vec![
+                            "Failed to restore icons of all shortcuts",
+                            &format!("{err}"),
+                        ]),
+                    };
+                },     
+                Some(Execute::RestoreSingle) => {
+                    if let Some(i) = self.link_list.state.selected() {
+                        let link_path = self.link_list.items[i].path.clone();
+                        match modify::restore_single_shortcut_icon(link_path, &mut self.link_list.items[i]) {
+                            Ok(_) => show_notify(vec![&format!(
+                                "Successfully set {}'s icon as default icon",
+                                &self.link_list.items[i].name
+                            )]),
+                            Err(err) => show_notify(vec![&format!(
+                                "Failed to restore the icon of {}\n{err}",
+                                &self.link_list.items[i].name
+                            )]),
+                        };
+                    };
+                },
+                Some(Execute::ClearIconCache) => modify::clear_icon_cache(),
+                None => (),
             };
         };
+        self.show_confirm_popup = false;
+        self.confirm_content = None;
+        self.confirm_execute = None;
+    }
+
+    fn restore_all_shortcuts_icons(&mut self) {
+        self.show_confirm_popup = true;
+        self.confirm_content = Some("是否恢复所有快捷方式为默认图标".to_string());
+        self.confirm_execute = Some(Execute::RestoreAll);
+    }
+
+    fn restore_single_link_icon(&mut self) {
+        if let Some(i) = self.link_list.state.selected() {
+            self.show_confirm_popup = true;
+            self.confirm_content = Some(format!("是否恢复 `{}` 图标为默认", self.link_list.items[i].name));
+            self.confirm_execute = Some(Execute::RestoreSingle);
+
+        };
+    }
+
+    fn clear_icon_cache(&mut self) {
+        self.show_confirm_popup = true;
+        self.confirm_content = Some("是否清理图标缓存".to_string());
+        self.confirm_execute = Some(Execute::ClearIconCache);
     }
 
     fn open_file(path: impl AsRef<std::ffi::OsStr>) {
@@ -369,7 +425,7 @@ impl App {
                 6 => self.link_list.items[i].icon_location.clone(),
                 7 => self.link_list.items[i].icon_index.clone(),
                 8 => self.link_list.items[i].arguments.clone(),
-                _ => String::new(),
+                _ => return,
             };
             ctx.set_contents(text).unwrap();
         };
@@ -393,6 +449,7 @@ impl Widget for &mut App {
         self.render_status(status_area, buf);
         self.render_info(info_area, buf);
         self.render_func_popup(info_area, buf);
+        self.render_confirm_popup(info_area, buf);
     }
 }
 
@@ -646,6 +703,31 @@ impl App {
             .block(block)
             .centered()
             .render(area, buf);
+    }
+
+    fn render_confirm_popup(&self, area: Rect, buf: &mut Buffer) {
+        if self.show_confirm_popup && self.confirm_content.is_some() {
+            let color = Color::Rgb(100, 72, 196);
+            let text = format!("{}\n是[Y] / 否[N]", self.confirm_content.clone().unwrap());
+            let confirm_area = Layout::vertical([
+                Constraint::Fill(1),
+                Constraint::Length(4),
+                Constraint::Fill(1),
+            ])
+            .horizontal_margin(2)
+            .split(area)[1];
+
+            let block = Block::bordered()
+                .fg(color)
+                .border_type(BorderType::Rounded);
+
+            Paragraph::new(text)
+                .block(block)
+                .fg(color)
+                .centered()
+                .render(confirm_area, buf);
+            
+        }
     }
 }
 
