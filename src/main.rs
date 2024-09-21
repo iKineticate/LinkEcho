@@ -113,6 +113,19 @@ enum Status {
     Changed,
 }
 
+enum Move {
+    Up,
+    Down,
+    First,
+    Last,
+}
+
+enum ShortcutSource {
+    Desktop,
+    StartMenu,
+    OtherDir,
+}
+
 impl App {
     fn new(link_vec: Vec<LinkProp>) -> Self {
         let items_len = link_vec.len();
@@ -147,15 +160,15 @@ impl App {
         match self.show_func_popup {
             true => {
                 match key.code {
-                    KeyCode::Down => self.select_next(),
-                    KeyCode::Up => self.select_previous(),
+                    KeyCode::Down => self.select(Move::Down),
+                    KeyCode::Up => self.select(Move::Up),
                     KeyCode::Char('c') | KeyCode::Char('C') => self.change_all_shortcuts_icons(),
                     KeyCode::Char('r') | KeyCode::Char('R') => self.restore_all_shortcuts_icons(),
                     KeyCode::Char('t') | KeyCode::Char('T') => modify::clear_icon_cache(),
                     KeyCode::Char('l') | KeyCode::Char('L') => self.open_log_file(),
-                    KeyCode::Char('s') | KeyCode::Char('S') => self.load_start_menu(),
-                    KeyCode::Char('o') | KeyCode::Char('O') => self.load_other_dir(),
-                    KeyCode::Char('d') | KeyCode::Char('D') => self.load_desktop(),
+                    KeyCode::Char('s') | KeyCode::Char('S') => self.load_shortcuts(ShortcutSource::StartMenu),
+                    KeyCode::Char('o') | KeyCode::Char('O') => self.load_shortcuts(ShortcutSource::OtherDir),
+                    KeyCode::Char('d') | KeyCode::Char('D') => self.load_shortcuts(ShortcutSource::Desktop),
                     KeyCode::Char('w') | KeyCode::Char('W') => self.open_working_dir(),
                     KeyCode::Char('i') | KeyCode::Char('I') => self.open_icon_parent(),
                     KeyCode::Char('1') => self.copy_prop(1),
@@ -176,10 +189,10 @@ impl App {
                     self.change_single_link_icon()
                 }
                 KeyCode::Char('r') | KeyCode::Char('R') => self.restore_single_link_icon(),
-                KeyCode::Char('j') | KeyCode::Char('J') | KeyCode::Down => self.select_next(),
-                KeyCode::Char('k') | KeyCode::Char('K') | KeyCode::Up => self.select_previous(),
-                KeyCode::Char('t') | KeyCode::Char('T') | KeyCode::Home => self.select_first(),
-                KeyCode::Char('b') | KeyCode::Char('B') | KeyCode::End => self.select_last(),
+                KeyCode::Char('j') | KeyCode::Char('J') | KeyCode::Down => self.select(Move::Down),
+                KeyCode::Char('k') | KeyCode::Char('K') | KeyCode::Up => self.select(Move::Up),
+                KeyCode::Char('t') | KeyCode::Char('T') | KeyCode::Home => self.select(Move::First),
+                KeyCode::Char('b') | KeyCode::Char('B') | KeyCode::End => self.select(Move::Last),
                 KeyCode::Char('f') | KeyCode::Char('F') => {
                     self.show_func_popup = !self.show_func_popup
                 }
@@ -188,50 +201,33 @@ impl App {
         };
     }
 
-    fn select_next(&mut self) {
-        let i = match self.link_list.state.selected() {
-            Some(i) => {
-                if i >= self.link_list.items.len() - 1 {
-                    0
-                } else {
-                    i + 1
-                }
+    fn select(&mut self, action: Move) {
+        match action {
+            Move::First => {
+                self.link_list.state.select_first();
+                self.scroll_position = 0;
+            },
+            Move::Last => {
+                self.link_list.state.select_last();
+                self.scroll_position = self.link_list.items.len();
             }
-            None => 0,
-        };
-        self.link_list.state.select(Some(i));
-        self.scroll_position = i;
-    }
-
-    fn select_previous(&mut self) {
-        let i = match self.link_list.state.selected() {
-            Some(i) => {
-                if i == 0 {
-                    self.link_list.items.len() - 1
-                } else {
-                    i - 1
-                }
-            }
-            None => 0,
-        };
-        self.link_list.state.select(Some(i));
-        self.scroll_position = i;
-    }
-
-    fn select_first(&mut self) {
-        self.link_list.state.select_first();
-        self.scroll_position = 0;
-    }
-
-    fn select_last(&mut self) {
-        self.link_list.state.select_last();
-        self.scroll_position = self.link_list.items.len();
+            _ => {
+                let len = self.link_list.items.len();
+                let index = self.link_list.state.selected().map_or(0, |i| match action {
+                    Move::Up => (i + len - 1) % len,
+                    Move::Down => (i + 1) % len,
+                    _ => 0,
+                });
+                self.link_list.state.select(Some(index));
+                self.scroll_position = index;
+            },
+        }
     }
 
     fn change_all_shortcuts_icons(&mut self) {
         match modify::change_all_shortcuts_icons(&mut self.link_list.items) {
             Ok(Some(_)) => show_notify(vec!["Successfully changed icons of all shortcuts"]),
-            Ok(None) => (),
+            Ok(None) => show_notify(vec!["Not all shortcut icons have been replaced"]),
             Err(err) => show_notify(vec![
                 "Failed to change icons of all shortcuts",
                 &format!("{err}"),
@@ -323,52 +319,41 @@ impl App {
         }
     }
 
-    fn load_desktop(&mut self) {
-        let start_menu_path = SystemLinkDirs::Desktop
-            .get_path()
-            .expect("Failed to get desktops path");
-        if let Err(err) = ManageLinkProp::collect(start_menu_path, &mut self.link_list.items) {
-            show_notify(vec![
-                "Failed to load shortcut from Start menu",
-                &format!("{err}"),
-            ]);
+    fn load_shortcuts(&mut self, source: ShortcutSource) {
+        let path = match source {
+            ShortcutSource::Desktop => SystemLinkDirs::Desktop.get_path().ok(),
+            ShortcutSource::StartMenu => SystemLinkDirs::StartMenu.get_path().ok(),
+            ShortcutSource::OtherDir => FileDialog::new()
+                .set_title("Please select the directory where shortcuts are stored")
+                .pick_folder()
+                .map(|p| vec![p]),
         };
-    }
-
-    fn load_start_menu(&mut self) {
-        let start_menu_path = SystemLinkDirs::StartMenu
-            .get_path()
-            .expect("Failed to get desktops path");
-        if let Err(err) = ManageLinkProp::collect(start_menu_path, &mut self.link_list.items) {
-            show_notify(vec![
-                "Failed to load shortcut from Start menu",
-                &format!("{err}"),
-            ]);
-        };
-    }
-
-    fn load_other_dir(&mut self) {
-        match FileDialog::new()
-            .set_title("Please select the directory where shortcuts are stored")
-            .pick_folder()
-        {
+    
+        match path {
             Some(path_buf) => {
-                if let Err(err) =
-                    ManageLinkProp::collect(vec![&path_buf], &mut self.link_list.items)
-                {
-                    show_notify(vec![
-                        &format!(
-                            "Failed to load shortcut from {}",
-                            path_buf.file_name().map_or_else(
+                if let Err(err) = ManageLinkProp::collect(path_buf.clone(), &mut self.link_list.items) {
+                    let source_name = match source {
+                        ShortcutSource::Desktop => "Desktop".to_string(),
+                        ShortcutSource::StartMenu => "Start menu".to_string(),
+                        ShortcutSource::OtherDir => {
+                            path_buf.first().unwrap().file_name().map_or_else(
                                 || "Unable to get the directory name".to_string(),
                                 |n| n.to_string_lossy().to_string()
                             )
-                        ),
+                        }
+                    };
+                    show_notify(vec![
+                        &format!("Failed to load shortcut from {source_name}"),
                         &format!("{err}"),
                     ]);
-                };
+                }
             }
-            None => return,
+            None => {
+                if let ShortcutSource::OtherDir = source {
+                    return;
+                }
+                panic!("Failed to get path");
+            }
         };
     }
 
