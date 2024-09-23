@@ -918,10 +918,10 @@ impl App {
     }
 
     fn render_status(&self, area: Rect, buf: &mut Buffer) {
-        let items = if self.show_search_popup {
-            &self.filter_link_list.items
-        } else {
+        let items = if self.filter_link_list.items.is_empty() {
             &self.link_list.items
+        } else {
+            &self.filter_link_list.items
         };
     
         let block = Block::bordered()
