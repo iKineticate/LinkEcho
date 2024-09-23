@@ -7,7 +7,7 @@ use ratatui::{
         terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
         ExecutableCommand,
     },
-    terminal::Terminal,
+    Terminal,
 };
 
 pub fn init_error_hooks() -> color_eyre::Result<()> {

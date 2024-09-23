@@ -17,7 +17,7 @@ use std::{
 
 use crate::utils::{ensure_image_exists, show_notify};
 use copypasta::{ClipboardContext, ClipboardProvider};
-use crossterm::event::KeyEvent;
+use crossterm::event::KeyEvent; // cursor::MoveTo execute
 use glob::glob;
 use info::{ManageLinkProp, SystemLinkDirs};
 use ratatui::{
@@ -26,7 +26,7 @@ use ratatui::{
     crossterm::event::{self, Event, KeyCode, KeyEventKind},
     layout::{Constraint, Layout, Rect},
     style::{Color, Modifier, Style, Stylize},
-    terminal::Terminal,
+    Terminal,
     text::{Line, Span},
     widgets::{
         Block, BorderType, HighlightSpacing, List, ListItem, ListState, Paragraph, Scrollbar,
@@ -78,22 +78,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-struct App {
-    should_exit: bool,
-    link_list: LinkList,
-    scroll_state: ScrollbarState,
-    scroll_position: usize,
-    show_func_popup: bool,
-    show_confirm_popup: bool,
-    confirm_content: Option<String>,
-    confirm_execute: Option<Execute>,
-}
-
 struct LinkList {
     items: Vec<LinkProp>,
     state: ListState,
 }
 
+#[derive(Clone, PartialEq)]
 pub struct LinkProp {
     name: String,
     path: String,
@@ -110,17 +100,26 @@ pub struct LinkProp {
     accessed_at: String,
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 enum Status {
     Unchanged,
     Changed,
 }
 
-enum Move {
-    Up,
-    Down,
-    First,
-    Last,
+struct App {
+    should_exit: bool,
+    link_list: LinkList,
+    filter_link_list: LinkList,
+    scroll_state: ScrollbarState,
+    scroll_position: usize,
+    input: String,
+    input_editing: bool,
+    character_index: usize,
+    show_search_popup: bool,
+    show_func_popup: bool,
+    show_confirm_popup: bool,
+    confirm_content: Option<String>,
+    confirm_execute: Option<Execute>,
 }
 
 enum ShortcutSource {
@@ -144,12 +143,20 @@ impl App {
                 items: link_vec,
                 state: ListState::default(),
             },
+            filter_link_list: LinkList {
+                items: Vec::new(),
+                state: ListState::default(),
+            },
             scroll_state: ScrollbarState::default().content_length(items_len),
             scroll_position: 0,
+            input: String::new(),
+            input_editing: false,
+            character_index: 0,
+            show_search_popup: false,
             show_func_popup: false,
             show_confirm_popup: false,
             confirm_content: None,
-            confirm_execute: None
+            confirm_execute: None,
         }
     }
 }
@@ -157,7 +164,7 @@ impl App {
 impl App {
     fn run(&mut self, mut terminal: Terminal<impl Backend>) -> io::Result<()> {
         while !self.should_exit {
-            terminal.draw(|f| f.render_widget(&mut *self, f.size()))?;
+            terminal.draw(|f| f.render_widget(&mut *self, f.area()))?;
             if let Event::Key(key) = event::read()? {
                 self.handle_key(key);
             };
@@ -169,83 +176,178 @@ impl App {
         if key.kind != KeyEventKind::Press {
             return;
         };
-        match self.show_func_popup {
-            true => {
-                match key.code {
-                    KeyCode::Down => self.select(Move::Down),
-                    KeyCode::Up => self.select(Move::Up),
-                    KeyCode::Char('c') | KeyCode::Char('C') => self.change_all_shortcuts_icons(),
-                    KeyCode::Char('r') | KeyCode::Char('R') => self.restore_all_shortcuts_icons(),
-                    KeyCode::Char('t') | KeyCode::Char('T') => self.clear_icon_cache(),
-                    KeyCode::Char('y') | KeyCode::Char('Y') => self.confirm_execute(true),
-                    KeyCode::Char('n') | KeyCode::Char('N') => self.confirm_execute(false),
-                    KeyCode::Char('l') | KeyCode::Char('L') => self.open_log_file(),
-                    KeyCode::Char('s') | KeyCode::Char('S') => self.load_shortcuts(ShortcutSource::StartMenu),
-                    KeyCode::Char('o') | KeyCode::Char('O') => self.load_shortcuts(ShortcutSource::OtherDir),
-                    KeyCode::Char('d') | KeyCode::Char('D') => self.load_shortcuts(ShortcutSource::Desktop),
-                    KeyCode::Char('w') | KeyCode::Char('W') => self.open_working_dir(),
-                    KeyCode::Char('i') | KeyCode::Char('I') => self.open_icon_parent(),
-                    KeyCode::Char('1') => self.copy_prop(1),
-                    KeyCode::Char('2') => self.copy_prop(2),
-                    KeyCode::Char('3') => self.copy_prop(3),
-                    KeyCode::Char('4') => self.copy_prop(4),
-                    KeyCode::Char('5') => self.copy_prop(5),
-                    KeyCode::Char('6') => self.copy_prop(6),
-                    KeyCode::Char('7') => self.copy_prop(7),
-                    KeyCode::Char('8') => self.copy_prop(8),
-                    _ => (),
-                };
-                self.show_func_popup = !self.show_func_popup;
+
+        if self.show_search_popup {
+            match key.code {
+                KeyCode::Esc | KeyCode::Enter => self.show_search_popup = false,
+                KeyCode::Backspace => self.delete_char(),
+                KeyCode::Char(to_insert) => self.enter_char(to_insert),
+                _ => (),
             }
-            false => match key.code {
-                KeyCode::Char('q') | KeyCode::Char('Q') | KeyCode::Esc => {
-                    if self.show_confirm_popup {
-                        self.show_confirm_popup = !self.show_confirm_popup;
-                    } else {
-                        self.should_exit = true
-                    }
-                },
-                KeyCode::Char('c') | KeyCode::Char('C') | KeyCode::Enter => {
+            return;
+        }
+
+        if self.show_func_popup {
+            match key.code {
+                KeyCode::Down => self.select(KeyCode::Down),
+                KeyCode::Up => self.select(KeyCode::Up),
+                KeyCode::Char('c') | KeyCode::Char('C') => self.change_all_shortcuts_icons(),
+                KeyCode::Char('r') | KeyCode::Char('R') => self.restore_all_shortcuts_icons(),
+                KeyCode::Char('t') | KeyCode::Char('T') => self.clear_icon_cache(),
+                KeyCode::Char('y') | KeyCode::Char('Y') | KeyCode::Enter => self.confirm_execute(true),
+                KeyCode::Char('n') | KeyCode::Char('N') => self.confirm_execute(false),
+                KeyCode::Char('l') | KeyCode::Char('L') => self.open_log_file(),
+                KeyCode::Char('s') | KeyCode::Char('S') => self.load_shortcuts(ShortcutSource::StartMenu),
+                KeyCode::Char('o') | KeyCode::Char('O') => self.load_shortcuts(ShortcutSource::OtherDir),
+                KeyCode::Char('d') | KeyCode::Char('D') => self.load_shortcuts(ShortcutSource::Desktop),
+                KeyCode::Char('w') | KeyCode::Char('W') => self.open_working_dir(),
+                KeyCode::Char('i') | KeyCode::Char('I') => self.open_icon_parent(),
+                KeyCode::Char('1') => self.copy_prop(1),
+                KeyCode::Char('2') => self.copy_prop(2),
+                KeyCode::Char('3') => self.copy_prop(3),
+                KeyCode::Char('4') => self.copy_prop(4),
+                KeyCode::Char('5') => self.copy_prop(5),
+                KeyCode::Char('6') => self.copy_prop(6),
+                KeyCode::Char('7') => self.copy_prop(7),
+                KeyCode::Char('8') => self.copy_prop(8),
+                _ => (),
+            };
+            self.show_func_popup = !self.show_func_popup;
+            return;
+        }
+
+        match key.code {
+            KeyCode::Char('q') | KeyCode::Char('Q') | KeyCode::Esc => {
+                if self.show_confirm_popup {
+                    self.show_confirm_popup = !self.show_confirm_popup;
+                } else {
+                    self.should_exit = true
+                }
+            },
+            KeyCode::Char('c') | KeyCode::Char('C') => self.change_single_link_icon(),
+            KeyCode::Enter => {
+                if self.show_confirm_popup {
+                    self.confirm_execute(true)
+                } else {
                     self.change_single_link_icon()
                 }
-                KeyCode::Char('r') | KeyCode::Char('R') => self.restore_single_link_icon(),
-                KeyCode::Char('y') | KeyCode::Char('Y') => self.confirm_execute(true),
-                KeyCode::Char('n') | KeyCode::Char('N') => self.confirm_execute(false),
-                KeyCode::Char('j') | KeyCode::Char('J') | KeyCode::Down => self.select(Move::Down),
-                KeyCode::Char('k') | KeyCode::Char('K') | KeyCode::Up => self.select(Move::Up),
-                KeyCode::Char('t') | KeyCode::Char('T') | KeyCode::Home => self.select(Move::First),
-                KeyCode::Char('b') | KeyCode::Char('B') | KeyCode::End => self.select(Move::Last),
-                KeyCode::Char('f') | KeyCode::Char('F') => {
-                    self.show_func_popup = !self.show_func_popup;
-                    self.show_confirm_popup = false;
-                    self.confirm_content = None;
-                    self.confirm_execute = None;
-                }
-                _ => {}
+            }
+            KeyCode::Char('r') | KeyCode::Char('R') => self.restore_single_link_icon(),
+            KeyCode::Char('y') | KeyCode::Char('Y') => self.confirm_execute(true),
+            KeyCode::Char('n') | KeyCode::Char('N') => self.confirm_execute(false),
+            KeyCode::Char('j') | KeyCode::Char('J') | KeyCode::Down => self.select(KeyCode::Down),
+            KeyCode::Char('k') | KeyCode::Char('K') | KeyCode::Up => self.select(KeyCode::Up),
+            KeyCode::Char('t') | KeyCode::Char('T') | KeyCode::Home => self.select(KeyCode::Home),
+            KeyCode::Char('b') | KeyCode::Char('B') | KeyCode::End => self.select(KeyCode::End),
+            KeyCode::Left => self.move_cursor(KeyCode::Left),
+            KeyCode::Right => self.move_cursor(KeyCode::Right),
+            KeyCode::Char('s') | KeyCode::Char('S') => {
+                self.show_search_popup = !self.show_search_popup;
+                self.input_editing = !self.input_editing;
+                self.show_func_popup = false;
+                self.show_confirm_popup = false;
+                self.link_list.state.select(None);
+                self.filter_link_list.state.select(None);
             },
+            KeyCode::Char('f') | KeyCode::Char('F') => {
+                self.show_func_popup = !self.show_func_popup;
+                self.show_search_popup = false;
+                self.show_confirm_popup = false;
+                self.confirm_content = None;
+                self.confirm_execute = None;
+            },
+            _ => {}
         };
     }
 
-    fn select(&mut self, action: Move) {
+    fn select(&mut self, action: KeyCode) {
         match action {
-            Move::First => {
-                self.link_list.state.select_first();
+            KeyCode::Home => {
+                if self.filter_link_list.items.is_empty() {
+                    self.link_list.state.select_first();
+                } else {
+                    self.filter_link_list.state.select_first();
+                };
                 self.scroll_position = 0;
             },
-            Move::Last => {
-                self.link_list.state.select_last();
-                self.scroll_position = self.link_list.items.len();
+            KeyCode::End => {
+                self.scroll_position = if self.filter_link_list.items.is_empty() {
+                    self.link_list.state.select_last();
+                    self.link_list.items.len()
+                } else {
+                    self.filter_link_list.state.select_last();
+                    self.filter_link_list.items.len()
+                }
             }
             _ => {
-                let len = self.link_list.items.len();
-                let index = self.link_list.state.selected().map_or(0, |i| match action {
-                    Move::Up => (i + len - 1) % len,
-                    Move::Down => (i + 1) % len,
+                let (list, state) = if self.filter_link_list.items.is_empty() {
+                    (&self.link_list.items, &mut self.link_list.state)
+                } else {
+                    (
+                        &self.filter_link_list.items,
+                        &mut self.filter_link_list.state
+                    )
+                };
+                
+                let len = list.len();
+                let index = state.selected().map_or(0, |i| match action {
+                    KeyCode::Up => (i + len - 1) % len,
+                    KeyCode::Down => (i + 1) % len,
                     _ => 0,
                 });
-                self.link_list.state.select(Some(index));
+                state.select(Some(index));
                 self.scroll_position = index;
             },
+        }
+    }
+
+    fn move_cursor(&mut self, action: KeyCode) {
+        if self.show_search_popup {
+            match action {
+                KeyCode::Left => {
+                    let cursor_moved_left = self.character_index.saturating_sub(1);
+                    self.character_index = self.clamp_cursor(cursor_moved_left);
+                },
+                KeyCode::Right => {
+                    let cursor_moved_right = self.character_index.saturating_add(1);
+                    self.character_index = self.clamp_cursor(cursor_moved_right);
+                },
+                _ => (),
+            }
+        } else {
+            self.character_index = 0;
+        }
+    }
+
+    fn clamp_cursor(&self, new_cursor_pos: usize) -> usize {
+        new_cursor_pos.clamp(0, self.input.chars().count())
+    }
+    
+    fn enter_char(&mut self, new_char: char) {
+        let index = self.byte_index();
+        self.input.insert(index, new_char);
+        self.move_cursor(KeyCode::Right);
+    }
+
+    fn byte_index(&self) -> usize {
+        self.input
+            .char_indices()
+            .map(|(i, _)| i)
+            .nth(self.character_index)
+            .unwrap_or(self.input.len())
+    }
+
+    fn delete_char(&mut self) {
+        let is_not_cursor_leftmost = self.character_index != 0;
+        if is_not_cursor_leftmost {
+            let current_index = self.character_index;
+            let from_left_to_current_index = current_index - 1;
+
+            let before_char_to_delete = self.input.chars().take(from_left_to_current_index);
+            let after_char_to_delete = self.input.chars().skip(current_index);
+
+            self.input = before_char_to_delete.chain(after_char_to_delete).collect();
+            self.move_cursor(KeyCode::Left);
         }
     }
 
@@ -261,16 +363,43 @@ impl App {
     }
 
     fn change_single_link_icon(&mut self) {
-        if let Some(i) = self.link_list.state.selected() {
-            let link_path = self.link_list.items[i].path.clone();
-            match modify::change_single_shortcut_icon(link_path, &mut self.link_list.items[i]) {
+        // 提取过滤列表和原列表的相关联内容
+        let (items, state, filter_item) = if self.filter_link_list.items.is_empty() {
+            (&mut self.link_list.items, &mut self.link_list.state, None)
+        } else {
+            if let Some(i) = self.filter_link_list.state.selected() {
+                // 找到过滤项在原列表中的索引
+                let index = self
+                    .link_list
+                    .items
+                    .iter()
+                    .position(|item| item == &self.filter_link_list.items[i])
+                    .unwrap_or(0);
+
+                (
+                    &mut self.filter_link_list.items,
+                    &mut self.filter_link_list.state,
+                    Some(&mut self.link_list.items[index])
+                )
+            } else {
+                (
+                    &mut self.filter_link_list.items,
+                    &mut self.link_list.state,
+                    None
+                )
+            }
+        };
+
+        if let Some(i) = state.selected() {
+            let link_path = items[i].path.clone();
+            match modify::change_single_shortcut_icon(link_path, &mut items[i], filter_item) {
                 Ok(Some(name)) => {
                     show_notify(vec![&format!("Successfully changed the icon of {name}")])
-                }
-                Ok(None) => (),
+                },
+                Ok(None) => (), // 未选择图片
                 Err(err) => show_notify(vec![&format!(
                     "Successfully changed the icon of {}\n{err}",
-                    &self.link_list.items[i].name
+                    &items[i].name
                 )]),
             };
         };
@@ -278,27 +407,56 @@ impl App {
 
     fn confirm_execute(&mut self, should_execute: bool) {
         if self.show_confirm_popup && should_execute {
+            let (items, state, filter_item) = if self.filter_link_list.items.is_empty() {
+                (&mut self.link_list.items, &mut self.link_list.state, None)
+            } else {
+                if let Some(i) = self.filter_link_list.state.selected() {
+                    // 找到过滤项在原列表中的索引
+                    let index = self
+                        .link_list.items
+                        .iter()
+                        .position(|item| item == &self.filter_link_list.items[i])
+                        .unwrap_or(0);
+
+                    (
+                        &mut self.filter_link_list.items,
+                        &mut self.filter_link_list.state,
+                        Some(&mut self.link_list.items[index])
+                    )
+                } else {
+                    (
+                        &mut self.filter_link_list.items,
+                        &mut self.link_list.state,
+                        None
+                    )
+                }
+            };
+
             match self.confirm_execute {
                 Some(Execute::RestoreAll) => {
                     match modify::restore_all_shortcuts_icons(&mut self.link_list.items) {
-                        Ok(_) => show_notify(vec!["Successfully set all shortcut icons as default icons"]),
+                        Ok(_) => show_notify(vec!["Reset all shortcut icon to default"]),
                         Err(err) => show_notify(vec![
-                            "Failed to restore icons of all shortcuts",
+                            "Failed to reset all shortcut icon to default",
                             &format!("{err}"),
                         ]),
                     };
                 },     
                 Some(Execute::RestoreSingle) => {
-                    if let Some(i) = self.link_list.state.selected() {
-                        let link_path = self.link_list.items[i].path.clone();
-                        match modify::restore_single_shortcut_icon(link_path, &mut self.link_list.items[i]) {
+                    if let Some(i) = state.selected() {
+                        let link_path = items[i].path.clone();
+                        match modify::restore_single_shortcut_icon(
+                            link_path, 
+                            &mut items[i], 
+                            filter_item
+                        ) {
                             Ok(_) => show_notify(vec![&format!(
-                                "Successfully set {}'s icon as default icon",
-                                &self.link_list.items[i].name
+                                "Reset the icon of {} to default",
+                                &items[i].name
                             )]),
                             Err(err) => show_notify(vec![&format!(
-                                "Failed to restore the icon of {}\n{err}",
-                                &self.link_list.items[i].name
+                                "Failed to reset the icon of {}\n{err} to default",
+                                &items[i].name
                             )]),
                         };
                     };
@@ -319,9 +477,18 @@ impl App {
     }
 
     fn restore_single_link_icon(&mut self) {
-        if let Some(i) = self.link_list.state.selected() {
+        let (items, state) = if self.filter_link_list.items.is_empty() {
+            (&mut self.link_list.items, &mut self.link_list.state)
+        } else {
+            (
+                &mut self.filter_link_list.items,
+                &mut self.filter_link_list.state,
+            )
+        };
+
+        if let Some(i) = state.selected() {
             self.show_confirm_popup = true;
-            self.confirm_content = Some(format!("是否恢复 `{}` 图标为默认", self.link_list.items[i].name));
+            self.confirm_content = Some(format!("是否恢复 {} 图标为默认图标", &items[i].name));
             self.confirm_execute = Some(Execute::RestoreSingle);
 
         };
@@ -361,8 +528,14 @@ impl App {
     }
 
     fn open_icon_parent(&self) {
-        if let Some(i) = self.link_list.state.selected() {
-            match Path::new(&self.link_list.items[i].icon_location).parent() {
+        let (items, state) = if self.filter_link_list.items.is_empty() {
+            (&self.link_list.items, &self.link_list.state)
+        } else {
+            (&self.filter_link_list.items, &self.filter_link_list.state)
+        };
+
+        if let Some(i) = state.selected() {
+            match Path::new(&items[i].icon_location).parent() {
                 Some(parent) => App::open_file(parent),
                 None => show_notify(vec!["Failed to get the directory of the ICON"]),
             }
@@ -370,8 +543,14 @@ impl App {
     }
 
     fn open_working_dir(&self) {
-        if let Some(i) = self.link_list.state.selected() {
-            App::open_file(&self.link_list.items[i].target_dir)
+        let (items, state) = if self.filter_link_list.items.is_empty() {
+            (&self.link_list.items, &self.link_list.state)
+        } else {
+            (&self.filter_link_list.items, &self.filter_link_list.state)
+        };
+
+        if let Some(i) = state.selected() {
+            App::open_file(items[i].target_dir.clone())
         }
     }
 
@@ -387,14 +566,16 @@ impl App {
     
         match path {
             Some(path_buf) => {
-                if let Err(err) = ManageLinkProp::collect(path_buf.clone(), &mut self.link_list.items) {
+                if let Err(err) = 
+                    ManageLinkProp::collect(path_buf.clone(), &mut self.link_list.items)
+                {
                     let source_name = match source {
                         ShortcutSource::Desktop => "Desktop".to_string(),
                         ShortcutSource::StartMenu => "Start menu".to_string(),
                         ShortcutSource::OtherDir => {
                             path_buf.first().unwrap().file_name().map_or_else(
                                 || "Unable to get the directory name".to_string(),
-                                |n| n.to_string_lossy().to_string()
+                                |n| n.to_string_lossy().to_string(),
                             )
                         }
                     };
@@ -413,18 +594,24 @@ impl App {
         };
     }
 
-    fn copy_prop(&mut self, index: u8) {
-        if let Some(i) = self.link_list.state.selected() {
+    fn copy_prop(&self, index: u8) {
+        let (items, state) = if self.filter_link_list.items.is_empty() {
+            (&self.link_list.items, &self.link_list.state)
+        } else {
+            (&self.filter_link_list.items, &self.filter_link_list.state)
+        };
+
+        if let Some(i) = state.selected() {
             let mut ctx = ClipboardContext::new().unwrap();
             let text = match index {
-                1 => self.link_list.items[i].name.clone(),
-                2 => self.link_list.items[i].path.clone(),
-                3 => self.link_list.items[i].target_ext.clone(),
-                4 => self.link_list.items[i].target_dir.clone(),
-                5 => self.link_list.items[i].target_path.clone(),
-                6 => self.link_list.items[i].icon_location.clone(),
-                7 => self.link_list.items[i].icon_index.clone(),
-                8 => self.link_list.items[i].arguments.clone(),
+                1 => items[i].name.clone(),
+                2 => items[i].path.clone(),
+                3 => items[i].target_ext.clone(),
+                4 => items[i].target_dir.clone(),
+                5 => items[i].target_path.clone(),
+                6 => items[i].icon_location.clone(),
+                7 => items[i].icon_index.clone(),
+                8 => items[i].arguments.clone(),
                 _ => return,
             };
             ctx.set_contents(text).unwrap();
@@ -448,6 +635,7 @@ impl Widget for &mut App {
         self.render_scrollbar(list_area, buf);
         self.render_status(status_area, buf);
         self.render_info(info_area, buf);
+        self.render_search_popup(info_area, buf);
         self.render_func_popup(info_area, buf);
         self.render_confirm_popup(info_area, buf);
     }
@@ -456,7 +644,7 @@ impl Widget for &mut App {
 /// Rendering logic for the app
 impl App {
     fn render_footer(area: Rect, buf: &mut Buffer) {
-        Paragraph::new("退出[Q] | 更换[C] | 恢复[R] | 功能[F] | 返回顶部/底部[T/B]")
+        Paragraph::new("退出[Q] | 更换[C] | 恢复[R] | 功能[F] | 搜索[S] | 返回顶部/底部[T/B]")
             .fg(TEXT_FG_COLOR)
             .bg(NORMAL_ROW_BG)
             .centered()
@@ -470,18 +658,41 @@ impl App {
             .bg(NORMAL_ROW_BG)
             .border_type(BorderType::Rounded);
 
+        let mut search_index: usize = 0;
+        let mut filter_link_list_items: Vec<LinkProp> = Vec::new();
+
         // 遍历"项目"(App的items)中的所有元素，并对其进行风格化处理在收集
         let items: Vec<ListItem> = self
             .link_list
             .items
             .iter()
             .enumerate()
-            .map(|(i, link_item)| {
-                if i % 2 == 0 {
-                    // 根据奇偶数赋予不同背景颜色
-                    ListItem::from(link_item).bg(NORMAL_ROW_BG)
+            .filter_map(|(i, link_item)| {
+                let matches_search = link_item
+                    .name
+                    .to_lowercase()
+                    .contains(&self.input.to_lowercase());
+
+                let index = if matches_search {
+                    filter_link_list_items.push(link_item.clone());
+                    search_index += 1;
+                    search_index
                 } else {
-                    ListItem::from(link_item).bg(ALT_ROW_BG_COLOR)
+                    i
+                };
+
+                // 根据索引的奇偶性来决定背景颜色
+                let background = if index % 2 == 0 {
+                    NORMAL_ROW_BG
+                } else {
+                    ALT_ROW_BG_COLOR
+                };
+
+                // 仅当匹配搜索条件或未显示搜索弹窗时返回项
+                if matches_search {
+                    Some(ListItem::from(link_item).bg(background))
+                } else {
+                    None
                 }
             })
             .collect();
@@ -493,8 +704,13 @@ impl App {
             .highlight_symbol(">")
             .highlight_spacing(HighlightSpacing::Always);
 
-        // 由于 `Widget` 和 `StatefulWidget` 共享相同的方法名 `render` ，我们需要对该特征方法进行歧义区分
-        StatefulWidget::render(list, area, buf, &mut self.link_list.state);
+        if filter_link_list_items.is_empty() {
+            // 由于 `Widget` 和 `StatefulWidget` 共享相同的方法名 `render` ，我们需要对该特征方法进行歧义区分
+            StatefulWidget::render(list, area, buf, &mut self.link_list.state);
+        } else {
+            self.filter_link_list.items = filter_link_list_items;
+            StatefulWidget::render(list, area, buf, &mut self.filter_link_list.state);
+        };
     }
 
     fn render_info(&self, area: Rect, buf: &mut Buffer) {
@@ -515,41 +731,45 @@ impl App {
             .border_type(BorderType::Rounded)
             .render(area, buf);
 
-        if let Some(i) = self.link_list.state.selected() {
+        let (items, state) = if self.filter_link_list.items.is_empty() {
+            (&self.link_list.items, &self.link_list.state)
+        } else {
+            (&self.filter_link_list.items, &self.filter_link_list.state)
+        };
+
+        if let Some(i) = state.selected() {
             vec![
-                format!("1.名称: {}", self.link_list.items[i].name),
-                format!("2.路径: {}", self.link_list.items[i].path),
-                format!("3.目标扩展: {}", self.link_list.items[i].target_ext),
-                format!("4.目标目录: {}", self.link_list.items[i].target_dir),
-                format!("5.目标路径: {}", self.link_list.items[i].target_path),
-                format!("6.图标位置: {}", self.link_list.items[i].icon_location),
-                format!("7.图标索引: {}", self.link_list.items[i].icon_index),
-                format!("8.运行参数: {}", self.link_list.items[i].arguments),
-                format!("9.文件大小: {}", self.link_list.items[i].file_size),
-                format!("10.创建时间: {}", self.link_list.items[i].created_at),
-                format!("11.修改时间: {}", self.link_list.items[i].updated_at),
-                format!("12.访问时间: {}", self.link_list.items[i].accessed_at),
+                format!("1.名称: {}", items[i].name),
+                format!("2.路径: {}", items[i].path),
+                format!("3.目标扩展: {}", items[i].target_ext),
+                format!("4.目标目录: {}", items[i].target_dir),
+                format!("5.目标路径: {}", items[i].target_path),
+                format!("6.图标位置: {}", items[i].icon_location),
+                format!("7.图标索引: {}", items[i].icon_index),
+                format!("8.运行参数: {}", items[i].arguments),
+                format!("9.文件大小: {}", items[i].file_size),
+                format!("10.创建时间: {}", items[i].created_at),
+                format!("11.修改时间: {}", items[i].updated_at),
+                format!("12.访问时间: {}", items[i].accessed_at),
             ]
             .into_iter()
             .enumerate()
             .for_each(|(index, text)| {
                 let color = match index {
-                    2 => match EXTENSIONS.contains(&self.link_list.items[i].target_ext.as_str()) {
+                    2 => match EXTENSIONS.contains(&items[i].target_ext.as_str()) {
                         true => TEXT_SPECIAL_COLOR,
                         false => TEXT_FG_COLOR,
                     },
-                    3 => match Path::new(&self.link_list.items[i].target_dir).is_dir() {
-                        false if !self.link_list.items[i].target_dir.is_empty() => TEXT_ERROR_COLOR,
+                    3 => match Path::new(&items[i].target_dir).is_dir() {
+                        false if !items[i].target_dir.is_empty() => TEXT_ERROR_COLOR,
                         _ => TEXT_FG_COLOR,
                     },
-                    4 => match Path::new(&self.link_list.items[i].target_path).is_file() {
-                        false if !self.link_list.items[i].target_path.is_empty() => {
-                            TEXT_ERROR_COLOR
-                        }
+                    4 => match Path::new(&items[i].target_path).is_file() {
+                        false if !items[i].target_path.is_empty() => TEXT_ERROR_COLOR,
                         _ => TEXT_FG_COLOR,
                     },
                     5 => {
-                        let icon_location = &self.link_list.items[i].icon_location;
+                        let icon_location = &items[i].icon_location;
                         match (Path::new(icon_location).is_file(), icon_location.is_empty()) {
                             (false, false) => match icon_location.contains(".dll") {
                                 true => TEXT_FG_COLOR,
@@ -564,6 +784,10 @@ impl App {
                 Paragraph::new(text).fg(color).render(area_vec[index], buf);
             });
         } else {
+            if self.show_search_popup {
+                return;
+            };
+
             let [_, logo_area, _] = Layout::vertical([
                 Constraint::Fill(1),
                 Constraint::Length(7),
@@ -583,6 +807,43 @@ impl App {
                 .centered()
                 .fg(TEXT_FG_COLOR)
                 .render(logo_area, buf);
+        }
+    }
+
+    fn render_search_popup(&mut self, area: Rect, buf: &mut Buffer) {
+        if self.show_search_popup {
+            self.show_confirm_popup = false;
+            self.show_func_popup = false;
+
+            if !self.input.is_empty() {
+                self.scroll_position = 0;
+            }
+
+            let popup_area = Layout::vertical([
+                Constraint::Fill(1),
+                Constraint::Length(3),
+                Constraint::Fill(1),
+            ])
+            .horizontal_margin(4)
+            .split(area)[1];
+
+            let color = Color::Rgb(100, 72, 196);
+
+            let block = Block::bordered()
+                .title("Search")
+                .fg(color)
+                .border_type(BorderType::Rounded);
+
+            Paragraph::new(self.input.clone())
+                .block(block)
+                .centered()
+                .fg(TEXT_FG_COLOR)
+                .render(popup_area, buf);
+
+            // execute!(
+            //     std::io::stdout(),
+            //     MoveTo(popup_area.x + self.character_index as u16 + 1, popup_area.y + 1) // 使用 Crossterm 移动光标
+            // ).unwrap();
         }
     }
 
@@ -639,8 +900,14 @@ impl App {
     }
 
     fn render_scrollbar(&mut self, area: Rect, buf: &mut Buffer) {
+        let items_len = if self.filter_link_list.items.is_empty() {
+            self.link_list.items.len()
+        } else {
+            self.filter_link_list.items.len()
+        };
+        
         self.scroll_state = ScrollbarState::default()
-            .content_length(self.link_list.items.len())
+            .content_length(items_len)
             .position(self.scroll_position);
 
         Scrollbar::new(ScrollbarOrientation::VerticalRight).render(
@@ -651,6 +918,12 @@ impl App {
     }
 
     fn render_status(&self, area: Rect, buf: &mut Buffer) {
+        let items = if self.show_search_popup {
+            &self.filter_link_list.items
+        } else {
+            &self.link_list.items
+        };
+    
         let block = Block::bordered()
             .title("Status")
             .fg(TEXT_FG_COLOR)
@@ -659,8 +932,7 @@ impl App {
 
         let changed_text = format!(
             "·{}",
-            self.link_list
-                .items
+            items
                 .iter()
                 .filter(|prop| prop.status == Status::Changed)
                 .count()
@@ -668,8 +940,7 @@ impl App {
 
         let special_text = format!(
             "·{}",
-            self.link_list
-                .items
+            items
                 .iter()
                 .filter(|prop| EXTENSIONS.contains(&prop.target_ext.as_str()))
                 .count()
@@ -677,8 +948,7 @@ impl App {
 
         let error_text = format!(
             "·{}",
-            self.link_list
-                .items
+            items
                 .iter()
                 .filter(
                     |prop| !prop.target_path.is_empty() && !Path::new(&prop.target_path).is_file()
@@ -686,7 +956,7 @@ impl App {
                 .count()
         );
 
-        let total_text = format!("·{}", self.link_list.items.len());
+        let total_text = format!("·{}", items.len());
 
         let text = vec![
             Span::styled(changed_text, Style::new().fg(TEXT_CHANGED_COLOR)),
@@ -717,9 +987,7 @@ impl App {
             .horizontal_margin(2)
             .split(area)[1];
 
-            let block = Block::bordered()
-                .fg(color)
-                .border_type(BorderType::Rounded);
+            let block = Block::bordered().fg(color).border_type(BorderType::Rounded);
 
             Paragraph::new(text)
                 .block(block)

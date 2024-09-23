@@ -279,7 +279,8 @@ pub fn restore_all_shortcuts_icons(
 pub fn change_single_shortcut_icon(
     link_path: String,
     link_prop: &mut LinkProp,
-) -> Result<Option<&str>, Box<dyn std::error::Error>> {
+    filter_link_prop: Option<&mut LinkProp>,
+) -> Result<Option<String>, Box<dyn std::error::Error>> {
     // Initialize COM library - 初始化 COM 库
     let _com_lib = winsafe::CoInitializeEx(
         // keep guard alive
@@ -379,6 +380,10 @@ pub fn change_single_shortcut_icon(
 
     // Update the shortcut properties - 更新快捷方式属性
     if link_prop.icon_location != icon_path && icon_path != link_prop.path {
+        if let Some(prop) = filter_link_prop {
+            prop.icon_location = icon_path.clone();
+            prop.status = Status::Changed;
+        };
         link_prop.icon_location = icon_path.clone();
         link_prop.status = Status::Changed;
     } else {
@@ -391,12 +396,13 @@ pub fn change_single_shortcut_icon(
         format!("Successfully change the shortcut icon:\n{link_path}\n{icon_path}"),
     )?;
 
-    Ok(Some(&link_prop.name))
+    Ok(Some(link_prop.name.clone()))
 }
 
 pub fn restore_single_shortcut_icon(
     link_path: String,
     link_prop: &mut LinkProp,
+    filter_link_prop: Option<&mut LinkProp>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // 在main.rs里通知是否恢复默认，不恢复则返回Ok(None)
     //
@@ -439,6 +445,11 @@ pub fn restore_single_shortcut_icon(
     // Update the shortcut properties - 更新快捷方式属性
     link_prop.icon_location = icon_path.clone();
     link_prop.status = Status::Unchanged;
+    // 若为筛选的快捷方式，则更新所有项目中的该快捷方式属性
+    if let Some(prop) = filter_link_prop {
+        prop.icon_location = icon_path.clone();
+        prop.status = Status::Unchanged;
+    };
 
     write_log(
         &mut log_file,
