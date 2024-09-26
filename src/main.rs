@@ -17,7 +17,7 @@ use std::{
 
 use crate::utils::{ensure_image_exists, show_notify};
 use copypasta::{ClipboardContext, ClipboardProvider};
-use crossterm::event::KeyEvent; // cursor::MoveTo execute
+use crossterm::event::KeyEvent;
 use glob::glob;
 use info::{ManageLinkProp, SystemLinkDirs};
 use ratatui::{
@@ -839,11 +839,6 @@ impl App {
                 .centered()
                 .fg(TEXT_FG_COLOR)
                 .render(popup_area, buf);
-
-            // execute!(
-            //     std::io::stdout(),
-            //     MoveTo(popup_area.x + self.character_index as u16 + 1, popup_area.y + 1) // 使用 Crossterm 移动光标
-            // ).unwrap();
         }
     }
 
