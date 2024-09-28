@@ -21,7 +21,7 @@ LinkEcho can assess the security risks of shortcuts, allow the replacement of in
 * **Security Risk Assessment**: Orange warning for shortcuts that may pose a risk (some malware may write commands to shortcuts to gain access).
 * **Shortcut Validation**: Red marking indicates that a shortcut or one of its properties is invalid.
 * **Replace Specific Shortcut Icon**: Change the icon for a designated shortcut.
-* **Batch auto change shortcuts icons**: After selecting an icon directory, icons can be replaced based on name matching. For instance, Chrome Canary can automatically select the icon named Chrome, while Edge can also choose the icon named Chrome.
+* **Batch auto change shortcuts icons**: After selecting an icon directory, icons can be replaced based on name matching. For instance, `Chrome Canary` can automatically select the icon named `Chrome,` while `Edge` can also choose the icon named `Microsoft Edge`.
 * **Restore Shortcut Icon**: Restore specific or all shortcut icons to default.
 
 *Windows 终端* 无法可视化图标，如需更丰富的功能（如更换快捷方式图标、选择系统图标），建议使用[AHK-ChangeIcon](https://github.com/iKineticate/AHK-ChangeIcon)。
