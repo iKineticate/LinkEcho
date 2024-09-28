@@ -57,7 +57,7 @@ static EXTENSIONS: &[&str] = &[
 
 fn main() -> Result<(), Box<dyn Error>> {
     language::set_locale();
-    // rust_i18n::set_locale("en");
+
     let logo_path = env::temp_dir().join("linkecho.png");
     ensure_image_exists(logo_path, LOGO_IMAGE);
 
