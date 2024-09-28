@@ -20,6 +20,7 @@ color-eyre = "0.6.3"
 chrono = "0.4.38" # 获取时间
 copypasta = "0.10.1" # 粘贴至剪切板
 win-toast-notify = "0.1.5"
+rust-i18n = "3" # 国际化文本
 # 以下是图标转换库相关库
 image = "0.24"
 console = "0.15"
@@ -28,6 +29,12 @@ rayon = "1.5"
 resvg = "0.23"
 usvg = "0.23"
 tiny-skia = "0.6"
+
+[dependencies.windows]
+version = "0.58.0"
+features = [
+    "Win32_Globalization",
+]
 
 [build-dependencies]
 embed-resource = "2.4" # 载入清单

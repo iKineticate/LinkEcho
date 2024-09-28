@@ -1,0 +1,183 @@
+_version: 2
+
+change.all:
+  en: Successfully replaced all matched shortcut icons
+  zh-CN: 已更换所有已匹配的快捷方式图标
+change.all.no:
+  en: Not all shortcut icons have been replaced
+  zh-CN: 暂无快捷方式图标被替换
+change.all.failed:
+  en: Failed to change icons of all shortcuts
+  zh-CN: 无法更换所有已匹配的快捷方式图标
+
+change.one.name:
+  en: The shortcut icon has been replaced
+  zh-CN: 已更换该快捷方式图标
+change.one.icon:
+  en: Icon Name
+  zh-CN: 图标名称
+change.one.failed:
+  en: Failed to replace this shortcut icon
+  zh-CN: 无法替换该快捷方式图标
+  
+reset.all:
+  en: Reset all shortcut icon to default
+  zh-CN: 将所有快捷图标重置为默认
+reset.all.failed:
+  en: Failed to reset all shortcut icon to default
+  zh-CN: 无法将所有快捷图标重置为默认
+should.reset.all:
+  en: Are all shortcuts restored to default?
+  zh-CN: 是否恢复所有快捷方式为默认图标？
+
+reset.one:
+  en: The shortcut's icon has been reset to default
+  zh-CN: 已将该快捷方式的图标重置为默认
+reset.one.failed:
+  en: Failed to reset the icon of the shortcut to default
+  zh-CN: 无法将该快捷方式的图标重置为默认
+should.reset.one:
+  en: Does it reset this shortcut to default?
+  zh-CN: 是否将该快捷方式重置为默认？
+
+should.clear.icon.cache:
+  en: Does it clear the system icon cache?
+  zh-CN: 是否清理系统图标缓存？
+
+open.failed:
+  en: Failed to open the file
+  zh-CN: 无法打开文件
+open.failed.icon_parent:
+  en: Failed to get the directory of the ICON
+  zh-CN: 无法获取该图标的目录
+
+log.non-existent:
+  en: Log file does not exist and cannot be created
+  zh-CN: 日志文件不存在且无法被创建
+log.error:
+  en: Error checking if log file exists
+  zh-CN: 检查日志文件是否存在出错
+  
+select.folder:
+  en: Please select the directory where shortcuts are stored
+  zh-CN: 请选择存放快捷方式的目录
+
+load.failed:
+  en: Failed to load shortcut from the folder
+  zh-CN: 无法从该文件夹载入快捷方式
+load.failed.name:
+  en: Unable to get the directory name
+  zh-CN: 无法获取该文件夹名称
+
+footer:
+  en: Exit [Q] | Change [C] | Restore [R] | Function [F] | Search [S] | Top/Bottom [T/B]
+  zh-CN: 退出[Q] | 更换[C] | 恢复[R] | 功能[F] | 搜索[S] | 返回顶部/底部[T/B]
+
+name:
+  en: Name
+  zh-CN: 名称
+
+prop:
+  en: Properties
+  zh-CN: 属性
+
+path:
+  en: Path
+  zh-CN: 路径
+
+target_ext:
+  en: 'Target Ext  '
+  zh-CN: 目标扩展
+
+target_dir:
+  en: 'Working Dir '
+  zh-CN: 工作目录
+
+target_path:
+  en: 'Target Path '
+  zh-CN: 目标路径
+
+icon_path:
+  en: 'Icon Path   '
+  zh-CN: 图标路径
+
+icon_index:
+  en: 'Icon Index  '
+  zh-CN: 图标索引
+
+arguments:
+  en: 'Arguments   '
+  zh-CN: 运行参数
+
+file_size:
+  en: 'File Size   '
+  zh-CN: 文件大小
+
+created_at:
+  en: 'Create Time'
+  zh-CN: 创建时间
+
+updated_at: 
+  en: 'Modify Time'
+  zh-CN: 修改时间
+
+accessed_at:
+  en: 'Access Time'
+  zh-CN: 访问时间
+
+search:
+  en: Search
+  zh-CN: 搜索
+
+load:
+  en: Load
+  zh-CN: 载入
+
+load_content:
+  en: |
+    Start Menu      [S]
+    Other Directory [O]
+    All Desktop     [D]
+
+  zh-CN: |
+    载入开始菜单快捷方式[S]
+    载入其他目录快捷方式[O]
+    载入所有桌面快捷方式[D]
+
+other:
+  en: Other 
+  zh-CN: 其他
+
+other_content:
+  en: |
+    Open Log File    [L]
+    Open Icon File   [I]
+    Clean Icon Cache [T]
+
+  zh-CN: |
+    打开记录日志[L]
+    打开图标目录[I]
+    清理图标缓存[T]
+
+revise:
+  en: Revise
+  zh-CN: 修改 
+
+revise_content:
+  en: |
+    Change All Icons  [C]
+    Restore All Icons [R]
+    Copy Properties [1~8]
+
+  zh-CN: |
+    更换所有快捷方式图标[C]
+    恢复所有快捷方式图标[R]
+    复制该快捷方式属性[1~8]
+
+status:
+  en: Status
+  zh-CN: 状态
+
+yes_no:
+  en: Yes [Y] / No [N]
+  zh-CN: 是[Y] / 否[N]

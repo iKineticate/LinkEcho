@@ -6,6 +6,7 @@ mod info;
 mod modify;
 mod tui;
 mod utils;
+mod language;
 
 use std::{
     env,
@@ -34,6 +35,8 @@ use ratatui::{
     },
 };
 use rfd::FileDialog;
+use rust_i18n::t;
+rust_i18n::i18n!("locales");
 
 const NORMAL_ROW_BG: Color = Color::Rgb(25, 25, 25);
 const ALT_ROW_BG_COLOR: Color = Color::Rgb(42, 42, 42);
@@ -53,6 +56,8 @@ static EXTENSIONS: &[&str] = &[
 ];
 
 fn main() -> Result<(), Box<dyn Error>> {
+    language::set_locale();
+    // rust_i18n::set_locale("en");
     let logo_path = env::temp_dir().join("linkecho.png");
     ensure_image_exists(logo_path, LOGO_IMAGE);
 
@@ -66,7 +71,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         .get_path()
         .expect("Failed to get desktops path");
     ManageLinkProp::collect(desktop_path, &mut link_vec)
-        .expect("Failed to get properties of desktop shortcut");
+        .expect("Failed to get properties of desktop shortcuts");
 
     tui::init_error_hooks()?;
     let terminal = tui::init_terminal()?;
@@ -353,12 +358,9 @@ impl App {
 
     fn change_all_shortcuts_icons(&mut self) {
         match modify::change_all_shortcuts_icons(&mut self.link_list.items) {
-            Ok(Some(_)) => show_notify(vec!["Successfully changed icons of all shortcuts"]),
-            Ok(None) => show_notify(vec!["Not all shortcut icons have been replaced"]),
-            Err(err) => show_notify(vec![
-                "Failed to change icons of all shortcuts",
-                &format!("{err}"),
-            ]),
+            Ok(Some(_)) => show_notify(&t!("change.all")),
+            Ok(None) => show_notify(&t!("change.all.no")),
+            Err(err) => show_notify(&format!("{}\n{}", t!("change.all.failed"), err)),
         };
     }
 
@@ -393,14 +395,13 @@ impl App {
         if let Some(i) = state.selected() {
             let link_path = items[i].path.clone();
             match modify::change_single_shortcut_icon(link_path, &mut items[i], filter_item) {
-                Ok(Some(name)) => {
-                    show_notify(vec![&format!("Successfully changed the icon of {name}")])
-                },
+                Ok(Some(icon_name)) => show_notify(
+                    &format!("{}: {}\n{}: {}", &items[i].name, t!("change.one.name"), t!("change.one.icon"), icon_name)
+                ),
                 Ok(None) => (), // 未选择图片
-                Err(err) => show_notify(vec![&format!(
-                    "Successfully changed the icon of {}\n{err}",
-                    &items[i].name
-                )]),
+                Err(err) => show_notify(
+                    &format!("{}: {}\n{}", &items[i].name, t!("change.one.failed"), err)
+                ),
             };
         };
     }
@@ -435,11 +436,8 @@ impl App {
             match self.confirm_execute {
                 Some(Execute::RestoreAll) => {
                     match modify::restore_all_shortcuts_icons(&mut self.link_list.items) {
-                        Ok(_) => show_notify(vec!["Reset all shortcut icon to default"]),
-                        Err(err) => show_notify(vec![
-                            "Failed to reset all shortcut icon to default",
-                            &format!("{err}"),
-                        ]),
+                        Ok(_) => show_notify(&t!("reset.all")),
+                        Err(err) => show_notify(&format!("{}\n{}", t!("reset.all.failed"), err)),
                     };
                 },     
                 Some(Execute::RestoreSingle) => {
@@ -450,14 +448,10 @@ impl App {
                             &mut items[i], 
                             filter_item
                         ) {
-                            Ok(_) => show_notify(vec![&format!(
-                                "Reset the icon of {} to default",
-                                &items[i].name
-                            )]),
-                            Err(err) => show_notify(vec![&format!(
-                                "Failed to reset the icon of {}\n{err} to default",
-                                &items[i].name
-                            )]),
+                            Ok(_) => show_notify(&format!("{}: {}", &items[i].name, t!("reset.one"))),
+                            Err(err) => show_notify(
+                                &format!("{}: {}\n{}", &items[i].name, t!("reset.one.failed"), err)
+                            ),
                         };
                     };
                 },
@@ -472,7 +466,7 @@ impl App {
 
     fn restore_all_shortcuts_icons(&mut self) {
         self.show_confirm_popup = true;
-        self.confirm_content = Some("是否恢复所有快捷方式为默认图标".to_string());
+        self.confirm_content = Some(t!("should.reset.all").into_owned());
         self.confirm_execute = Some(Execute::RestoreAll);
     }
 
@@ -488,7 +482,7 @@ impl App {
 
         if let Some(i) = state.selected() {
             self.show_confirm_popup = true;
-            self.confirm_content = Some(format!("是否恢复 {} 图标为默认图标", &items[i].name));
+            self.confirm_content = Some(format!("{}: {} ", &items[i].name, t!("should.reset.one")));
             self.confirm_execute = Some(Execute::RestoreSingle);
 
         };
@@ -496,7 +490,7 @@ impl App {
 
     fn clear_icon_cache(&mut self) {
         self.show_confirm_popup = true;
-        self.confirm_content = Some("是否清理图标缓存".to_string());
+        self.confirm_content = Some(t!("should.clear.icon.cache").into_owned());
         self.confirm_execute = Some(Execute::ClearIconCache);
     }
 
@@ -508,13 +502,10 @@ impl App {
         {
             Ok(status) => {
                 if !status.success() {
-                    show_notify(vec![
-                        "Failed to open the file",
-                        &path.as_ref().to_string_lossy(),
-                    ]);
+                    show_notify(&format!("{}: {}", t!("open.failed"), &path.as_ref().to_string_lossy()));
                 };
             }
-            Err(_) => show_notify(vec!["Failed to execute process"]),
+            Err(_) => show_notify("Failed to execute process"),
         }
     }
 
@@ -522,8 +513,8 @@ impl App {
         let log_path = env::temp_dir().join("LinkEcho.log");
         match log_path.try_exists() {
             Ok(true) => App::open_file(log_path),
-            Ok(false) => show_notify(vec!["Log file does not exist and cannot be created"]),
-            Err(err) => show_notify(vec![&format!("Error checking if log file exists: {err}")]),
+            Ok(false) => show_notify(&t!("log.non-existent")),
+            Err(err) => show_notify(&format!("{}: {}", t!("log.error"), err)),
         };
     }
 
@@ -537,7 +528,7 @@ impl App {
         if let Some(i) = state.selected() {
             match Path::new(&items[i].icon_location).parent() {
                 Some(parent) => App::open_file(parent),
-                None => show_notify(vec!["Failed to get the directory of the ICON"]),
+                None => show_notify(&t!("open.failed.icon_parent")),
             }
         }
     }
@@ -559,7 +550,7 @@ impl App {
             ShortcutSource::Desktop => SystemLinkDirs::Desktop.get_path().ok(),
             ShortcutSource::StartMenu => SystemLinkDirs::StartMenu.get_path().ok(),
             ShortcutSource::OtherDir => FileDialog::new()
-                .set_title("Please select the directory where shortcuts are stored")
+                .set_title(t!("select.folder"))
                 .pick_folder()
                 .map(|p| vec![p]),
         };
@@ -574,15 +565,12 @@ impl App {
                         ShortcutSource::StartMenu => "Start menu".to_string(),
                         ShortcutSource::OtherDir => {
                             path_buf.first().unwrap().file_name().map_or_else(
-                                || "Unable to get the directory name".to_string(),
+                                || t!("load.failed.name").into_owned(),
                                 |n| n.to_string_lossy().to_string(),
                             )
                         }
                     };
-                    show_notify(vec![
-                        &format!("Failed to load shortcut from {source_name}"),
-                        &format!("{err}"),
-                    ]);
+                    show_notify(&format!("{} {source_name}\n{err}", t!("load.failed")));
                 }
             }
             None => {
@@ -644,7 +632,7 @@ impl Widget for &mut App {
 /// Rendering logic for the app
 impl App {
     fn render_footer(area: Rect, buf: &mut Buffer) {
-        Paragraph::new("退出[Q] | 更换[C] | 恢复[R] | 功能[F] | 搜索[S] | 返回顶部/底部[T/B]")
+        Paragraph::new(t!("footer"))
             .fg(TEXT_FG_COLOR)
             .bg(NORMAL_ROW_BG)
             .centered()
@@ -653,7 +641,7 @@ impl App {
 
     fn render_list(&mut self, area: Rect, buf: &mut Buffer) {
         let block = Block::bordered()
-            .title("Name")
+            .title(t!("name").into_owned())
             .fg(TEXT_FG_COLOR)
             .bg(NORMAL_ROW_BG)
             .border_type(BorderType::Rounded);
@@ -725,7 +713,7 @@ impl App {
         .areas(area);
 
         Block::bordered()
-            .title("Properties")
+            .title(t!("prop").into_owned())
             .bg(NORMAL_ROW_BG)
             .fg(TEXT_FG_COLOR)
             .border_type(BorderType::Rounded)
@@ -739,18 +727,18 @@ impl App {
 
         if let Some(i) = state.selected() {
             vec![
-                format!("1.名称: {}", items[i].name),
-                format!("2.路径: {}", items[i].path),
-                format!("3.目标扩展: {}", items[i].target_ext),
-                format!("4.目标目录: {}", items[i].target_dir),
-                format!("5.目标路径: {}", items[i].target_path),
-                format!("6.图标位置: {}", items[i].icon_location),
-                format!("7.图标索引: {}", items[i].icon_index),
-                format!("8.运行参数: {}", items[i].arguments),
-                format!("9.文件大小: {}", items[i].file_size),
-                format!("10.创建时间: {}", items[i].created_at),
-                format!("11.修改时间: {}", items[i].updated_at),
-                format!("12.访问时间: {}", items[i].accessed_at),
+                format!("1.{}: {}", t!("name"), items[i].name),
+                format!("2.{}: {}", t!("path"), items[i].path),
+                format!("3.{}: {}", t!("target_ext"), items[i].target_ext),
+                format!("4.{}: {}", t!("target_dir"), items[i].target_dir),
+                format!("5.{}: {}", t!("target_path"), items[i].target_path),
+                format!("6.{}: {}", t!("icon_path"), items[i].icon_location),
+                format!("7.{}: {}", t!("icon_index"), items[i].icon_index),
+                format!("8.{}: {}", t!("arguments"), items[i].arguments),
+                format!("9.{}: {}", t!("file_size"), items[i].file_size),
+                format!("10.{}: {}", t!("created_at"), items[i].created_at),
+                format!("11.{}: {}", t!("updated_at"), items[i].updated_at),
+                format!("12.{}: {}", t!("accessed_at"), items[i].accessed_at),
             ]
             .into_iter()
             .enumerate()
@@ -830,7 +818,7 @@ impl App {
             let color = Color::Rgb(100, 72, 196);
 
             let block = Block::bordered()
-                .title("Search")
+                .title(t!("search").into_owned())
                 .fg(color)
                 .border_type(BorderType::Rounded);
 
@@ -864,18 +852,18 @@ impl App {
             let popup_vec = vec![
                 (
                     revise_area,
-                    "Revise",
-                    "更换所有快捷方式图标[C]\n恢复所有快捷方式图标[R]\n复制快捷方式属性[1~8]",
+                    t!("revise").into_owned(),
+                    t!("revise_content"),
                 ),
                 (
                     load_area,
-                    "Load",
-                    "载入开始菜单快捷方式[S]\n载入其他目录快捷方式[O]\n载入所有桌面快捷方式[D]",
+                    t!("load").into_owned(),
+                    t!("load_content"),
                 ),
                 (
                     other_area,
-                    "Other",
-                    "打开记录日志[L]\n打开转换图标文件[I]\n清理桌面图标缓存[T]",
+                    t!("other").into_owned(),
+                    t!("other_content"),
                 ),
             ];
 
@@ -920,7 +908,7 @@ impl App {
         };
     
         let block = Block::bordered()
-            .title("Status")
+            .title(t!("status").into_owned())
             .fg(TEXT_FG_COLOR)
             .bg(NORMAL_ROW_BG)
             .border_type(BorderType::Rounded);
@@ -973,7 +961,7 @@ impl App {
     fn render_confirm_popup(&self, area: Rect, buf: &mut Buffer) {
         if self.show_confirm_popup && self.confirm_content.is_some() {
             let color = Color::Rgb(100, 72, 196);
-            let text = format!("{}\n是[Y] / 否[N]", self.confirm_content.clone().unwrap());
+            let text = format!("{}\n{}", self.confirm_content.clone().unwrap(), t!("yes_no"));
             let confirm_area = Layout::vertical([
                 Constraint::Fill(1),
                 Constraint::Length(4),

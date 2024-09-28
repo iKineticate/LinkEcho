@@ -46,9 +46,7 @@ pub fn convert_ico(image: PathBuf, output: PathBuf, name: &str) -> Result<()> {
         let pixmap_size = rtree.svg_node().size.to_screen_size();
 
         if pixmap_size.width() != pixmap_size.height() {
-            show_notify(vec![
-                "Warning: your {name} is not square, and will appear squished!",
-            ])
+            show_notify("Warning: your {name} is not square, and will appear squished!")
         }
 
         let mut pixmap = tiny_skia::Pixmap::new(pixmap_size.width(), pixmap_size.height())
@@ -83,15 +81,11 @@ pub fn convert_ico(image: PathBuf, output: PathBuf, name: &str) -> Result<()> {
     };
 
     if im.width() != im.height() {
-        show_notify(vec![&format!(
-            "Warning: {name} is not square, and will appear squished!"
-        )]);
+        show_notify(&format!("Warning: {name} is not square, and will appear squished!"));
     }
 
     if im.width() < sizes.iter().max().map(|&v| v).unwrap_or_default() {
-        show_notify(
-            vec![&format!("Warning: You've requested sizes bigger than your input, your {name} will be scaled up!")]
-        )
+        show_notify(&format!("Warning: You've requested sizes bigger than your input, your {name} will be scaled up!"))
     }
 
     let frames: Vec<Vec<u8>> = sizes

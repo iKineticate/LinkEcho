@@ -396,7 +396,7 @@ pub fn change_single_shortcut_icon(
         format!("Successfully change the shortcut icon:\n{link_path}\n{icon_path}"),
     )?;
 
-    Ok(Some(link_prop.name.clone()))
+    Ok(Some(icon_name.clone()))
 }
 
 pub fn restore_single_shortcut_icon(
@@ -466,7 +466,7 @@ pub fn clear_icon_cache() {
         winsafe::SHGetKnownFolderPath(&co::KNOWNFOLDERID::LocalAppData, co::KF::NO_ALIAS, None)
             .unwrap_or(match env::var_os("LocalAppData") {
                 Some(path) => path.to_string_lossy().to_string(),
-                None => return show_notify(vec![&format!("Failed to get icon cache path")]),
+                None => return show_notify(&format!("Failed to get icon cache path")),
             });
 
     let explorer_path = Path::new(&local_app_data).join("Microsoft\\Windows\\Explorer");
@@ -512,7 +512,7 @@ pub fn clear_icon_cache() {
                                 );
                                 write_log(&mut log_file, text.clone())
                                     .expect("Failure to write to the log");
-                                return show_notify(vec![&text]);
+                                return show_notify(&text);
                             }
                         }
                     }
@@ -530,18 +530,18 @@ pub fn clear_icon_cache() {
                             "Successfully cleared the icon cache".to_string(),
                         )
                         .expect("Failure to write to the log");
-                        return show_notify(vec!["Successfully cleared the icon cache"]);
+                        return show_notify("Successfully cleared the icon cache");
                     } else {
-                        return show_notify(vec!["Failed to restart Explorer"]);
+                        return show_notify("Failed to restart Explorer");
                     }
                 } else {
-                    return show_notify(vec![
+                    return show_notify(
                         "Failed iterator to return entries in the explorer dir",
-                    ]);
+                    );
                 }
             }
         }
-        Ok(false) => return show_notify(vec!["Explorer directory does not exist"]),
-        Err(err) => return show_notify(vec![&format!("Failed get the explorer directory: {err}")]),
+        Ok(false) => return show_notify("Explorer directory does not exist"),
+        Err(err) => return show_notify(&format!("Failed get the explorer directory: {err}")),
     }
 }

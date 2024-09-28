@@ -19,14 +19,14 @@ pub fn write_log(log_file: &mut File, text: String) -> Result<(), Error> {
     Ok(())
 }
 
-pub fn show_notify(messages: Vec<&str>) {
+pub fn show_notify(messages: &str) {
     let logo_path = env::temp_dir().join("linkecho.png");
     let logo_path = logo_path.to_string_lossy();
 
     WinToastNotify::new()
         // .set_app_id("Link.Echo.Test")
         .set_title("LinkEcho")
-        .set_messages(messages)
+        .set_messages(vec![messages])
         .set_logo(&logo_path, CropCircle::False)
         .show()
         .expect("Failed to show toast notification");
