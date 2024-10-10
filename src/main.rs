@@ -6,6 +6,7 @@ mod info;
 mod modify;
 mod tui;
 mod utils;
+#[path = "../locales/language.rs"]
 mod language;
 
 use std::{

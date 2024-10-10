@@ -372,7 +372,11 @@ pub fn change_single_shortcut_icon(
         };
     };
 
-    // Set the icon location - 设置图标位置
+    // Set the icon location - 设置主题图标位置
+    // let index = match theme {
+    //     Theme::Dark => (),
+    //     Theme::Light  => (),
+    // };
     shell_link.SetIconLocation(&icon_path, 0)?;
 
     // Saves a copy of the object to the specified file - 将对象的副本保存到指定文件

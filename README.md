@@ -24,6 +24,6 @@ LinkEcho can assess the security risks of shortcuts, allow the replacement of in
 * **Batch auto change shortcuts icons**: After selecting an icon directory, icons can be replaced based on name matching. For instance, `Chrome Canary` can automatically select the icon named `Chrome,` while `Edge` can also choose the icon named `Microsoft Edge`.
 * **Restore Shortcut Icon**: Restore specific or all shortcut icons to default.
 
-*Windows 终端* 无法可视化图标，如需更丰富的功能（如更换快捷方式图标、选择系统图标），建议使用[AHK-ChangeIcon](https://github.com/iKineticate/AHK-ChangeIcon)。
+建议使用**Windows 终端**（start.exe）启动该软件，目前无法可视化图标，如需更丰富的功能（如更换快捷方式图标、选择系统图标），建议使用[AHK-ChangeIcon](https://github.com/iKineticate/AHK-ChangeIcon)。
 
-Note: The Windows terminal cannot display icons. For richer functionality like changing shortcut icons, it is recommended to use [AHK-ChangeIcon](https://github.com/iKineticate/AHK-ChangeIcon).
+It is recommended that the software be started using a **Windows terminal** (start.exe).The Windows terminal cannot display icons. For richer functionality like changing shortcut icons, it is recommended to use [AHK-ChangeIcon](https://github.com/iKineticate/AHK-ChangeIcon).

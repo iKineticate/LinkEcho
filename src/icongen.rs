@@ -21,7 +21,7 @@ use rayon::prelude::*;
 use std::ffi::OsStr;
 
 pub fn convert_ico(image: PathBuf, output: PathBuf, name: &str) -> Result<()> {
-    let sizes = vec![16, 32, 48, 64, 128, 256];
+    let sizes = vec![32, 48, 64, 128, 256];
 
     let filter = image::imageops::FilterType::CatmullRom;
 
