@@ -1,11 +1,12 @@
 use crate::{
     glob,
-    utils::{read_log, write_log},
-    Error, LinkProp, Path, PathBuf, Status,
+    utils::{write_log, get_img_base64_by_path},
+    LinkProp, Path, PathBuf, Status,
 };
 use chrono::{DateTime, Local};
-use std::env;
+use std::{collections::HashMap, env};
 use winsafe::{co, prelude::*, IPersistFile};
+use anyhow::{Result, Context};
 
 #[allow(unused)]
 pub enum SystemLinkDirs {
@@ -14,10 +15,10 @@ pub enum SystemLinkDirs {
     StartUp,
 }
 impl SystemLinkDirs {
-    pub fn get_path(&self) -> Result<Vec<PathBuf>, winsafe::co::HRESULT> {
+    pub fn get_path(&self) -> Result<Vec<PathBuf>> {
         let mut path_vec = Vec::new();
 
-        // Get the GUID of the shortcut's folder - 获取快捷方式文件夹的GUID
+        // Get the GUID of the shortcut's folder
         let know_folder_id_vec = match self {
             SystemLinkDirs::Desktop => vec![
                 &co::KNOWNFOLDERID::Desktop,
@@ -33,13 +34,13 @@ impl SystemLinkDirs {
             ],
         };
 
-        // Get the path to the shortcut's folder - 获取快捷方式文件夹的路径
+        // Get the path to the shortcut's folder
         for folder_id in know_folder_id_vec.iter() {
             let path = winsafe::SHGetKnownFolderPath(
                 folder_id,
-                co::KF::NO_ALIAS, //  确保返回文件夹的物理路径，避免别名路径
+                co::KF::NO_ALIAS, // 确保返回文件夹的物理路径，避免别名路径
                 None,
-            )?;
+            ).context(format!("Failed to get the path from Folder Id: {folder_id}"))?;
             path_vec.push(PathBuf::from(path));
         }
 
@@ -51,39 +52,25 @@ pub struct ManageLinkProp;
 impl ManageLinkProp {
     fn get_info(
         path_buf: PathBuf,
-        shell_link: winsafe::IShellLink,
-        persist_file: IPersistFile,
-    ) -> Result<LinkProp, Box<dyn std::error::Error>> {
+        shell_link: &winsafe::IShellLink,
+        persist_file: &IPersistFile,
+    ) -> Result<LinkProp> {
         let link_path = path_buf.to_string_lossy().to_string();
 
-        // Load the shortcut file (LNK file)
-        persist_file.Load(&link_path, co::STGM::READ)?;
+        persist_file.Load(&link_path, co::STGM::READ)
+            .context("Failed to load the shortcut by COM interface.")?;
 
-        let link_name = match path_buf.file_stem() {
-            Some(name) => name.to_string_lossy().to_string(),
-            None => String::from("unnamed_file"),
-        };
+        let link_name = path_buf.file_stem()
+            .map_or(String::from("unnamed_file"), |n| n.to_string_lossy().into_owned());
 
-        let link_target_path = match shell_link.GetPath(
+        let link_target_path = shell_link.GetPath( // 注意：提供的路径可能不存在（比如UWP、APP、未提供路径的lnk）
             Some(&mut winsafe::WIN32_FIND_DATA::default()),
             co::SLGP::RAWPATH, // Absolute path - 绝对路径
-        ) {
-            Ok(path) => ManageLinkProp::convert_env_to_path(path), // 开头为环境变量时转换为绝对路径
-            Err(_) => String::new(), // UWP and APP shortcuts cannot obtain the target path - UWP和APP无法获取目标路径
-        };
+        ).map_or(String::new(), ManageLinkProp::convert_env_to_path);
 
         let link_target_dir = match shell_link.GetWorkingDirectory() {
-            Ok(path) => {
-                match Path::new(&path).try_exists() {
-                    Ok(_) => ManageLinkProp::convert_env_to_path(path), // 若开头为环境变量则转换其为绝对路径
-                    Err(err) => {
-                        return Err(
-                            format!("{link_name}: Failed get the working directory: {err}").into(),
-                        )
-                    }
-                }
-            }
-            Err(_) => ManageLinkProp::get_working_directory(&link_target_path),
+            Ok(p) if !p.is_empty() => ManageLinkProp::convert_env_to_path(p),
+            _ => ManageLinkProp::get_parent_path(&link_target_path),
         };
 
         let link_target_ext = if link_target_path.is_empty() {
@@ -91,9 +78,8 @@ impl ManageLinkProp {
         } else {
             let link_target_file_name = Path::new(&link_target_path)
                 .file_name()
-                .map_or(String::new(), |name| {
-                    name.to_string_lossy().to_string().to_lowercase()
-                });
+                .map_or(String::new(), |n| {n.to_string_lossy().to_lowercase()});
+
             match &*link_target_file_name {
                 "schtasks.exe" => String::from("schtasks"), // 任务计划程序
                 "taskmgr.exe" => String::from("taskmgr"),   // 任务管理器
@@ -124,94 +110,76 @@ impl ManageLinkProp {
                     let is_uwp = link_target_path
                         .to_lowercase()
                         .contains(r"appdata\local\microsoft\windowsapps");
-                    match (&ext, is_app, is_uwp) {
+                    match (ext, is_app, is_uwp) {
                         (_, true, _) => String::from("app"),
                         (_, _, true) => String::from("uwp"),
                         (None, false, false) => String::new(),
                         (Some(os_str), false, false) => {
-                            os_str.to_string_lossy().to_string().to_lowercase()
+                            os_str.to_string_lossy().to_lowercase()
                         }
                     }
                 }
             }
         };
 
-        #[allow(unused_assignments)]
+        let link_icon = get_img_base64_by_path(&link_path);
+        let link_target_icon = get_img_base64_by_path(&link_target_path);
+
         let mut unconverted_icon_path = String::new();
 
-        let (link_icon_location, link_icon_index) = match shell_link.GetIconLocation() {
-            Ok((icon_path, icon_index)) => {
+        let (link_icon_location, link_icon_index) = shell_link.GetIconLocation()
+            .map(|(icon_path, icon_index)| {
                 unconverted_icon_path = icon_path.clone();
+                let converted_icon_path = ManageLinkProp::convert_env_to_path(icon_path.clone());
                 match (Path::new(&icon_path).is_file(), icon_path.ends_with(".dll")) {
                     (false, false) => (String::new(), String::new()),
-                    (false, true) => (
-                        ManageLinkProp::convert_env_to_path(icon_path),
-                        icon_index.to_string(),
-                    ),
-                    _ => (
-                        ManageLinkProp::convert_env_to_path(icon_path),
-                        icon_index.to_string(),
-                    ), // 开头为环境变量（如%windir%）时修改为路径
+                    _ => (converted_icon_path, icon_index.to_string()),
                 }
-            }
-            Err(err) => {
-                return Err(format!("{link_name}: Failed get the icon location: {err}").into())
-            }
+            })
+            .context(format!("Failed get the shortcut icon location: {link_name}"))?;
+
+        let link_icon_dir = ManageLinkProp::get_parent_path(&link_icon_location);
+
+        let link_icon_status = if link_icon_location.is_empty() // unchanged、non-existent、inaccessible - 未更换图标、图标不存在、图标不可访问（UWP/APP）
+            || link_icon_location == link_target_path // Icon from target file - 图标源于目标文件
+            || link_target_ext == "app" // Windows Subsystem for Android - WSA应用
+            || link_target_ext == "uwp" // Universal Windows Platform - UWP应用
+            || unconverted_icon_path.starts_with("%")  // Icon From System icon - 系统图标 (%windir%/.../powershell.exe  ,  %windir%/.../imageres.dll)
+            || (link_icon_dir == link_target_dir && Path::new(&link_target_dir).is_dir()) // Icons come from the target file's (sub)directory - 图标来源于目标目录
+        {
+            Status::Unchanged
+        } else {
+            Status::Changed
         };
 
-        let link_icon_parent_path = Path::new(&link_icon_location)
-            .parent()
-            .unwrap_or(Path::new(""));
-        let link_target_dir_path = Path::new(&link_target_dir);
-
-        let link_icon_status = match () {
-            // unchanged、non-existent、inaccessible - 未更换图标、图标不存在、图标不可访问（UWP/APP）
-            _ if link_icon_location.is_empty() => Status::Unchanged,
-            // unchanged(from target file) - 图标源于目标文件
-            _ if link_icon_location == link_target_path => Status::Unchanged,
-            // Windows Subsystem for Android - WSA应用
-            _ if link_icon_location.contains("WindowsSubsystemForAndroid") => Status::Unchanged,
-            // System icon - 系统图标(如%windir%/.../powershell.exe或%windir%/.../imageres.dll)
-            _ if unconverted_icon_path.starts_with("%") => Status::Unchanged,
-            // Icons come from the target file's (sub)directory - 图标来源于目标文件的(子)目录
-            _ if link_icon_parent_path == link_target_dir_path && link_target_dir_path.is_dir() => {
-                Status::Unchanged
-            }
-            _ => Status::Changed,
-        };
-
-        let link_arguments = shell_link
-            .GetArguments()
-            .map_err(|err| format!("{link_name}: Failed to get the arguments: {err}"))?;
+        let link_arguments = shell_link.GetArguments()
+            .context(format!("Failed to get the shortcut's arguments: {link_name}"))?;
 
         let metadata = std::fs::metadata(&link_path)
-            .map_err(|err| format!("{link_name}: Failed to get the metadata: {err}"))?;
+            .context(format!("Failed to get the shortcut's metadata: {link_name}"))?;
 
         let link_file_size = format!("{:.2} KB", metadata.len() as f64 / 1024.0);
 
-        let link_created_at = metadata
-            .created()
+        let link_created_at = metadata.created()
             .map(|time| {
                 let datetime: DateTime<Local> = time.into();
                 datetime.format("%Y-%m-%d %H:%M:%S").to_string()
             })
-            .map_err(|err| format!("{link_name}: Failed to get the creation time: {err}"))?;
+            .context(format!("Failed to get the shortcut's creation: {link_name}"))?;
 
-        let link_updated_at = metadata
-            .modified()
+        let link_updated_at = metadata.modified()
             .map(|time| {
                 let datetime: DateTime<Local> = time.into();
                 datetime.format("%Y-%m-%d %H:%M:%S").to_string()
             })
-            .map_err(|err| format!("{link_name}: Failed to get the updated time: {err}"))?;
+            .context(format!("Failed to get the shortcut's updated time: {link_name}"))?;
 
-        let link_accessed_at = metadata
-            .accessed()
+        let link_accessed_at = metadata.accessed()
             .map(|time| {
                 let datetime: DateTime<Local> = time.into();
                 datetime.format("%Y-%m-%d %H:%M:%S").to_string()
             })
-            .map_err(|err| format!("{link_name}: Failed to get the accessed time: {err}"))?;
+            .context(format!("Failed to get the shortcut's accessed time: {link_name}"))?;
 
         Ok(LinkProp {
             name: link_name,
@@ -220,6 +188,8 @@ impl ManageLinkProp {
             target_ext: link_target_ext,
             target_dir: link_target_dir,
             target_path: link_target_path,
+            icon: link_icon,
+            target_icon: link_target_icon,
             icon_location: link_icon_location,
             icon_index: link_icon_index,
             arguments: link_arguments,
@@ -230,184 +200,76 @@ impl ManageLinkProp {
         })
     }
 
-    fn get_working_directory(path: &String) -> String {
-        match path.is_empty() {
-            true => String::new(),
-            false => Path::new(path)
-                .parent()
-                .map_or(String::new(), |path| path.to_string_lossy().to_string()),
-        }
+    fn get_parent_path(path: &String) -> String {
+        Path::new(path).parent()
+            .map_or(String::new(), |p| p.to_string_lossy().to_string())
     }
 
     fn get_path_from_env(known_folder_id: Option<&co::KNOWNFOLDERID>, env: &str) -> String {
         if let Some(id) = known_folder_id {
             winsafe::SHGetKnownFolderPath(id, co::KF::NO_ALIAS, None).unwrap_or(
-                env::var_os(env).map_or(String::new(), |path| path.to_string_lossy().to_string()),
+                env::var_os(env).map_or(String::new(), |p| p.to_string_lossy().to_string()),
             )
         } else {
-            env::var_os(env).map_or(String::new(), |path| path.to_string_lossy().to_string())
+            env::var_os(env).map_or(String::new(), |p| p.to_string_lossy().to_string())
         }
     }
 
     fn convert_env_to_path(env_path: String) -> String {
-        match env_path.starts_with("%") {
-            true => {
-                let envs = vec![
-                    (
-                        "%windir%",
-                        ManageLinkProp::get_path_from_env(
-                            Some(&co::KNOWNFOLDERID::Windows),
-                            "WinDir",
-                        ),
-                    ),
-                    (
-                        "%systemroot%",
-                        ManageLinkProp::get_path_from_env(
-                            Some(&co::KNOWNFOLDERID::Windows),
-                            "SystemRoot",
-                        ),
-                    ),
-                    (
-                        "%programfiles%",
-                        ManageLinkProp::get_path_from_env(
-                            Some(&co::KNOWNFOLDERID::ProgramFiles),
-                            "ProgramFiles",
-                        ),
-                    ),
-                    (
-                        "%programfiles(x86)%",
-                        ManageLinkProp::get_path_from_env(
-                            Some(&co::KNOWNFOLDERID::ProgramFiles),
-                            "ProgramFiles(x86)",
-                        ),
-                    ),
-                    (
-                        "%programfiles(arm)%",
-                        ManageLinkProp::get_path_from_env(None, "ProgramFiles(x86)"),
-                    ),
-                    (
-                        "%commonprogramfiles%",
-                        ManageLinkProp::get_path_from_env(
-                            Some(&co::KNOWNFOLDERID::ProgramFilesCommonX64),
-                            "CommonProgramFiles",
-                        ),
-                    ),
-                    (
-                        "%commonprogramfiles(arm)%",
-                        ManageLinkProp::get_path_from_env(None, "CommonProgramFiles(Arm)"),
-                    ),
-                    (
-                        "%commonprogramfiles(x86)%",
-                        ManageLinkProp::get_path_from_env(
-                            Some(&co::KNOWNFOLDERID::ProgramFilesCommonX86),
-                            "CommonProgramFiles(x86)",
-                        ),
-                    ),
-                    (
-                        "%programdata%",
-                        ManageLinkProp::get_path_from_env(
-                            Some(&co::KNOWNFOLDERID::ProgramData),
-                            "ProgramData",
-                        ),
-                    ),
-                    (
-                        "%allusersprofile%",
-                        ManageLinkProp::get_path_from_env(
-                            Some(&co::KNOWNFOLDERID::ProgramData),
-                            "AllUsersProfile",
-                        ),
-                    ),
-                    (
-                        "%cmdcmdline%",
-                        ManageLinkProp::get_path_from_env(None, "CMDCMDLINE"),
-                    ),
-                    (
-                        "%comspec%",
-                        ManageLinkProp::get_path_from_env(None, "COMSPEC"),
-                    ),
-                    (
-                        "%usersprofile%",
-                        ManageLinkProp::get_path_from_env(
-                            Some(&co::KNOWNFOLDERID::Profile),
-                            "UsersProfile",
-                        ),
-                    ),
-                    (
-                        "%localappdata%",
-                        ManageLinkProp::get_path_from_env(
-                            Some(&co::KNOWNFOLDERID::LocalAppData),
-                            "LocalAppData",
-                        ),
-                    ),
-                    (
-                        "%appdata%",
-                        ManageLinkProp::get_path_from_env(
-                            Some(&co::KNOWNFOLDERID::RoamingAppData),
-                            "Appdate",
-                        ),
-                    ),
-                    (
-                        "%public%",
-                        ManageLinkProp::get_path_from_env(
-                            Some(&co::KNOWNFOLDERID::Public),
-                            "Public",
-                        ),
-                    ),
-                    ("%temp%", ManageLinkProp::get_path_from_env(None, "TEMP")),
-                    ("%tmp%", ManageLinkProp::get_path_from_env(None, "TMP")),
-                ];
-
-                for (env, root) in envs.iter() {
-                    let env_path_lowercase = &env_path.to_lowercase();
-                    if Path::new(env_path_lowercase).starts_with(env) {
-                        let new_path = env_path_lowercase.replacen(env, root, 1);
-                        return new_path;
-                    };
-                }
-                env_path
-            }
-            false => env_path,
+        if !env_path.starts_with('%') {
+            return env_path;
         }
+        let envs: HashMap<&str, String> = [
+            ("%windir%", ManageLinkProp::get_path_from_env(Some(&co::KNOWNFOLDERID::Windows), "WinDir")),
+            ("%systemroot%", ManageLinkProp::get_path_from_env(Some(&co::KNOWNFOLDERID::Windows), "SystemRoot")),
+            ("%programfiles%", ManageLinkProp::get_path_from_env(Some(&co::KNOWNFOLDERID::ProgramFiles), "ProgramFiles")),
+            ("%programfiles(x86)%", ManageLinkProp::get_path_from_env(Some(&co::KNOWNFOLDERID::ProgramFiles), "ProgramFiles(x86)")),
+            ("%programfiles(arm)%", ManageLinkProp::get_path_from_env(None, "ProgramFiles(Arm)")),
+            ("%commonprogramfiles%", ManageLinkProp::get_path_from_env(Some(&co::KNOWNFOLDERID::ProgramFilesCommonX64), "CommonProgramFiles")),
+            ("%commonprogramfiles(arm)%", ManageLinkProp::get_path_from_env(None, "CommonProgramFiles(Arm)")),
+            ("%commonprogramfiles(x86)%", ManageLinkProp::get_path_from_env(Some(&co::KNOWNFOLDERID::ProgramFilesCommonX86), "CommonProgramFiles(x86)")),
+            ("%programdata%", ManageLinkProp::get_path_from_env(Some(&co::KNOWNFOLDERID::ProgramData), "ProgramData")),
+            ("%allusersprofile%", ManageLinkProp::get_path_from_env(Some(&co::KNOWNFOLDERID::ProgramData), "AllUsersProfile")),
+            ("%cmdcmdline%", ManageLinkProp::get_path_from_env(None, "CMDCMDLINE")),
+            ("%comspec%", ManageLinkProp::get_path_from_env(None, "COMSPEC")),
+            ("%userprofile%", ManageLinkProp::get_path_from_env(Some(&co::KNOWNFOLDERID::Profile), "UserProfile")),
+            ("%localappdata%", ManageLinkProp::get_path_from_env(Some(&co::KNOWNFOLDERID::LocalAppData), "LocalAppData")),
+            ("%appdata%", ManageLinkProp::get_path_from_env(Some(&co::KNOWNFOLDERID::RoamingAppData), "AppData")),
+            ("%public%", ManageLinkProp::get_path_from_env(Some(&co::KNOWNFOLDERID::Public), "Public")),
+            ("%temp%", ManageLinkProp::get_path_from_env(None, "TEMP")),
+            ("%tmp%", ManageLinkProp::get_path_from_env(None, "TMP")),
+        ].iter().cloned().collect();
+    
+        let env_path_lowercase = env_path.to_lowercase();
+        for (env, root) in &envs {
+            if env_path_lowercase.starts_with(env) {
+                return env_path_lowercase.replacen(env, root, 1);
+            }
+        }
+    
+        env_path
     }
 
-    pub fn collect(
-        dirs_vec: Vec<impl AsRef<Path>>,
-        link_vec: &mut Vec<LinkProp>,
-    ) -> Result<(), Box<dyn Error>> {
-        // Clear
-        link_vec.clear();
+    pub fn collect(dirs_vec: &Vec<impl AsRef<Path>>) -> Result<Vec<LinkProp>> {
+        let mut link_vec: Vec<LinkProp> = Vec::with_capacity(100);
 
-        // Initialize COM library - 初始化 COM 库
-        let _com_lib = winsafe::CoInitializeEx(
-            // keep guard alive
-            co::COINIT::APARTMENTTHREADED | co::COINIT::DISABLE_OLE1DDE,
-        )?;
+        let (shell_link, persist_file) = initialize_com_and_create_shell_link()?;
 
-        // Create IShellLink object - 创建 IShellLink 对象
-        let shell_link = winsafe::CoCreateInstance::<winsafe::IShellLink>(
-            &co::CLSID::ShellLink,
-            None,
-            co::CLSCTX::INPROC_SERVER,
-        )?;
-
-        // Query for IPersistFile interface - 查询并获取 IPersistFile 接口实例
-        let persist_file: IPersistFile = shell_link.QueryInterface()?;
-
-        // Open Log File - 打开日志文件
-        let mut log_file = read_log().expect("Failed to open 'LinkEcho.log'");
-
-        // Iterate through directories - 遍历快捷方式目录
+        // Iterate through directories
         for dir in dirs_vec.iter() {
             let directory = dir.as_ref().join("**\\*.lnk").to_string_lossy().to_string();
-            for path_buf in glob(&directory).unwrap().filter_map(Result::ok) {
-                match ManageLinkProp::get_info(path_buf, shell_link.clone(), persist_file.clone()) {
-                    Ok(link_prop) => link_vec.push(link_prop),
-                    Err(err) => {
-                        write_log(&mut log_file, err.to_string())?;
-                        continue;
-                    }
-                }
-            }
+            link_vec.extend(
+                glob(&directory)
+                    .unwrap()
+                    .filter_map(Result::ok)
+                    .filter_map(|path_buf| match ManageLinkProp::get_info(path_buf, &shell_link, &persist_file) {
+                        Ok(link_prop) => Some(link_prop),
+                        Err(err) => {
+                            write_log(err.to_string()).ok();
+                            None
+                        }
+                    })
+            );
         }
 
         // Sort `Vec<LinkProp>` by the first letter of `name` field
@@ -417,6 +279,23 @@ impl ManageLinkProp {
             a_first_char.cmp(&b_first_char)
         });
 
-        Ok(())
+        Ok(link_vec)
     }
+}
+
+pub fn initialize_com_and_create_shell_link() -> Result<(winsafe::IShellLink, IPersistFile)> {
+    let _com_lib = winsafe::CoInitializeEx(
+        co::COINIT::APARTMENTTHREADED | co::COINIT::DISABLE_OLE1DDE,
+    ).context("Failed to initialize com library")?;
+
+    let shell_link = winsafe::CoCreateInstance::<winsafe::IShellLink>(
+        &co::CLSID::ShellLink,
+        None,
+        co::CLSCTX::INPROC_SERVER,
+    ).context("Failed to create an IUnknown-derived COM object - ShellLink")?;
+
+    let persist_file: IPersistFile = shell_link.QueryInterface()
+        .context("Failed to query for ShellLink's IPersistFile interface")?;
+
+    Ok((shell_link, persist_file))
 }

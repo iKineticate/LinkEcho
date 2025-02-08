@@ -1,4 +1,5 @@
 // Copyright 2022 Kenton Hamaluik
+// Modified by iKineticate on 2024
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,107 +12,108 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//
+// Note: This file has been modified from the original version.
 
-use crate::{utils::show_notify, PathBuf};
+use crate::{utils::notify, PathBuf};
 use anyhow::{Context, Result};
 use image::codecs::ico::{IcoEncoder, IcoFrame};
-use image::io::Reader as ImageReader;
 use image::{DynamicImage, Rgba, RgbaImage};
 use rayon::prelude::*;
+use resvg::tiny_skia;
 use std::ffi::OsStr;
 
-pub fn convert_ico(image: PathBuf, output: PathBuf, name: &str) -> Result<()> {
-    let sizes = vec![32, 48, 64, 128, 256];
-
+pub fn image_to_ico(image_path: PathBuf, output_path: PathBuf, name: &str) -> Result<()> {
+    let sizes = vec![16, 32, 48, 64, 128, 256];
     let filter = image::imageops::FilterType::CatmullRom;
 
-    let im: DynamicImage = if image
-        .extension()
-        .map(OsStr::to_str)
-        .flatten()
-        .map(str::to_lowercase)
-        == Some("svg".to_owned())
-    {
-        let mut opt = usvg::Options::default();
-        opt.resources_dir = std::fs::canonicalize(&image)
-            .ok()
-            .and_then(|p| p.parent().map(|p| p.to_path_buf()));
-        opt.fontdb.load_system_fonts();
+    let image = load_image(&image_path, &sizes)?;
+    check_image_dimensions(&image, name);
 
-        let svg = std::fs::read(&image)
-            .with_context(|| format!("Failed to read file '{}'", image.display()))?;
-        let rtree = usvg::Tree::from_data(&svg, &opt.to_ref())
-            .with_context(|| "Failed to parse SVG contents")?;
+    let frames = create_frames(&image, sizes, filter)?;
+    save_ico(frames, &output_path)?;
 
-        let pixmap_size = rtree.svg_node().size.to_screen_size();
+    Ok(())
+}
 
-        if pixmap_size.width() != pixmap_size.height() {
-            show_notify("Warning: your {name} is not square, and will appear squished!")
-        }
-
-        let mut pixmap = tiny_skia::Pixmap::new(pixmap_size.width(), pixmap_size.height())
-            .with_context(|| "Failed to create SVG Pixmap!")?;
-
-        let size = *sizes.iter().max().unwrap();
-        resvg::render(
-            &rtree,
-            usvg::FitTo::Size(size, size),
-            tiny_skia::Transform::default(),
-            pixmap.as_mut(),
-        )
-        .with_context(|| "Failed to render SVG!")?;
-
-        // copy it into an image buffer translating types as we go
-        // I'm sure there's faster ways of doing this but ¯\_(ツ)_/¯
-        let mut image = RgbaImage::new(size, size);
-        for y in 0..size {
-            for x in 0..size {
-                let pixel = pixmap.pixel(x, y).unwrap();
-                let pixel = Rgba([pixel.red(), pixel.green(), pixel.blue(), pixel.alpha()]);
-                image.put_pixel(x, y, pixel);
-            }
-        }
-
-        image.into()
+fn load_image(image_path: &PathBuf, sizes: &[u32]) -> Result<DynamicImage> {
+    if image_path.extension().and_then(OsStr::to_str).map(str::to_lowercase) == Some("svg".to_owned()) {
+        load_svg(image_path, sizes)
     } else {
-        ImageReader::open(&image)
-            .with_context(|| format!("Failed to open file '{}'", image.display()))?
-            .decode()
-            .with_context(|| "Failed to decode image!")?
-    };
+        image::open(image_path).with_context(|| format!("Failed to open file '{}'", image_path.display()))
+    }
+}
 
-    if im.width() != im.height() {
-        show_notify(&format!("Warning: {name} is not square, and will appear squished!"));
+fn load_svg(image_path: &PathBuf, sizes: &[u32]) -> Result<DynamicImage> {
+    let mut opt = resvg::usvg::Options::default();
+    opt.resources_dir = std::fs::canonicalize(image_path)
+        .ok()
+        .and_then(|p| p.parent().map(|p| p.to_path_buf()));
+    let mut fontdb = resvg::usvg::fontdb::Database::new();
+    fontdb.load_system_fonts();
+    opt.fontdb = fontdb.into();
+
+    let svg_data = std::fs::read(image_path).with_context(|| format!("Failed to read file '{}'", image_path.display()))?;
+    let rtree = resvg::usvg::Tree::from_data(&svg_data, &opt).with_context(|| "Failed to parse SVG contents")?;
+
+    let pixmap_size = rtree.size();
+    let max_size = *sizes.iter().max().unwrap();
+
+    let mut pixmap = resvg::tiny_skia::Pixmap::new(max_size, max_size)
+        .ok_or_else(|| anyhow::anyhow!("Failed to create SVG Pixmap!"))?;
+
+    let transform = resvg::tiny_skia::Transform::from_scale(
+        max_size as f32 / pixmap_size.width(),
+        max_size as f32 / pixmap_size.height(),
+    );
+    resvg::render(&rtree, transform, &mut pixmap.as_mut());
+
+    let mut image = RgbaImage::new(max_size, max_size);
+    for y in 0..max_size {
+        for x in 0..max_size {
+            let pixel = pixmap.pixel(x, y).unwrap_or(tiny_skia::PremultipliedColorU8::TRANSPARENT);
+            let rgba = Rgba([pixel.red(), pixel.green(), pixel.blue(), pixel.alpha()]);
+            image.put_pixel(x, y, rgba);
+        }
     }
 
-    if im.width() < sizes.iter().max().map(|&v| v).unwrap_or_default() {
-        show_notify(&format!("Warning: You've requested sizes bigger than your input, your {name} will be scaled up!"))
+    Ok(image.into())
+}
+
+fn check_image_dimensions(image: &DynamicImage, name: &str) {
+    if image.width() != image.height() {
+        notify(&format!("Warning: {name} is not square, and will appear squished!"));
     }
 
+    if image.width() < 64 {
+        notify(&format!("Warning: You've requested sizes bigger than your input, your image: {name} will be scaled up!"));
+    }
+}
+
+fn create_frames(image: &DynamicImage, sizes: Vec<u32>, filter: image::imageops::FilterType) -> Result<Vec<IcoFrame>> {
     let frames: Vec<Vec<u8>> = sizes
         .par_iter()
         .map(|&sz| {
-            let im = im.resize_exact(sz, sz, filter.into());
-            im.to_rgba8().to_vec()
+            let resized_image = image.resize_exact(sz, sz, filter);
+            resized_image.to_rgba8().to_vec()
         })
         .collect();
 
-    let frames: Result<Vec<IcoFrame>> = frames
+    frames
         .par_iter()
         .zip(sizes.par_iter())
         .map(|(buf, &sz)| {
-            IcoFrame::as_png(buf.as_slice(), sz, sz, im.color())
+            IcoFrame::as_png(buf.as_slice(), sz, sz, image.color().into())
                 .with_context(|| "Failed to encode frame")
         })
-        .collect();
-    let frames = frames?;
+        .collect()
+}
 
-    let file = std::fs::File::create_new(&output)
-        .with_context(|| format!("Failed to create file '{}'", output.display()))?;
+fn save_ico(frames: Vec<IcoFrame>, output_path: &PathBuf) -> Result<()> {
+    let file = std::fs::File::create(output_path)
+        .with_context(|| format!("Failed to create file '{}'", output_path.display()))?;
     let encoder = IcoEncoder::new(file);
     encoder
         .encode_images(frames.as_slice())
-        .with_context(|| "Failed to encode .ico file")?;
-
-    Ok(())
+        .with_context(|| "Failed to encode .ico file")
 }

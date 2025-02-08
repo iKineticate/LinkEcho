@@ -1,0 +1,51 @@
+/* 导航栏区域 */
+.tab-container {
+    width: 60px;
+    border-right: 1px solid #2B2B2B;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    white-space: nowrap;
+    overflow: hidden;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+}
+
+.tab-container .select-color {
+    background: #292929;
+}
+
+.tab-container .unselect-color {
+    background: transparent;
+}
+
+.tab-container button {
+    width: 45px;
+    height: 45px;
+    border: none;
+    border-radius: 10px;
+    transition: background-color 0.3s ease;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}    
+
+.tab-container button:hover {
+    background: #292929;
+}
+
+.tab-container button:active {
+    background-color: rgb(31, 31, 31);
+}
+
+.tab-container svg {
+    width: 65%;
+    height: 65%;
+
+}
+
+.tab-container svg path {
+    fill: #cacaca;
+    transform: fill 0.3s ease;
+}

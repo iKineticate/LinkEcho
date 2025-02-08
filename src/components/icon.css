@@ -1,0 +1,83 @@
+/* 图标按钮的区域 */
+.icon-container {
+    background-color: #1B1B1B;
+    height: 100%;
+    flex: 1;                /* 宽度动态调节 */
+    display: flex;
+    flex-wrap: wrap;        /* 因宽度为动态，需设置换行 */
+    justify-content: center;
+    align-items: center;
+    overflow-y: auto;
+    overflow-x: hidden;     /* 禁用横向滚动条 */
+}
+
+/* 自定义滚动条 */
+.icon-container::-webkit-scrollbar {
+    width: 8px;
+    background: transparent;
+}
+
+.icon-container::-webkit-scrollbar-thumb {
+    background-color: #3f3f3f;
+    border-radius: 3px;
+}
+
+.icon-container::-webkit-scrollbar-thumb:hover {
+    background-color: #4c4b4b;
+}
+
+
+/* 图标修改区域 */
+.icon-modify-container {
+    width: 200px;
+    border-left: 1px solid #2B2B2B;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: hidden;
+}
+
+.icon-button {
+    width: 100px;
+    height: 100px;
+    color: rgb(128, 128, 128);
+    background: transparent;
+    border: none;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+}
+
+.icon-button:hover {
+    background-color: rgba(45, 45, 45);
+    box-shadow:  6px 6px 12px #141414,
+             -6px -6px 12px #1c1c1c;
+}
+
+.icon-button:active {
+    background-color: rgb(31, 31, 31);
+    box-shadow:  6px 6px 12px #141414,
+             -6px -6px 12px #1c1c1c;
+}
+
+.icon-button .img-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: hidden;
+}
+
+.icon-button .img-container img {
+    width: 50%;
+    height: 50%;
+    background: transparent;
+    object-fit: contain;        /* 保证图标保持比例，不变形 */
+}
+
+.icon-button .img-container span {
+    width: 80%;
+    text-align: center;
+    white-space: nowrap;        /* 防止文字换行 */
+    overflow: hidden;           /* 隐藏超出部分的文字 */
+    text-overflow: ellipsis;    /* 超出部分用省略号表示 */
+    margin-top: 3px;
+}

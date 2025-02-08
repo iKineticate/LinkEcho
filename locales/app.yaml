@@ -1,183 +1,298 @@
 _version: 2
 
-change.all:
+SELECT_ONE_ICON:
+  en: Please select an icon file, supported formats':' .ico | .png | .svg | .webp | .tiff
+  zh-CN: 请选择一个图标文件，支持  .ico | .png | .svg | .webp | .tiff  格式文件
+
+ERROR_SET_ICON_LOCATION:
+  en: Failed to replace this shortcut icon
+  zh-CN: 无法设置该快捷方式图标
+SUCCESS_CHANGE_ONE:
+  en: Successfully replaced the shortcut icon
+  zh-CN: 成功更换该快捷方式的图标
+ERROR_CHANGE_ONE:
+  en: Failed to change the shortcut icon
+  zh-CN: 无法更换该快捷方式图标
+
+CHANGE_ALL:
+  en: Replace All Shortcut Icons With The Specified Icon
+  zh-CN: 更换所有快捷方式图标为指定图标
+SUCCESS_CHANGE_ALL:
   en: Successfully replaced all matched shortcut icons
-  zh-CN: 已更换所有已匹配的快捷方式图标
-change.all.no:
+  zh-CN: 成功更换所有匹配快捷方式的图标
+NOT_CHANGE_ALL:
   en: Not all shortcut icons have been replaced
-  zh-CN: 暂无快捷方式图标被替换
-change.all.failed:
+  zh-CN: 暂未更换快捷方式图标
+ERROR_CHANGE_ALL:
   en: Failed to change icons of all shortcuts
   zh-CN: 无法更换所有已匹配的快捷方式图标
 
-change.one.name:
-  en: The shortcut icon has been replaced
-  zh-CN: 已更换该快捷方式图标
-change.one.icon:
-  en: Icon Name
-  zh-CN: 图标名称
-change.one.failed:
-  en: Failed to replace this shortcut icon
-  zh-CN: 无法替换该快捷方式图标
-  
-reset.all:
-  en: Reset all shortcut icon to default
-  zh-CN: 将所有快捷图标重置为默认
-reset.all.failed:
-  en: Failed to reset all shortcut icon to default
-  zh-CN: 无法将所有快捷图标重置为默认
-should.reset.all:
-  en: Are all shortcuts restored to default?
-  zh-CN: 是否恢复所有快捷方式为默认图标？
 
-reset.one:
-  en: The shortcut's icon has been reset to default
-  zh-CN: 已将该快捷方式的图标重置为默认
-reset.one.failed:
+RESTORE_ONE_TOOLTIP:
+  en: Restore The Shortcut Icon As Default
+  zh-CN: 恢复该快捷方式图标为默认图标
+SUCCESS_RESTORE_ONE:
+  en: The icon for this shortcut has been reset
+  zh-CN: 已重置该快捷方式的图标
+ERROR_RESTORE_ONE:
   en: Failed to reset the icon of the shortcut to default
   zh-CN: 无法将该快捷方式的图标重置为默认
-should.reset.one:
-  en: Does it reset this shortcut to default?
-  zh-CN: 是否将该快捷方式重置为默认？
+WARN_RESTORE_ONE:
+  en: Are you sure you want to restore the shortcut icon to its default icons? This action cannot be undone.
+  zh-CN: 是否确定要将该快捷方式图标恢复为默认图标？此操作无法撤销。
 
-should.clear.icon.cache:
+RESTORE_ALL_TOOLTIP:
+  en: Restore All Shortcut Icons As Default
+  zh-CN: 恢复所有快捷方式图标为默认图标
+SUCCESS_RESTORE_ALL:
+  en: Successfully restored all shortcut icons to default
+  zh-CN: 已将所有快捷图标恢复为默认
+ERROR_RESTORE_ALL:
+  en: Failed to reset all shortcut icon to default
+  zh-CN: 无法将所有快捷图标重置为默认
+WARN_RESTORE_ALL:
+  en: Are you sure you want to restore all shortcut icons to their default icons? This action cannot be undone.
+  zh-CN: 是否确定要将所有快捷方式图标恢复为默认图标？此操作无法撤销。
+
+ERROR_SAVE_OBJECT_COPY_TO_FILE:
+  en: Failed to save a copy of the object to the specified file
+  zh-CN: 无法将对象的副本保存到指定文件
+
+# load.shortcut.failed:
+#   en: Failed to load the shortcut
+#   zh-CN: 加载快捷方式失败
+
+SHOULD_CLEAR_ICON_CACHE:
   en: Does it clear the system icon cache?
   zh-CN: 是否清理系统图标缓存？
 
-open.failed:
-  en: Failed to open the file
-  zh-CN: 无法打开文件
-open.failed.icon_parent:
-  en: Failed to get the directory of the ICON
-  zh-CN: 无法获取该图标的目录
-
-log.non-existent:
-  en: Log file does not exist and cannot be created
-  zh-CN: 日志文件不存在且无法被创建
-log.error:
-  en: Error checking if log file exists
-  zh-CN: 检查日志文件是否存在出错
+# open.failed:
+#   en: Failed to open the file
+#   zh-CN: 无法打开文件
+# open.failed.icon_parent:
+#   en: Failed to get the directory of the ICON
+#   zh-CN: 无法获取该图标的目录
   
-select.folder:
+SELECT_ICONS_FOLDER:
   en: Please select the directory where shortcuts are stored
   zh-CN: 请选择存放快捷方式的目录
 
-load.failed:
+SUCCESS_IMG_TO_ICO:
+  en: The icon has been converted to a .ico file
+  zh-CN: 已将该图标转化为 .ico 文件
+
+ERROR_IMG_TO_ICON:
+  en: Unable to convert the icon to an .ico file
+  zh-CN: 无法将该图标转化为 .ico 文件
+
+ERROR_LOAD_LNK_FILE:
   en: Failed to load shortcut from the folder
   zh-CN: 无法从该文件夹载入快捷方式
-load.failed.name:
-  en: Unable to get the directory name
-  zh-CN: 无法获取该文件夹名称
+# load.failed.name:
+#   en: Unable to get the directory name
+#   zh-CN: 无法获取该文件夹名称
 
-footer:
-  en: Exit [Q] | Change [C] | Restore [R] | Function [F] | Search [S] | Top/Bottom [T/B]
-  zh-CN: 退出[Q] | 更换[C] | 恢复[R] | 功能[F] | 搜索[S] | 返回顶部/底部[T/B]
+ERROR_DELETE_ICON_DB:
+  en: Failed to delete the icon cache file
+  zh-CN: 删除图标缓存文件失败
 
-name:
-  en: Name
-  zh-CN: 名称
+SUCCESS_CLEAR_ICON_CACHE:
+  en: Successfully cleared the icon cache
+  zh-CN: 成功清理图标缓存
 
-prop:
-  en: Properties
-  zh-CN: 属性
+# clear.icon.cache.error:
+#   en: Failed to restart Explorer
+#   zh-CN: 清理图标缓存失败
 
-path:
-  en: Path
-  zh-CN: 路径
+ERROR_RESTART_EXPLORER:
+  en: Failed to restart Explorer
+  zh-CN: 无法重启资源管理器
 
-target_ext:
-  en: 'Target Ext  '
-  zh-CN: 目标扩展
+ERROR_ITERTATOR_EXPLORER:
+  en: Failed iterator to return entries in the explorer directory
+  zh-CN: 迭代器返回资源管理器目录中的条目失败
 
-target_dir:
-  en: 'Working Dir '
-  zh-CN: 工作目录
+EXPLORER_NOT_EXIST:
+  en: Explorer directory does not exist
+  zh-CN: 资源管理器目录不存在
 
-target_path:
-  en: 'Target Path '
-  zh-CN: 目标路径
+ERROR_GET_EXPLORER:
+  en: Failed to get the Explorer directory
+  zh-CN: 获取资源管理器目录失败
 
-icon_path:
-  en: 'Icon Path   '
-  zh-CN: 图标路径
-
-icon_index:
-  en: 'Icon Index  '
-  zh-CN: 图标索引
-
-arguments:
-  en: 'Arguments   '
-  zh-CN: 运行参数
-
-file_size:
-  en: 'File Size   '
-  zh-CN: 文件大小
-
-created_at:
-  en: 'Create Time'
-  zh-CN: 创建时间
-
-updated_at: 
-  en: 'Modify Time'
-  zh-CN: 修改时间
-
-accessed_at:
-  en: 'Access Time'
-  zh-CN: 访问时间
-
-search:
-  en: Search
-  zh-CN: 搜索
-
-load:
+LOAD:
   en: Load
   zh-CN: 载入
 
-load_content:
-  en: |
-    Start Menu      [S]
-    Other Directory [O]
-    All Desktop     [D]
 
-  zh-CN: |
-    载入开始菜单快捷方式[S]
-    载入其他目录快捷方式[O]
-    载入所有桌面快捷方式[D]
+# other_content:
+#   en: |
+#     Open Log File    [L]
+#     Open Icon File   [I]
+#     Clean Icon Cache [T]
 
-other:
+#   zh-CN: |
+#     打开记录日志[L]
+#     打开图标目录[I]
+#     清理图标缓存[T]
+
+# revise_content:
+#   en: |
+#     Change All Icons  [C]
+#     Restore All Icons [R]
+#     Copy Properties [1~8]
+
+#   zh-CN: |
+#     更换所有快捷方式图标[C]
+#     恢复所有快捷方式图标[R]
+#     复制该快捷方式属性[1~8]
+
+
+SHORTCUT:
+  en: Shortcut
+  zh-CN: 快捷方式
+
+SEARCH:
+  en: 🔍︎ Search
+  zh-CN: 🔍︎ 搜索
+
+CHANGE:
+  en: Change All
+  zh-CN: "更换所有图标"
+
+RESTORE:
+  en: Restore
+  zh-CN: '恢 复'
+
+RESTORE_ICON:
+  en: Restore All
+  zh-CN: '恢复所有图标'
+
+CANCEL:
+  en: Cancel
+  zh-CN: 取 消
+
+## 标签页名称
+HOME:
+  en: Home
+  zh-CN: 主页
+
+TOOL:
+  en: Tool 
+  zh-CN: 工具
+
+ABOUT:
+  en: About
+  zh-CN: 关于
+
+HISTORY:
+  en: History
+  zh-CN: 历史
+
+SETTING: 
+  en: Setting
+  zh-CN: 设置
+
+## 修改区域
+CHANGE_ONE:
+  en: Change
+  zh-CN: 更换图标
+
+RESTORE_ONE:
+  en: Restore
+  zh-CN: 恢复图标
+
+TARGET_DIR:
+  en: 'Working Dir'
+  zh-CN: 工作目录
+
+ICON_DIR:
+  en: 'Icon Dir'
+  zh-CN: 图标目录
+
+VIEW_PROPERTIES:
+  en: Properties
+  zh-CN: 查看属性
+
+## 图标信息
+NAME:
+  en: Name
+  zh-CN: 名称
+
+PROP:
+  en: Properties
+  zh-CN: 属性
+
+FILE_PATH:
+  en: File Path
+  zh-CN: 文件路径
+
+TARGET_EXT:
+  en: 'Target Ext'
+  zh-CN: 目标扩展
+
+TARGET_PATH:
+  en: 'Target Path'
+  zh-CN: 目标路径
+
+ICON_PATH:
+  en: "Icon Path"
+  zh-CN: "图标路径"
+
+ICON_INDEX:
+  en: 'Icon Index'
+  zh-CN: 图标索引
+
+ARGUMENTS:
+  en: 'Arguments'
+  zh-CN: 运行参数
+
+FILE_SIZE:
+  en: 'File Size'
+  zh-CN: 文件大小
+
+CREATED_AT:
+  en: 'Create Time'
+  zh-CN: 创建时间
+
+UPDATED_AT: 
+  en: 'Modify Time'
+  zh-CN: 修改时间
+
+ACCESSED_AT:
+  en: 'Access Time'
+  zh-CN: 访问时间
+
+## 状态栏
+LOCATION:
+  en: Location
+  zh-CN: "位置"
+
+TOTAL:
+  en: Total
+  zh-CN: 总共
+
+CHANGED:
+  en: Changed
+  zh-CN: 已更换
+
+UNCHANGED:
+  en: Unchanged
+  zh-CN: 未更换
+
+COMFIRM: 
+  en: Comfirm
+  zh-CN: 确 认
+
+## 图标源
+DESKTOP:
+  en: Desktop
+  zh-CN: 桌面
+
+START_MENU:
+  en: Start Menu
+  zh-CN: 开始菜单
+
+OTHER:
   en: Other 
   zh-CN: 其他
-
-other_content:
-  en: |
-    Open Log File    [L]
-    Open Icon File   [I]
-    Clean Icon Cache [T]
-
-  zh-CN: |
-    打开记录日志[L]
-    打开图标目录[I]
-    清理图标缓存[T]
-
-revise:
-  en: Revise
-  zh-CN: 修改 
-
-revise_content:
-  en: |
-    Change All Icons  [C]
-    Restore All Icons [R]
-    Copy Properties [1~8]
-
-  zh-CN: |
-    更换所有快捷方式图标[C]
-    恢复所有快捷方式图标[R]
-    复制该快捷方式属性[1~8]
-
-status:
-  en: Status
-  zh-CN: 状态
-
-yes_no:
-  en: Yes [Y] / No [N]
-  zh-CN: 是[Y] / 否[N]

@@ -2,33 +2,36 @@
 name = "LinkEcho"
 version = "0.1.0"
 edition = "2021"
-authors = ["iKineticate"]
-keywords = ["notification", "windows", "toast", "notify"]
-repository = "https://github.com/iKineticate/LinkEcho"
-homepage = "https://github.com/iKineticate/LinkEcho"
-license = "MIT"
-build = "build.rs"
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-glob = "0.3.1" # 遍历文件夹中的子文件（夹）
-rfd = "0.14.1" # 选择文件夹
-winsafe = { version = "0.0.21", features = ["shell"] }
-crossterm = "0.28.0"
-ratatui = "0.28.1"
-color-eyre = "0.6.3"
-chrono = "0.4.38" # 获取时间
-copypasta = "0.10.1" # 粘贴至剪切板
+dioxus = { version = "0.6.1", features = ["desktop"] }
+dioxus-desktop = "0.6.1"
+winsafe = { version = "0.0.22", features = ["advapi", "shell"] } # Windows's API
+windows-icons = "0.1.1" # 获取文件图标
+glob = "0.3.2" # 遍历文件夹
+rfd = "0.15.2" # 选择文件夹
+opener = "0.7.2" # 打开文件(夹)
+chrono = "0.4.39" # 获取系统时间
 win-toast-notify = "0.1.5"
-rust-i18n = "3" # 国际化文本
+rust-i18n = "3.1.2" # 国际化文本
+anyhow = "1.0.95" # 错误处理
+base64 = "0.22.1" # 图像转码
 # 以下是图标转换库相关库
-image = "0.24"
-console = "0.15"
-anyhow = "1"
-rayon = "1.5"
-resvg = "0.23"
-usvg = "0.23"
-tiny-skia = "0.6"
+image = "0.25.5"
+rayon = "1.10.0"
+resvg = "0.44.0"
+usvg = "0.44.0"
+[profile]
+
+[profile.wasm-dev]
+inherits = "dev"
+opt-level = 1
+
+[profile.server-dev]
+inherits = "dev"
+
+[profile.android-dev]
+inherits = "dev"
 
 [dependencies.windows]
 version = "0.58.0"
@@ -37,7 +40,7 @@ features = [
 ]
 
 [build-dependencies]
-embed-resource = "2.4" # 载入清单
+embed-resource = "3.0.1" # 载入清单
 
 [profile.release]
 lto = true

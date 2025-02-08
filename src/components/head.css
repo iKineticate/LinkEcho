@@ -1,0 +1,195 @@
+.header-container {
+    height: 36px;
+    border-bottom: 1px solid #2B2B2B;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 10; 
+    display: flex;
+    justify-content: flex-end; 
+    align-items: center;
+    overflow: hidden;
+}
+
+/* LOGO图标 */
+.logo {
+    height: 100%;
+    width: 34px;
+    display: flex;
+    justify-content: flex-end; 
+    align-items: center;
+}
+
+.logo img {
+    height: 50%;
+}
+
+/* 行动区域 */
+.search-actions-container {
+    height: 100%;
+    flex: 1;                /* 宽度动态调节 */
+    display: flex;
+    flex-wrap: nowrap;        /* 因宽度为动态，需设置换行 */
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    gap: 8px;
+}
+
+/* 行动区域 - 输入区域 */
+.search-actions-container input {
+    width: 15%;
+    height: 60%;
+    border: none;
+    border-radius: 4px;
+    color: #ffffff;
+    background-color: #2A2A2A;
+    padding-left: 5px;
+    outline: none;
+    transition:width 0.25s;
+}
+
+.search-actions-container input:hover {
+    background-color: #313131;
+}
+
+.search-actions-container input:focus-visible {
+    box-shadow: 0 0 0 2px #6956c7;
+}
+
+.search-actions-container input:focus,
+input:not(:placeholder-shown) {
+    width: 30%;
+}
+
+@media (prefers-reduced-motion:reduce){
+    .search-actions-container input {
+        transition:none;
+    }
+}
+
+/* 行动区域 - 按钮 */
+.search-actions-container button {
+    height: 60%;
+    font-family: inherit;
+    color: white;
+    padding: 0.7em 1em;
+    padding-left: 0.9em;
+    display: flex;
+    align-items: center;
+    border: none;
+    border-radius: 4px;
+    overflow: hidden;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.search-actions-container button:active {
+    transform: scale(0.95);
+}
+
+/* 行动区域 - 按钮 - 图标 */
+.search-actions-container button:hover .svg-wrapper {
+    animation: fly-1 0.6s ease-in-out infinite alternate;
+}
+
+.search-actions-container button svg {
+    width: 15px;
+    height: 15px;
+    display: block;
+    transform-origin: center center;
+    transition: transform 0.3s ease-in-out;
+}
+
+.search-actions-container button:hover svg {
+    transform: translateX(3em) rotate(45deg) scale(1.2);
+}
+
+@keyframes fly-1 {
+    from {
+        transform: translateY(0.1em);
+    }
+    to {
+        transform: translateY(-0.1em);
+    }
+}
+
+/* 行动区域 - 按钮 -文本 */
+.search-actions-container button .text {
+    display: block;
+    margin-left: 0.3em;
+    transition: all 0.3s ease-in-out;
+}
+
+.search-actions-container button:hover .text {
+    transform: translateX(7em);
+}
+
+
+/* 选定区域 - 按钮 - 提示词  */
+.search-actions-container button .tooltip {
+    content: "";
+    position: fixed;
+    top: 40px;
+    transform: translateX(-50%);
+    height: 25px;
+    width: auto;
+    padding: 0 8px;
+    background-color: #666;
+    color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: none;
+    border-radius: 5px;
+    text-shadow: 0 0 10px rgb(0, 0, 0);
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.25s linear;
+    pointer-events: none;
+}
+
+.search-actions-container button:hover .tooltip {
+    opacity: 1;
+    visibility: visible;
+}
+
+.search-actions-container button .tooltip:hover {
+    opacity: 0;
+    visibility: hidden;
+}
+
+/* 窗口控制按钮 */
+.window-buttons {
+    display: flex;
+    height: 100%;
+}
+
+.window-buttons button {
+    width: 45px;
+    height: 100%;
+    color: white;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.window-buttons button:hover {
+    background-color: #3D3D3D;
+}
+
+.window-buttons button.close-button:hover {
+    background-color: #C42B1C;
+}
+
+.window-buttons button svg {
+    height: 40%;
+}
+
+.window-buttons button svg path {
+    fill: #FFFFFF;
+}

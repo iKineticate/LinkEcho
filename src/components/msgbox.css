@@ -1,0 +1,112 @@
+.msgbox-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.msgbox-modal {
+    width: 40%;
+    background: #1F1F1F;
+    padding: 1.25rem 1rem 1rem 1rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(255, 255, 255, 0.1);
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+}
+
+.msgbox-modal svg {
+    width: 1.5rem;
+    height: 1.5rem;
+    stroke-width: 1.5;
+    stroke: currentColor;
+
+}
+
+.msgbox-modal svg path {
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.msgbox-modal button {
+    cursor: pointer;
+}
+
+.msgbox-modal button:hover {
+    opacity: 0.9;
+}
+
+.msgbox-modal button:active {
+    transition: 0.3s;
+    transform: scale(0.93);
+}
+
+.msgbox-modal .image {
+    display: flex;
+    margin-left: auto;
+    margin-right: auto;
+    flex-shrink: 0;
+    justify-content: center;
+    align-items: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 9999px;
+}
+
+.msgbox-modal .content {
+    margin-top: 0.75rem;
+    text-align: center;
+}
+
+.msgbox-modal .title {
+    color: #e3e3e3;
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.5rem;
+}
+
+.msgbox-modal .message {
+    margin-top: 0.5rem;
+    color: #6C6C6C;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+}
+
+.msgbox-modal .confirm {
+    display: inline-flex;
+    padding: 0.5rem 1rem;
+    background-color: #DC2626;
+    color: #ffffff;
+    font-size: 1rem;
+    line-height: 1.5rem;
+    font-weight: 500;
+    justify-content: center;
+    width: 100%;
+    border-radius: 0.375rem;
+    border-width: 1px;
+    border-color: transparent;
+}
+
+.msgbox-modal .cancel {
+    display: inline-flex;
+    margin-top: 0.75rem;
+    padding: 0.5rem 1rem;
+    background-color: #ffffff;
+    color: #374151;
+    font-size: 1rem;
+    line-height: 1.5rem;
+    font-weight: 500;
+    justify-content: center;
+    width: 100%;
+    border-radius: 0.375rem;
+    border: 1px solid #d1d5db;
+}
