@@ -43,11 +43,11 @@ fn main() {
 
 fn app() -> Element {
     let current_tab = use_signal(|| Tab::Home);
-    let read_tab = *current_tab.read();
     let link_list = use_signal(|| LinkList::default());
     let filter_name: Signal<Option<String>> = use_signal(|| None);
     let msgbox: Signal<Option<(MsgIcon, Action)>> = use_signal(|| None);
     let should_show_prop = use_signal(|| false);
+    let read_tab = *current_tab.read();
 
     rsx! {
         div {

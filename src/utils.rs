@@ -103,8 +103,8 @@ pub fn get_img_base64_by_path(path: &str) -> String {
                 Some("tiff") => image_to_base64(img_path, ImageType::Tiff),
                 Some("webp") => image_to_base64(img_path, ImageType::Webp),
                 _ => {
-                    println!("{path}");
-                    format!("data:image/png;base64,{}", get_icon_base64_by_path(path))
+                    let base64 = get_icon_base64_by_path(path).unwrap_or(FILE_NOT_EXIST.to_owned());
+                    format!("data:image/png;base64,{base64}")
                 },
             }
         },

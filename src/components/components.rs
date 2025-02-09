@@ -371,7 +371,7 @@ pub fn status(link_list: Signal<LinkList>) -> Element {
         div {
             class: "status-container",
             for (index, text) in status_texts.iter().enumerate() {
-                span { { text.clone()} },
+                span { { text.clone() } },
                 if index != status_texts.len() - 1 {
                     span { "〡" },
                 }
