@@ -70,6 +70,7 @@ input:not(:placeholder-shown) {
 
 /* 行动区域 - 按钮 */
 .search-actions-container button {
+    position: relative;
     height: 60%;
     font-family: inherit;
     color: white;
@@ -84,49 +85,54 @@ input:not(:placeholder-shown) {
     cursor: pointer;
 }
 
-.search-actions-container button:active {
-    transform: scale(0.95);
+.search-actions-container button.restore {
+    background: #de5b5b;
 }
 
-/* 行动区域 - 按钮 - 图标 */
-.search-actions-container button:hover .svg-wrapper {
-    animation: fly-1 0.6s ease-in-out infinite alternate;
+.search-actions-container button.change {
+    background: #7962e0;
 }
 
-.search-actions-container button svg {
-    width: 15px;
-    height: 15px;
-    display: block;
-    transform-origin: center center;
-    transition: transform 0.3s ease-in-out;
+.search-actions-container button:hover::before {
+    transform: scaleX(1);
 }
 
-.search-actions-container button:hover svg {
-    transform: translateX(3em) rotate(45deg) scale(1.2);
+.search-actions-container button::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform: scaleX(0);
+    transform-origin: 0 50%;
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+    transition: all 0.475s;
 }
 
-@keyframes fly-1 {
-    from {
-        transform: translateY(0.1em);
-    }
-    to {
-        transform: translateY(-0.1em);
-    }
+.search-actions-container button.restore::before {
+    background: linear-gradient(
+        82.3deg,
+        rgb(217, 86, 54) 10.8%,
+        rgb(239, 15, 15) 94.3%
+    );
+}
+
+.search-actions-container button.change::before {
+    background: linear-gradient(
+        82.3deg,
+        rgb(141, 80, 233) 10.8%,
+        rgb(76, 15, 241) 94.3%
+    );
 }
 
 /* 行动区域 - 按钮 -文本 */
 .search-actions-container button .text {
-    display: block;
-    margin-left: 0.3em;
-    transition: all 0.3s ease-in-out;
+    z-index: 1;
+    position: relative;
 }
 
-.search-actions-container button:hover .text {
-    transform: translateX(7em);
-}
-
-
-/* 选定区域 - 按钮 - 提示词  */
+/* 行动区域 - 按钮 - 提示词  */
 .search-actions-container button .tooltip {
     content: "";
     position: fixed;

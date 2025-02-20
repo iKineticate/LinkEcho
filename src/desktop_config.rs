@@ -17,7 +17,7 @@ pub fn desktop_config() -> Config {
                 .with_window_icon(Some(load_icon(LOGO_IMAGE)))
                 .with_theme(Some(Theme::Dark))
                 .with_resizable(true)
-                .with_inner_size(LogicalSize::new(800, 550))
+                .with_inner_size(LogicalSize::new(800, 460))
                 .with_min_inner_size(LogicalSize::new(600, 338))
                 .with_decorations(cfg!(debug_assertions))
         ).with_custom_index(

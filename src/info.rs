@@ -122,8 +122,8 @@ impl ManageLinkProp {
             }
         };
 
-        let link_icon = get_img_base64_by_path(&link_path);
-        let link_target_icon = get_img_base64_by_path(&link_target_path);
+        let link_icon_base64 = get_img_base64_by_path(&link_path);
+        let link_target_icon_base64 = get_img_base64_by_path(&link_target_path);
 
         let mut unconverted_icon_path = String::new();
 
@@ -188,8 +188,8 @@ impl ManageLinkProp {
             target_ext: link_target_ext,
             target_dir: link_target_dir,
             target_path: link_target_path,
-            icon: link_icon,
-            target_icon: link_target_icon,
+            icon: link_icon_base64,
+            target_icon: link_target_icon_base64,
             icon_location: link_icon_location,
             icon_index: link_icon_index,
             arguments: link_arguments,

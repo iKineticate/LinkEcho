@@ -3,8 +3,6 @@ use crate::{components, modify::*, t, utils::{notify, write_log}, window, LinkLi
 use dioxus::prelude::*;
 
 static LOGO_BASE64: &str = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAMAAACdt4HsAAAB5lBMVEUAAADly/+Vf/7MmP7Mmf6Wgf7MmP5/Zf5/ZPm2kf/cp/+VgP6VgP7MmP7MmP7mzP7MmP7MmP7MmP7ly/7Mmf7MmP7Mmf/MmP7Mmf/Nmv+4jv+9jf/mzP7mzP7Mmf6VgP7MmP7mzP6VgP7mzP7MmP+Vf/7MmP6UgP6VgP7Mmf6Vf/+VgP7MmP6Vf/7Mmf6Vf/7mzP7LmP7LmP+Uf//lyv7NmP6WgP+VgP6Wfv7jyvzLmP6Vf/7JmvvqzP7OnP6Ugf/gwv+Pb/6Vf/7Lmf7ly/7Lmf7Mmf+Kcv6VgP6VgP7LmP7my/6UgP7LmP7ly/3lzP6VgP6Vf/7lzP7LmP7LmP3KmP3ly/6UgP6UfvzLmP6Uf/6Vf/yWf//Gr/6vjP6vhf7ky/7ly/6Vgf7Ll/7ny//Mmf/JmP6Vffrq0P7Qmv7kyf7Mmf/mzP+VgP+AZv+Lc/+xjf/iw/+vjP+ehP/ClP/Zs//Qof+Xgf/KmP/Glv/Dlf+bhP+Eaf/hxf/Ysf/QoP+8kf+Uf/+SfP+ReP+Ha//bwv/Suf/Lsv+9pv+1nv+tlv/Ak/+mkP+eiP+yh/+lgP+def+Odv+Wdf+Ib/+Nbv/Wvf/Cqv+3lf+3j/+5jP+4jP+gi/+riv+oif+hhv+qg/+fgf+Scv++edtDAAAAa3RSTlMA/uz92S/57DAMB/ny7+fmxLChk5J0Xk9BMxYS+O7r5uHZ0c/Nxri4sKqekIuIgHVwbmdcWVdRQzsyLikmHhwbDAj99PPz8Oze29DCv76yq6mkopqWhIF/fXxuamZkZGNfT0tKQDw5NSYhE2t4Nt0AAALiSURBVFjDnZf3WxMxGIBDC2jZm5aNIFOWgIBs995773WGIkU7LFosDkRluvd/argn8bteLgPen/u+z31J2kvRukm7U5iblXllfXJJ8ZacVIMwnrF2efvWvGSDMo4r1+R6vOfrMokHPm7Qloe6C2rdVAQft2nJvo7GKvDAJ/Sq3NKbpw/vZArvp4/K5IGik8n0qQU+3izc5NuFuRWcxPm4RbrJah9vE2yyiglMKUHAiLe1bo+hQ/gP8/czebArvybp0eMnWn4sPs0CTYjQ1340+yFFpzHhj2PGJeLnU1ezEf7l9+P/9JNAGZH0G7GgfwZ8FyKAp26EfmD/2AsI1NOAbiMSIP4iBs7RgLjx7LnF/xIk/jK20AMBdSP0ExM/Oo2BdA8ElI3JwKpPF4CyCbGAuvE5aPqL2EqzdmDqLTb9ZZxAp27g1XvTpwsADOsFkt4ETZ8uAFCJtAIv32Hqx3Eix7QCr58yf2nOFrigEUiaxcyfCRtmC7hLA9LHpz7hG/sdYrCXmvTxwZ83yGHCVg6pAlOzGPy/IRJInKFFEfj43eJHJ4lum+GGPPApyPxVPhDbNsOOUhoQn13wFwxKwPpNogjPLvgrIeLaZ2hiAdHZBT86R1Ruhk5hIPuyC3y2APwM/aLAkQcoxWX1FxzfaS7kHChrRwSzQP2VMPH4GRqcA9V9CNEC9cdipsjN0OYYODGCKCl7qf9b8F7udQjsuoaAjRtMf8m0+BnSR/lAzT3QWYF8h+0E7Fcbtvn5aQhxha+iu0WzPVB+3eqywrzBE4GrjSVwcBA5cJUdYX6GYfhUOXn8M85XxCrh/WgfArqyq28hR3KZws9wHGnQAQ43w0UN35cquSOmqH2P+LoYwRlITZ4hJlCv9ouk99yzSn9gtywQ6VH5abWGDLdHFSgwpBxQ+cVueeCUwh+qMOQUKQI5hoL7cr9V5WfJfa9bFWiUB9T/eArlgSxlwCcPdGfK9dQClMA/wt16Ppp+DzoAAAAASUVORK5CYII=";
-static RESTORE: &str = "M938.752 512a384 384 0 0 1-384 384 379.306667 379.306667 0 0 1-220.16-69.546667 21.76 21.76 0 0 1-8.96-15.786666 21.333333 21.333333 0 0 1 5.973333-16.64l30.72-31.146667a21.333333 21.333333 0 0 1 26.88-2.56 294.826667 294.826667 0 0 0 165.546667 50.346667 298.666667 298.666667 0 1 0-298.666667-298.666667h100.693334a20.906667 20.906667 0 0 1 15.36 6.4l8.533333 8.533333a21.333333 21.333333 0 0 1 0 30.293334L229.973333 708.266667a21.76 21.76 0 0 1-30.293333 0l-150.613333-151.04a21.333333 21.333333 0 0 1 0-30.293334l8.533333-8.533333a20.906667 20.906667 0 0 1 15.36-6.4h97.792a384 384 0 0 1 768 0z";
-static CHANGE: &str = "M1.946 9.315c-.522-.174-.527-.455.01-.634l19.087-6.362c.529-.176.832.12.684.638l-5.454 19.086c-.15.529-.455.547-.679.045L12 14l6-8-8 6-8.054-2.685z";
 static MINIMIZED: &str = "M923 571H130.7c-27.6 0-50-22.4-50-50s22.4-50 50-50H923c27.6 0 50 22.4 50 50s-22.4 50-50 50z";
 static MAXIMIZE1: &str = "M812.3 959.4H213.7c-81.6 0-148-66.4-148-148V212.9c0-81.6 66.4-148 148-148h598.5c81.6 0 148 66.4 148 148v598.5C960.3 893 893.9 959.4 812.3 959.4zM213.7 120.9c-50.7 0-92 41.3-92 92v598.5c0 50.7 41.3 92 92 92h598.5c50.7 0 92-41.3 92-92V212.9c0-50.7-41.3-92-92-92H213.7z";
 static MAXIMIZE2: &str = "M812.2 65H351.6c-78.3 0-142.5 61.1-147.7 138.1-77 5.1-138.1 69.4-138.1 147.7v460.6c0 81.6 66.4 148 148 148h460.6c78.3 0 142.5-61.1 147.7-138.1 77-5.1 138.1-69.4 138.1-147.7V213c0-81.6-66.4-148-148-148z m-45.8 746.3c0 50.7-41.3 92-92 92H213.8c-50.7 0-92-41.3-92-92V350.7c0-50.7 41.3-92 92-92h460.6c50.7 0 92 41.3 92 92v460.6z m137.8-137.7c0 47.3-35.8 86.3-81.8 91.4V350.7c0-81.6-66.4-148-148-148H260.2c5.1-45.9 44.2-81.8 91.4-81.8h460.6c50.7 0 92 41.3 92 92v460.7z";
@@ -23,6 +21,10 @@ static WARN: &str = "M849.12 928.704 174.88 928.704c-45.216 0-81.536-17.728-99.6
 static INFO: &str = "M360 848.458h40V559.542H360c-22.092 0-40-17.908-40-40V424c0-22.092 17.908-40 40-40h224c22.092 0 40 17.908 40 40v424.458h40c22.092 0 40 17.908 40 40V984c0 22.092-17.908 40-40 40H360c-22.092 0-40-17.908-40-40v-95.542c0-22.092 17.908-40 40-40zM512 0C432.47 0 368 64.47 368 144s64.47 144 144 144 144-64.47 144-144S591.528 0 512 0z";
 static SUCCESS: &str = "M939.126472 312.141136 939.126472 312.141136 449.642279 801.685705c-11.582803 11.605316-27.561729 18.733667-45.196365 18.733667-17.593703 0-33.549094-7.128351-45.131897-18.733667L82.546529 524.989849c-11.523451-11.533684-18.671245-27.528983-18.671245-45.090964 0-35.270295 28.595268-63.938218 63.866586-63.938218 17.633612 0 33.612539 7.188726 45.195342 18.721387l231.509724 231.562936 444.391183-444.452581c11.56336-11.531638 27.561729-18.649755 45.215808-18.649755 35.228339 0 63.866586 28.586059 63.866586 63.865563C957.920514 284.58964 950.792163 300.619732 939.126472 312.141136";
 static CLEAN: &str = "M622 112c17.673 0 32 14.327 32 32l-0.001 139H879c17.673 0 32 14.327 32 32v164c0 17.673-14.327 32-32 32h-25.001L854 880c0 17.673-14.327 32-32 32H201c-17.673 0-32-14.327-32-32l-0.001-369H144c-17.673 0-32-14.327-32-32V315c0-17.673 14.327-32 32-32h224.999L369 144c0-17.673 14.327-32 32-32h221z m176 400H225v344h87.343V739.4c0-30.927 25.072-56 56-56V856h115.656L484 739.4c0-30.927 25.072-56 56-56l-0.001 172.6h115L655 739.4c0-30.927 25.072-56 56-56l-0.001 172.6H798V512z m49-165H176v100h671V347zM590 176H433v100h157V176z";
+static RIGHT_ARROW1: &str = "M755.2 510.2L405.7 174.3c-13.7-16.4-16.4-41 0-57.3 16.4-19.1 41-19.1 57.3-2.7l379.6 365.9c8.2 8.2 13.7 19.1 13.7 30 0 10.9-5.5 21.8-13.7 30L463 906.1c-8.2 8.2-16.4 10.9-27.3 10.9-10.9 0-21.8-5.5-30-13.7-16.4-16.4-16.4-41 0-57.3l349.5-335.8zM405.7 846";
+static RIGHT_ARROW2: &str = "M483.8 510.1L242.9 278.7c-9.4-11.3-11.3-28.2 0-39.5 11.3-13.2 28.2-13.2 39.5-1.9L544 489.5c5.6 5.6 9.4 13.2 9.4 20.7s-3.8 15.1-9.4 20.7L282.5 783c-5.6 5.6-11.3 7.5-18.8 7.5s-15.1-3.8-20.7-9.4c-11.3-11.3-11.3-28.2 0-39.5l240.8-231.5zM242.9 741.6";
+static RIGHT_ARROW3: &str = "M174.8 492.1m-55 0a55 55 0 1 0 110 0 55 55 0 1 0-110 0Z";
+
 
 #[component]
 pub fn header(
@@ -43,6 +45,7 @@ pub fn header(
             div {
                 class: "search-actions-container",
                 button {
+                    class: "restore",
                     onmousedown: |event| event.stop_propagation(),
                     onclick: move |_| {
                         *msgbox.write() = Some((
@@ -54,16 +57,8 @@ pub fn header(
                             Action::RestoreAll
                         ));
                     },
-                    background: "#B54646",
-                    div {
-                        class: "svg-wrapper",
-                        svg {
-                            view_box: "0 0 1024 1024",
-                            path { fill: "#ffffff", d: RESTORE }
-                        },
-                    }
-                    span { class:"text", {t!("RESTORE_ICON")} }
-                    span { class:"tooltip", {t!("RESTORE_ALL_TOOLTIP")} }
+                    span { class:"text", { t!("RESTORE_ICON") } }
+                    span { class:"tooltip", { t!("RESTORE_ALL_TOOLTIP") } }
                 },
                 input {
                     onmousedown: |event| event.stop_propagation(),
@@ -82,6 +77,7 @@ pub fn header(
                     }
                 },
                 button {
+                    class: "change",
                     onmousedown: |event| event.stop_propagation(),
                     onclick: move |_| {
                         match change_all_shortcuts_icons(link_list) {
@@ -98,16 +94,8 @@ pub fn header(
                             }
                         }
                     },
-                    background: "#6148df",
-                    div {
-                        class: "svg-wrapper",
-                        svg {
-                            view_box: "0 0 24 24",
-                            path { fill: "#ffffff", d: CHANGE }
-                        },
-                    }
-                    span { class:"text", {t!("CHANGE")} }
-                    span { class:"tooltip", {t!("CHANGE_ALL")} }
+                    span { class:"text", { t!("CHANGE") } }
+                    span { class:"tooltip", { t!("CHANGE_ALL") } }
                 }
             },
             div {
@@ -262,9 +250,12 @@ pub fn icon_modify(
     mut should_show_prop: Signal<bool>,
 ) -> Element {
     if let Some(index) = link_list.read().state.select {
+        let link_name = &link_list.read().items[index].name;
         let link_target_path = &link_list.read().items[index].target_path;
         let link_target_dir = link_list.read().items[index].target_dir.clone();
         let link_icon_path = link_list.read().items[index].icon_location.clone();
+        let link_icon_base64 = link_list.read().items[index].icon.clone();
+        let link_target_icon_base64 = link_list.read().items[index].target_icon.clone();
 
         let check_path_exists = |path: &str| -> &str {
             if Path::new(path).exists() {
@@ -282,13 +273,38 @@ pub fn icon_modify(
             style { {include_str!("modify.css")} },
             div {
                 class: "contrast-icon-container",
-                
+                div {
+                    width: "42%",
+                    img { src: link_target_icon_base64 }
+                }
+                div {
+                    width: "16%",
+                    svg {
+                        view_box: "0 0 1024 1024",
+                        path { d: RIGHT_ARROW1 },
+                        path { d: RIGHT_ARROW2 },
+                        path { d: RIGHT_ARROW3 },
+                    }
+                }
+                div {
+                    width: "42%",
+                    img { src: link_icon_base64 }
+                }
+            },
+            div {
+                width: "100%",
+                height: "40px",
+                display: "flex",
+                align_items: "center",
+                justify_content: "center",
+                overflow: "hidden",
+                span { { link_name.as_str() } }
             },
             div {
                 class: "modify-icon-container",
-                onmousedown: |event| event.stop_propagation(),
                 button {
                     class: "allowed",
+                    onmousedown: |event| event.stop_propagation(),
                     onclick: move |_| {
                         match change_single_shortcut_icon(link_list) {
                             Ok(Some(name)) => notify(&format!("{}: {}", t!("SUCCESS_CHANGE_ONE"), name)),
@@ -299,6 +315,7 @@ pub fn icon_modify(
                 }
                 button {
                     class: should_restore_allow,
+                    onmousedown: |event| event.stop_propagation(),
                     onclick: move |_| {
                         if should_restore_allow == "allowed" {
                             *msgbox.write() = Some((
@@ -311,10 +328,11 @@ pub fn icon_modify(
                             ));
                         }
                     },
-                    span { {t!("RESTORE_ONE")} },
+                    span { { t!("RESTORE_ONE") } },
                 }
                 button {
                     class: should_open_target_dir_allow,
+                    onmousedown: |event| event.stop_propagation(),
                     onclick: move |_| {
                         if should_open_target_dir_allow == "allowed" {
                             if let Err(err) = opener::open(&link_target_dir) {
@@ -322,10 +340,11 @@ pub fn icon_modify(
                             };
                         }
                     },
-                    span { {t!("TARGET_DIR")} }
+                    span { { t!("TARGET_DIR") } }
                 }
                 button {
                     class: should_open_icon_dir_allow,
+                    onmousedown: |event| event.stop_propagation(),
                     onclick: move |_| {
                         if should_open_icon_dir_allow == "allowed" {
                             let link_icon_dir_path = Path::new(&link_icon_path).parent();
@@ -336,14 +355,15 @@ pub fn icon_modify(
                             };
                         }
                     },
-                    span { {t!("ICON_DIR")} }
+                    span { { t!("ICON_DIR") } }
                 }
                 button {
                     class: "allowed",
+                    onmousedown: |event| event.stop_propagation(),
                     onclick: move |_| {
                         *should_show_prop.write() = true;
                     },
-                    span { {t!("VIEW_PROPERTIES")} }
+                    span { { t!("VIEW_PROPERTIES") } }
                 }
             }
         }
