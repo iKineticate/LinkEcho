@@ -106,86 +106,95 @@ pub fn icon_modify(
         rsx! {
             style { {include_str!("modify.css")} },
             div {
-                class: "contrast-icon-container",
+                width: "100%",
+                height: "100%",
+                display: "flex",
+                justify_content: "center",
+                align_items: "center",
+                flex_direction: "column",
                 div {
-                    width: "42%",
-                    img { src: link_target_icon_base64 }
-                }
-                div {
-                    width: "16%",
-                    svg {
-                        view_box: "0 0 1024 1024",
-                        path { d: RIGHT_ARROW1 },
-                        path { d: RIGHT_ARROW2 },
-                        path { d: RIGHT_ARROW3 },
+                    class: "contrast-icon-container",
+                    div {
+                        width: "42%",
+                        img { src: link_target_icon_base64 }
                     }
-                }
+                    div {
+                        width: "16%",
+                        svg {
+                            view_box: "0 0 1024 1024",
+                            path { d: RIGHT_ARROW1 },
+                            path { d: RIGHT_ARROW2 },
+                            path { d: RIGHT_ARROW3 },
+                        }
+                    }
+                    div {
+                        width: "42%",
+                        img { src: link_icon_base64 }
+                    }
+                },
                 div {
-                    width: "42%",
-                    img { src: link_icon_base64 }
-                }
-            },
-            div {
-                class: "modify-icon-container",
-                button {
-                    class: "allowed",
-                    onmousedown: |event| event.stop_propagation(),
-                    onclick: move |_| {
-                        match change_single_shortcut_icon(link_list) {
-                            Ok(Some(name)) => notify(&format!("{}: {}", t!("SUCCESS_CHANGE_ONE"), name)),
-                            _ => (),
-                        };
-                    },
-                    span { { t!("CHANGE_ONE") } }
-                }
-                button {
-                    class: should_restore_allow,
-                    onmousedown: |event| event.stop_propagation(),
-                    onclick: move |_| {
-                        if should_restore_allow == "allowed" {
-                            *show_msgbox.write() = Some(Msgbox {
-                                messages: t!("WARN_RESTORE_ONE").into_owned(),
-                                icon: MsgIcon::Warn(Action::RestoreOne)
-                            });
-                        }
-                    },
-                    span { { t!("RESTORE_ONE") } },
-                }
-                button {
-                    class: should_open_target_dir_allow,
-                    onmousedown: |event| event.stop_propagation(),
-                    onclick: move |_| {
-                        if should_open_target_dir_allow == "allowed" {
-                            if let Err(err) = opener::open(&link_target_dir) {
-                                write_log(format!("Failed to open {link_target_dir}: {err}")).expect("Failed to write the log");
+                    class: "modify-icon-container",
+                    button {
+                        class: "allowed",
+                        onmousedown: |event| event.stop_propagation(),
+                        onclick: move |_| {
+                            match change_single_shortcut_icon(link_list) {
+                                Ok(Some(name)) => notify(&format!("{}: {}", t!("SUCCESS_CHANGE_ONE"), name)),
+                                _ => (),
+                            };
+                        },
+                        span { { t!("CHANGE_ONE") } }
+                    }
+                    button {
+                        class: should_restore_allow,
+                        onmousedown: |event| event.stop_propagation(),
+                        onclick: move |_| {
+                            if should_restore_allow == "allowed" {
+                                *show_msgbox.write() = Some(Msgbox {
+                                    messages: t!("WARN_RESTORE_ONE").into_owned(),
+                                    icon: MsgIcon::Warn(Action::RestoreOne)
+                                });
                             }
-                        }
-                    },
-                    span { { t!("TARGET_DIR") } }
-                }
-                button {
-                    class: should_open_icon_dir_allow,
-                    onmousedown: |event| event.stop_propagation(),
-                    onclick: move |_| {
-                        if should_open_icon_dir_allow == "allowed" {
-                            let link_icon_dir_path = Path::new(&link_icon_path).parent();
-                            if let Some(path) = link_icon_dir_path {
-                                if let Err(err) = opener::open(path) {
-                                    write_log(format!("Failed to open {}: {err}", path.display())).expect("Failed to write the log");
+                        },
+                        span { { t!("RESTORE_ONE") } },
+                    }
+                    button {
+                        class: should_open_target_dir_allow,
+                        onmousedown: |event| event.stop_propagation(),
+                        onclick: move |_| {
+                            if should_open_target_dir_allow == "allowed" {
+                                if let Err(err) = opener::open(&link_target_dir) {
+                                    write_log(format!("Failed to open {link_target_dir}: {err}")).expect("Failed to write the log");
                                 }
                             }
-                        }
-                    },
-                    span { { t!("ICON_DIR") } }
+                        },
+                        span { { t!("TARGET_DIR") } }
+                    }
+                    button {
+                        class: should_open_icon_dir_allow,
+                        onmousedown: |event| event.stop_propagation(),
+                        onclick: move |_| {
+                            if should_open_icon_dir_allow == "allowed" {
+                                let link_icon_dir_path = Path::new(&link_icon_path).parent();
+                                if let Some(path) = link_icon_dir_path {
+                                    if let Err(err) = opener::open(path) {
+                                        write_log(format!("Failed to open {}: {err}", path.display())).expect("Failed to write the log");
+                                    }
+                                }
+                            }
+                        },
+                        span { { t!("ICON_DIR") } }
+                    }
+                    button {
+                        class: "allowed",
+                        onmousedown: |event| event.stop_propagation(),
+                        onclick: move |_| {
+                            *should_show_prop.write() = true;
+                        },
+                        span { { t!("VIEW_PROPERTIES") } }
+                    }
                 }
-                button {
-                    class: "allowed",
-                    onmousedown: |event| event.stop_propagation(),
-                    onclick: move |_| {
-                        *should_show_prop.write() = true;
-                    },
-                    span { { t!("VIEW_PROPERTIES") } }
-                }
+    
             }
         }
     } else {

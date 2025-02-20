@@ -62,9 +62,10 @@ fn app() -> Element {
 
     rsx! {
         div {
+            width: "100wh",
+            height: "100vh",
             display: "flex",
             flex_direction: "column",
-            height: "100vh",
             onmousedown: move |_| window().drag(),
             header::header{ link_list, filter_name, current_tab, show_msgbox},
             div {
