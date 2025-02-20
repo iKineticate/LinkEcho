@@ -58,6 +58,9 @@ ERROR_SAVE_OBJECT_COPY_TO_FILE:
   en: Failed to save a copy of the object to the specified file
   zh-CN: 无法将对象的副本保存到指定文件
 
+CONFIRM:
+  en: Confirm
+  zh-CN: 确认
 # load.shortcut.failed:
 #   en: Failed to load the shortcut
 #   zh-CN: 加载快捷方式失败

@@ -1,6 +1,6 @@
-use std::path::PathBuf;
+use crate::link_info::{ManageLinkProp, SystemLinkDirs};
 use crate::t;
-use crate::info::{ManageLinkProp, SystemLinkDirs};
+use std::path::PathBuf;
 
 pub struct ListState {
     pub select: Option<usize>,
@@ -23,9 +23,9 @@ impl ShortcutSource {
         match self {
             ShortcutSource::Desktop => t!("DESKTOP").into_owned(),
             ShortcutSource::StartMenu => t!("START_MENU").into_owned(),
-            ShortcutSource::Other(path) => {
-                path.file_name().map_or("None".to_owned(), |n| n.to_string_lossy().into_owned())
-            }
+            ShortcutSource::Other(path) => path
+                .file_name()
+                .map_or("None".to_owned(), |n| n.to_string_lossy().into_owned()),
         }
     }
 }

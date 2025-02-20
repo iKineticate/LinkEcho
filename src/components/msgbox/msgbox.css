@@ -29,7 +29,6 @@
     height: 1.5rem;
     stroke-width: 1.5;
     stroke: currentColor;
-
 }
 
 .msgbox-modal svg path {
@@ -62,21 +61,9 @@
     border-radius: 9999px;
 }
 
-.msgbox-modal .content {
-    margin-top: 0.75rem;
-    text-align: center;
-}
-
-.msgbox-modal .title {
-    color: #e3e3e3;
-    font-size: 1rem;
-    font-weight: 600;
-    line-height: 1.5rem;
-}
-
 .msgbox-modal .message {
     margin-top: 0.5rem;
-    color: #6C6C6C;
+    color: #b8b8b8;
     font-size: 0.875rem;
     line-height: 1.25rem;
 }
@@ -84,7 +71,6 @@
 .msgbox-modal .confirm {
     display: inline-flex;
     padding: 0.5rem 1rem;
-    background-color: #DC2626;
     color: #ffffff;
     font-size: 1rem;
     line-height: 1.5rem;

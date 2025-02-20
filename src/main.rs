@@ -2,23 +2,34 @@
 #![cfg(target_os = "windows")]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod components;
+mod config;
+mod icongen;
 #[path = "../locales/language.rs"]
 mod language;
-mod icongen;
-mod info;
+mod link_info;
+mod link_list;
 mod modify;
 mod utils;
-#[path = "components/components.rs"]
-mod components;
-mod link_list;
-mod desktop_config;
 
-use std::{env, path::{Path, PathBuf}};
-use crate::{link_list::*, components::Action};
-use components::MsgIcon;
-use desktop_config::desktop_config;
-use dioxus::prelude::*;
+use crate::components::{
+    header::header,
+    home::home,
+    msgbox::msgbox::{self, Action, MsgIcon, Msgbox},
+    properties::properties,
+    status::status,
+    tabs::tabs,
+};
+use crate::link_list::*;
+
+use std::{
+    env,
+    path::{Path, PathBuf},
+};
+
+use config::desktop_config;
 use dioxus::desktop::window;
+use dioxus::prelude::*;
 use glob::glob;
 use rfd::FileDialog;
 use rust_i18n::t;
@@ -45,7 +56,7 @@ fn app() -> Element {
     let current_tab = use_signal(|| Tab::Home);
     let link_list = use_signal(|| LinkList::default());
     let filter_name: Signal<Option<String>> = use_signal(|| None);
-    let msgbox: Signal<Option<(MsgIcon, Action)>> = use_signal(|| None);
+    let show_msgbox: Signal<Option<Msgbox>> = use_signal(|| None);
     let should_show_prop = use_signal(|| false);
     let read_tab = *current_tab.read();
 
@@ -55,15 +66,15 @@ fn app() -> Element {
             flex_direction: "column",
             height: "100vh",
             onmousedown: move |_| window().drag(),
-            components::header{ link_list, filter_name, current_tab, msgbox},
+            header::header{ link_list, filter_name, current_tab, show_msgbox},
             div {
                 display: "flex",
                 flex_direction: "row",
                 overflow: "hidden",
                 height: "100vh",
-                components::tabs { current_tab },
+                tabs::tabs { current_tab },
                 if read_tab == Tab::Home {
-                    components::home{ filter_name, link_list, msgbox, should_show_prop }
+                    home::home{ filter_name, link_list, show_msgbox, should_show_prop }
                 } else if read_tab == Tab::Tool {
 
                 } else if read_tab == Tab::History {
@@ -72,9 +83,9 @@ fn app() -> Element {
 
                 }
             }
-            components::status{ link_list },
-            components::msg_box{ msgbox, link_list, current_tab },
-            components::properties{ link_list, should_show_prop },
+            status::status{ link_list },
+            msgbox::msg_box{ show_msgbox, link_list, current_tab },
+            properties::properties{ link_list, should_show_prop },
         }
     }
 }

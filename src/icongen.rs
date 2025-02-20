@@ -37,10 +37,16 @@ pub fn image_to_ico(image_path: PathBuf, output_path: PathBuf, name: &str) -> Re
 }
 
 fn load_image(image_path: &PathBuf, sizes: &[u32]) -> Result<DynamicImage> {
-    if image_path.extension().and_then(OsStr::to_str).map(str::to_lowercase) == Some("svg".to_owned()) {
+    if image_path
+        .extension()
+        .and_then(OsStr::to_str)
+        .map(str::to_lowercase)
+        == Some("svg".to_owned())
+    {
         load_svg(image_path, sizes)
     } else {
-        image::open(image_path).with_context(|| format!("Failed to open file '{}'", image_path.display()))
+        image::open(image_path)
+            .with_context(|| format!("Failed to open file '{}'", image_path.display()))
     }
 }
 
@@ -53,8 +59,10 @@ fn load_svg(image_path: &PathBuf, sizes: &[u32]) -> Result<DynamicImage> {
     fontdb.load_system_fonts();
     opt.fontdb = fontdb.into();
 
-    let svg_data = std::fs::read(image_path).with_context(|| format!("Failed to read file '{}'", image_path.display()))?;
-    let rtree = resvg::usvg::Tree::from_data(&svg_data, &opt).with_context(|| "Failed to parse SVG contents")?;
+    let svg_data = std::fs::read(image_path)
+        .with_context(|| format!("Failed to read file '{}'", image_path.display()))?;
+    let rtree = resvg::usvg::Tree::from_data(&svg_data, &opt)
+        .with_context(|| "Failed to parse SVG contents")?;
 
     let pixmap_size = rtree.size();
     let max_size = *sizes.iter().max().unwrap();
@@ -71,7 +79,9 @@ fn load_svg(image_path: &PathBuf, sizes: &[u32]) -> Result<DynamicImage> {
     let mut image = RgbaImage::new(max_size, max_size);
     for y in 0..max_size {
         for x in 0..max_size {
-            let pixel = pixmap.pixel(x, y).unwrap_or(tiny_skia::PremultipliedColorU8::TRANSPARENT);
+            let pixel = pixmap
+                .pixel(x, y)
+                .unwrap_or(tiny_skia::PremultipliedColorU8::TRANSPARENT);
             let rgba = Rgba([pixel.red(), pixel.green(), pixel.blue(), pixel.alpha()]);
             image.put_pixel(x, y, rgba);
         }
@@ -82,7 +92,9 @@ fn load_svg(image_path: &PathBuf, sizes: &[u32]) -> Result<DynamicImage> {
 
 fn check_image_dimensions(image: &DynamicImage, name: &str) {
     if image.width() != image.height() {
-        notify(&format!("Warning: {name} is not square, and will appear squished!"));
+        notify(&format!(
+            "Warning: {name} is not square, and will appear squished!"
+        ));
     }
 
     if image.width() < 64 {
@@ -90,7 +102,11 @@ fn check_image_dimensions(image: &DynamicImage, name: &str) {
     }
 }
 
-fn create_frames(image: &DynamicImage, sizes: Vec<u32>, filter: image::imageops::FilterType) -> Result<Vec<IcoFrame>> {
+fn create_frames(
+    image: &DynamicImage,
+    sizes: Vec<u32>,
+    filter: image::imageops::FilterType,
+) -> Result<Vec<IcoFrame>> {
     let frames: Vec<Vec<u8>> = sizes
         .par_iter()
         .map(|&sz| {
