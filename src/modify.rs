@@ -1,14 +1,13 @@
 use crate::{
-    env, glob, icongen,
+    FileDialog, LinkList, LinkProp, Path, PathBuf, Status, env, glob, icongen,
     link_info::initialize_com_and_create_shell_link,
     t,
     utils::{ensure_local_app_folder_exists, get_img_base64_by_path, notify, write_log},
-    FileDialog, LinkList, LinkProp, Path, PathBuf, Status,
 };
 use anyhow::{Context, Result};
 use dioxus::signals::{Readable, Signal, Writable};
 use std::process::Command;
-use winsafe::{co, prelude::*, IPersistFile};
+use winsafe::{IPersistFile, co, prelude::*};
 
 pub fn change_all_shortcuts_icons(mut link_list: Signal<LinkList>) -> Result<bool> {
     // Initialize COM library and create IShellLink object

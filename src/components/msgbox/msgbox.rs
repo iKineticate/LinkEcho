@@ -1,8 +1,8 @@
 use crate::{
+    LinkList, Tab,
     modify::{restore_all_shortcuts_icons, restore_single_shortcut_icon},
     t,
     utils::{notify, write_log},
-    LinkList, Tab,
 };
 use dioxus::prelude::*;
 

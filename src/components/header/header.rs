@@ -1,8 +1,8 @@
 use crate::{
+    Action, LinkList, MsgIcon, Msgbox, Tab,
     modify::change_all_shortcuts_icons,
     t,
     utils::{notify, write_log},
-    Action, LinkList, MsgIcon, Msgbox, Tab,
 };
 use dioxus::prelude::*;
 use dioxus_desktop::window;

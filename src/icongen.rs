@@ -15,7 +15,7 @@
 //
 // Note: This file has been modified from the original version.
 
-use crate::{utils::notify, PathBuf};
+use crate::{PathBuf, utils::notify};
 use anyhow::{Context, Result};
 use image::codecs::ico::{IcoEncoder, IcoFrame};
 use image::{DynamicImage, Rgba, RgbaImage};
@@ -98,7 +98,9 @@ fn check_image_dimensions(image: &DynamicImage, name: &str) {
     }
 
     if image.width() < 64 {
-        notify(&format!("Warning: You've requested sizes bigger than your input, your image: {name} will be scaled up!"));
+        notify(&format!(
+            "Warning: You've requested sizes bigger than your input, your image: {name} will be scaled up!"
+        ));
     }
 }
 

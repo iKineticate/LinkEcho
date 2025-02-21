@@ -1,4 +1,4 @@
-use crate::{t, LinkList};
+use crate::{LinkList, t};
 use dioxus::prelude::*;
 
 #[component]

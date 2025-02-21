@@ -1,8 +1,8 @@
 use crate::{
+    Action, LinkList, LinkProp, MsgIcon, Msgbox,
     modify::change_single_shortcut_icon,
     t,
     utils::{notify, write_log},
-    Action, LinkList, LinkProp, MsgIcon, Msgbox,
 };
 use dioxus::prelude::*;
 use std::path::Path;
@@ -194,7 +194,7 @@ pub fn icon_modify(
                         span { { t!("VIEW_PROPERTIES") } }
                     }
                 }
-    
+
             }
         }
     } else {

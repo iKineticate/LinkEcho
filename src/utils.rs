@@ -1,7 +1,7 @@
 use crate::env;
 use anyhow::{Context, Result};
-use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
+use base64::prelude::BASE64_STANDARD;
 use chrono::Local;
 use image::ImageFormat;
 use std::fs::{File, OpenOptions};

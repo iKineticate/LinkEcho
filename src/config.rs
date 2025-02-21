@@ -1,12 +1,12 @@
 use dioxus::desktop::{
+    Config, WindowBuilder,
     tao::{
         dpi::LogicalSize,
         window::{Icon, Theme},
     },
-    Config, WindowBuilder,
 };
 
-use crate::utils::{ensure_local_app_folder_exists, ensure_logo_exists, LOGO_IMAGE};
+use crate::utils::{LOGO_IMAGE, ensure_local_app_folder_exists, ensure_logo_exists};
 
 pub fn desktop_config() -> Config {
     let local_app_folder_path =

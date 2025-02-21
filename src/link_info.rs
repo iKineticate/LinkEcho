@@ -1,12 +1,11 @@
 use crate::{
-    glob,
+    LinkProp, Path, PathBuf, Status, glob,
     utils::{get_img_base64_by_path, write_log},
-    LinkProp, Path, PathBuf, Status,
 };
 use anyhow::{Context, Result};
 use chrono::{DateTime, Local};
 use std::{collections::HashMap, env};
-use winsafe::{co, prelude::*, IPersistFile};
+use winsafe::{IPersistFile, co, prelude::*};
 
 #[allow(unused)]
 pub enum SystemLinkDirs {
