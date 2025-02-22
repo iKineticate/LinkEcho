@@ -1,4 +1,4 @@
-use crate::{modify::clear_icon_cache, t, utils::ensure_local_app_folder_exists, LinkList, Tab};
+use crate::{LinkList, MsgIcon, Msgbox, Tab, t, utils::ensure_local_app_folder_exists};
 use dioxus::prelude::*;
 use rfd::FileDialog;
 
@@ -13,6 +13,7 @@ const OPEN_ICON_DIR: &str = "M108.8 819.2V204.8c0-19.5392 7.0016-36.1984 21.0048
 pub fn tools(
     mut link_list: Signal<LinkList>,
     mut current_tab: Signal<Tab>,
+    mut show_msgbox: Signal<Option<Msgbox>>,
 ) -> Element {
     // let icon_from = link_list.read().source.name();
 
@@ -66,8 +67,10 @@ pub fn tools(
                 button {
                     onmousedown: |event| event.stop_propagation(),
                     onclick: move |_| {
-                        clear_icon_cache();
-                        *current_tab.write() = Tab::Home;
+                        *show_msgbox.write() = Some(Msgbox {
+                            messages: t!("SHOULD_CLEAR_ICON_CACHE").into_owned(),
+                            icon: MsgIcon::Clean
+                        });
                     },
                     svg {
                         view_box: "0 0 1024 1024",
@@ -77,11 +80,7 @@ pub fn tools(
                 },
                 button {
                     onmousedown: |event| event.stop_propagation(),
-                    onclick: move |_| {
-                        if let Ok(_) = opener::open("shell:AppsFolder") {
-                            *current_tab.write() = Tab::Home;
-                        }
-                    },
+                    onclick: move |_| { let _ = opener::open("shell:AppsFolder"); },
                     svg {
                         view_box: "0 0 1024 1024",
                         path { d: CREATE },

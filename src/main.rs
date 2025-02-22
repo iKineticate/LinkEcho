@@ -78,7 +78,7 @@ fn app() -> Element {
                 if read_tab == Tab::Home {
                     home::home{ filter_name, link_list, show_msgbox, should_show_prop }
                 } else if read_tab == Tab::Tools {
-                    tools::tools { link_list, current_tab }
+                    tools::tools { link_list, current_tab, show_msgbox }
                 } else if read_tab == Tab::History {
 
                 } else if read_tab == Tab::About {

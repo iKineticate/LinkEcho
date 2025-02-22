@@ -35,14 +35,14 @@ pub fn properties(mut link_list: Signal<LinkList>, mut should_show_prop: Signal<
                         div {
                             class: "items",
                             onmousedown: |event| event.stop_propagation(), // 屏蔽拖拽
-                            {rsx_info(&t!("FILE_PATH"), &item.path)}
-                            {rsx_info(&t!("TARGET_PATH"), &item.target_path)}
-                            {rsx_info(&t!("ICON_PATH"), &item.icon_location)}
-                            {rsx_info(&t!("ARGUMENTS"), &item.arguments)}
-                            {rsx_info(&t!("FILE_SIZE"), &item.file_size)}
-                            {rsx_info(&t!("CREATED_AT"), &item.created_at)}
-                            {rsx_info(&t!("UPDATED_AT"), &item.updated_at)}
-                            {rsx_info(&t!("ACCESSED_AT"), &item.accessed_at)}
+                            { rsx_info(&t!("FILE_PATH"), &item.path) }
+                            { rsx_info(&t!("TARGET_PATH"), &item.target_path) }
+                            { rsx_info(&t!("ICON_PATH"), &item.icon_location) }
+                            { rsx_info(&t!("ARGUMENTS"), &item.arguments) }
+                            { rsx_info(&t!("FILE_SIZE"), &item.file_size) }
+                            { rsx_info(&t!("CREATED_AT"), &item.created_at) }
+                            { rsx_info(&t!("UPDATED_AT"), &item.updated_at) }
+                            { rsx_info(&t!("ACCESSED_AT"), &item.accessed_at) }
                         }
                     }
                 }
