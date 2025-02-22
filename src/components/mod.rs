@@ -4,3 +4,4 @@ pub mod msgbox;
 pub mod properties;
 pub mod status;
 pub mod tabs;
+pub mod tools;

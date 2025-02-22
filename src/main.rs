@@ -19,6 +19,7 @@ use crate::components::{
     properties::properties,
     status::status,
     tabs::tabs,
+    tools::tools,
 };
 use crate::link_list::*;
 
@@ -38,7 +39,7 @@ rust_i18n::i18n!("locales");
 #[derive(PartialEq, Clone, Copy)]
 pub enum Tab {
     Home,
-    Tool,
+    Tools,
     History,
     Setting,
     About,
@@ -76,8 +77,8 @@ fn app() -> Element {
                 tabs::tabs { current_tab },
                 if read_tab == Tab::Home {
                     home::home{ filter_name, link_list, show_msgbox, should_show_prop }
-                } else if read_tab == Tab::Tool {
-
+                } else if read_tab == Tab::Tools {
+                    tools::tools { link_list, current_tab }
                 } else if read_tab == Tab::History {
 
                 } else if read_tab == Tab::About {

@@ -15,7 +15,7 @@ static ABOUT3: &str = "M512 437.333333c-17.066667 0-32 14.933333-32 32v234.66666
 pub fn tabs(current_tab: Signal<Tab>) -> Element {
     let tab_svg = vec![
         (Tab::Home, (HOME, None, None)),
-        (Tab::Tool, (TOOL, None, None)),
+        (Tab::Tools, (TOOL, None, None)),
         (Tab::History, (HISTORY1, Some(HISTORY2), None)),
         (Tab::Setting, (SETTING1, Some(SETTING2), None)),
         (Tab::About, (ABOUT1, Some(ABOUT2), Some(ABOUT3))),

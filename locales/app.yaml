@@ -127,30 +127,6 @@ LOAD:
   en: Load
   zh-CN: 载入
 
-
-# other_content:
-#   en: |
-#     Open Log File    [L]
-#     Open Icon File   [I]
-#     Clean Icon Cache [T]
-
-#   zh-CN: |
-#     打开记录日志[L]
-#     打开图标目录[I]
-#     清理图标缓存[T]
-
-# revise_content:
-#   en: |
-#     Change All Icons  [C]
-#     Restore All Icons [R]
-#     Copy Properties [1~8]
-
-#   zh-CN: |
-#     更换所有快捷方式图标[C]
-#     恢复所有快捷方式图标[R]
-#     复制该快捷方式属性[1~8]
-
-
 SHORTCUT:
   en: Shortcut
   zh-CN: 快捷方式
@@ -180,8 +156,8 @@ HOME:
   en: Home
   zh-CN: 主页
 
-TOOL:
-  en: Tool 
+TOOLS:
+  en: Tools
   zh-CN: 工具
 
 ABOUT:
@@ -299,3 +275,33 @@ START_MENU:
 OTHER:
   en: Other 
   zh-CN: 其他
+
+## 工具名称/
+TOOL_LOAD_DESKTOP:
+  en: Load Desktop Shortcut
+  zh-CN: 载入桌面快捷方式
+
+TOOL_LOAD_START_MENU:
+  en: Load Start Menu Shortcuts
+  zh-CN: 载入菜单快捷方式
+
+TOOL_LOAD_OTHER:
+  en: Load Other Shortcus
+  zh-CN: 载入其他快捷方式
+
+TOOL_CLEAN_ICON_CACHE:
+  en: Clear System Icon Cache
+  zh-CN: 清理系统图标缓存
+
+TOOL_CREATE_SHORTCUT:
+  en: Create Application Shortcuts
+  zh-CN: 创建应用快捷方式
+
+TOOL_OPEN_ICON_DIR:
+  en: Open The Conversion Icon Catalog
+  zh-CN: 打开转换图标目录
+
+# 
+SELECT_SHORTCUTS_FOLDER:
+  en: Select the directory where the shortcuts are stored
+  zh-CN: 选择存放快捷方式的目录 
