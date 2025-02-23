@@ -4,7 +4,7 @@ use crate::{
 };
 use anyhow::{Context, Result};
 use chrono::{DateTime, Local};
-use std::{collections::HashMap, env};
+use std::{collections::HashMap, env, ffi::{OsStr, OsString}, time::SystemTime};
 use winsafe::{IPersistFile, co, prelude::*};
 
 #[allow(unused)]
@@ -57,7 +57,7 @@ impl ManageLinkProp {
         shell_link: &winsafe::IShellLink,
         persist_file: &IPersistFile,
     ) -> Result<LinkProp> {
-        let link_path = path_buf.to_string_lossy().to_string();
+        let link_path = path_buf.to_string_lossy().into_owned();
 
         persist_file
             .Load(&link_path, co::STGM::READ)
@@ -65,9 +65,8 @@ impl ManageLinkProp {
 
         let link_name = path_buf
             .file_stem()
-            .map_or(String::from("unnamed_file"), |n| {
-                n.to_string_lossy().into_owned()
-            });
+            .and_then(OsStr::to_str)
+            .map_or(String::from("unnamed_file"), str::to_owned);
 
         let link_target_path = shell_link
             .GetPath(
@@ -87,7 +86,8 @@ impl ManageLinkProp {
         } else {
             let link_target_file_name = Path::new(&link_target_path)
                 .file_name()
-                .map_or(String::new(), |n| n.to_string_lossy().to_lowercase());
+                .and_then(OsStr::to_str)
+                .map_or(String::new(), str::to_lowercase);
 
             match &*link_target_file_name {
                 "schtasks.exe" => String::from("schtasks"), // 任务计划程序
@@ -112,18 +112,23 @@ impl ManageLinkProp {
                 "net.exe" => String::from("net"),           // 工作组连接安装程序
                 "netscan.exe" => String::from("netscan"),   // 网络扫描
                 _ => {
-                    let ext = Path::new(&link_target_path).extension();
+                    let ext = Path::new(&link_target_path)
+                        .extension()
+                        .and_then(OsStr::to_str)
+                        .map(str::to_lowercase);
                     let is_app = link_target_path
                         .to_lowercase()
-                        .contains("windowssubsystemforandroid");
+                        .contains("windowssubsystemforandroid")
+                        .then_some("app".to_owned());
                     let is_uwp = link_target_path
                         .to_lowercase()
-                        .contains(r"appdata\local\microsoft\windowsapps");
-                    match (ext, is_app, is_uwp) {
-                        (_, true, _) => String::from("app"),
-                        (_, _, true) => String::from("uwp"),
-                        (None, false, false) => String::new(),
-                        (Some(os_str), false, false) => os_str.to_string_lossy().to_lowercase(),
+                        .contains(r"appdata\local\microsoft\windowsapps")
+                        .then_some("uwp".to_owned());
+
+                    match (is_app, is_uwp) {
+                        (Some(app), _) => app,
+                        (_, Some(uwp)) => uwp,
+                        _ => ext.unwrap_or_default(),
                     }
                 }
             }
@@ -144,7 +149,7 @@ impl ManageLinkProp {
                     _ => (converted_icon_path, icon_index.to_string()),
                 }
             })
-            .context(format!(
+            .with_context(|| format!(
                 "Failed get the shortcut icon location: {link_name}"
             ))?;
 
@@ -155,53 +160,42 @@ impl ManageLinkProp {
             || link_target_ext == "app" // Windows Subsystem for Android - WSA应用
             || link_target_ext == "uwp" // Universal Windows Platform - UWP应用
             || unconverted_icon_path.starts_with("%")  // Icon From System icon - 系统图标 (%windir%/.../powershell.exe  ,  %windir%/.../imageres.dll)
-            || (link_icon_dir == link_target_dir && Path::new(&link_target_dir).is_dir())
-        // Icons come from the target file's (sub)directory - 图标来源于目标目录
+            || (link_icon_dir == link_target_dir && Path::new(&link_target_dir).is_dir()) // Icons come from the target file's (sub)directory - 图标来源于目标目录
         {
             Status::Unchanged
         } else {
             Status::Changed
         };
 
-        let link_arguments = shell_link.GetArguments().context(format!(
+        let link_arguments = shell_link.GetArguments().with_context(|| format!(
             "Failed to get the shortcut's arguments: {link_name}"
         ))?;
 
-        let metadata = std::fs::metadata(&link_path).context(format!(
+        let metadata = std::fs::metadata(&link_path).with_context(|| format!(
             "Failed to get the shortcut's metadata: {link_name}"
         ))?;
 
         let link_file_size = format!("{:.2} KB", metadata.len() as f64 / 1024.0);
 
+        fn format_system_time(time: SystemTime) -> String {
+            let datetime: DateTime<Local> = time.into();
+            datetime.format("%Y-%m-%d %H:%M:%S").to_string()
+        }
+
         let link_created_at = metadata
             .created()
-            .map(|time| {
-                let datetime: DateTime<Local> = time.into();
-                datetime.format("%Y-%m-%d %H:%M:%S").to_string()
-            })
-            .context(format!(
-                "Failed to get the shortcut's creation: {link_name}"
-            ))?;
+            .map(format_system_time)
+            .with_context(|| format!("Failed to get the shortcut's creation: {link_name}"))?;
 
         let link_updated_at = metadata
             .modified()
-            .map(|time| {
-                let datetime: DateTime<Local> = time.into();
-                datetime.format("%Y-%m-%d %H:%M:%S").to_string()
-            })
-            .context(format!(
-                "Failed to get the shortcut's updated time: {link_name}"
-            ))?;
+            .map(format_system_time)
+            .with_context(|| format!("Failed to get the shortcut's updated time: {link_name}"))?;
 
         let link_accessed_at = metadata
             .accessed()
-            .map(|time| {
-                let datetime: DateTime<Local> = time.into();
-                datetime.format("%Y-%m-%d %H:%M:%S").to_string()
-            })
-            .context(format!(
-                "Failed to get the shortcut's accessed time: {link_name}"
-            ))?;
+            .map(format_system_time)
+            .with_context(|| format!("Failed to get the shortcut's accessed time: {link_name}"))?;
 
         Ok(LinkProp {
             name: link_name,
@@ -225,16 +219,24 @@ impl ManageLinkProp {
     fn get_parent_path(path: &String) -> String {
         Path::new(path)
             .parent()
-            .map_or(String::new(), |p| p.to_string_lossy().to_string())
+            .and_then(Path::to_str)
+            .map(str::to_owned)
+            .unwrap_or_default()
     }
 
     fn get_path_from_env(known_folder_id: Option<&co::KNOWNFOLDERID>, env: &str) -> String {
         if let Some(id) = known_folder_id {
             winsafe::SHGetKnownFolderPath(id, co::KF::NO_ALIAS, None).unwrap_or(
-                env::var_os(env).map_or(String::new(), |p| p.to_string_lossy().to_string()),
+                env::var_os(env)
+                    .unwrap_or_default()
+                    .into_string()
+                    .unwrap_or_default()
             )
         } else {
-            env::var_os(env).map_or(String::new(), |p| p.to_string_lossy().to_string())
+            env::var_os(env)
+                .unwrap_or_default()
+                .into_string()
+                .unwrap_or_default()
         }
     }
 

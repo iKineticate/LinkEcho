@@ -6,7 +6,7 @@ use crate::{
 };
 use anyhow::{Context, Result};
 use dioxus::signals::{Readable, Signal, Writable};
-use std::process::Command;
+use std::{ffi::OsStr, process::Command};
 use winsafe::{IPersistFile, co, prelude::*};
 
 pub fn change_all_shortcuts_icons(mut link_list: Signal<LinkList>) -> Result<bool> {
@@ -164,14 +164,15 @@ pub fn change_single_shortcut_icon(mut link_list: Signal<LinkList>) -> Result<Op
 fn process_icon(path_buf: PathBuf, icon_data_path: &Path) -> Result<Option<(String, String)>> {
     let ext = path_buf
         .extension()
-        .and_then(|ext_os_str| ext_os_str.to_str())
-        .map(|ext| ext.to_lowercase())
+        .and_then(OsStr::to_str)
+        .map(str::to_lowercase)
         .filter(|ext| ["ico", "png", "bmp", "svg", "tiff"].contains(&ext.as_str()));
 
     if let Some(ext) = ext {
         let icon_name = path_buf
             .file_stem()
-            .map(|name| name.to_string_lossy().trim().to_lowercase())
+            .and_then(OsStr::to_str)
+            .map(str::to_lowercase)
             .ok_or_else(|| anyhow::anyhow!("Failed to get icon name: {}", path_buf.display()))?;
 
         // 若图标非ICO格式，且数据文件夹中无该名称图标，则将转换图片到数据文件夹中
@@ -179,13 +180,11 @@ fn process_icon(path_buf: PathBuf, icon_data_path: &Path) -> Result<Option<(Stri
             path_buf.to_string_lossy().to_string()
         } else {
             let logo_path = icon_data_path.join(format!("{icon_name}.ico"));
-            if logo_path.try_exists()? {
-                logo_path.to_string_lossy().to_string()
-            } else {
+            if !logo_path.exists() {
                 icongen::image_to_ico(path_buf, logo_path.clone(), &icon_name)?;
-                write_log(format!("{}: {icon_name}.{ext}", t!("SUCCESS_IMG_TO_ICO")))?;
-                logo_path.to_string_lossy().to_string()
-            }
+                write_log(format!("{}: {icon_name}.{ext}", t!("SUCCESS_IMG_TO_ICO")))?;  
+            };
+            logo_path.to_string_lossy().to_string()
         };
         Ok(Some((icon_path, icon_name)))
     } else {
@@ -312,29 +311,22 @@ pub fn clear_icon_cache() {
 }
 
 fn should_delete_file(path: &Path) -> bool {
-    path.is_file()
-        && path.extension().map_or(false, |ext| ext == "db")
-        && (path
-            .file_name()
-            .unwrap_or_default()
-            .to_string_lossy()
-            .starts_with("iconcache_")
-            || path
-                .file_name()
-                .unwrap_or_default()
-                .to_string_lossy()
-                .starts_with("thumbcache_"))
+    if !path.is_file() {
+        return false
+    }
+
+    if !path.extension().is_some_and(|e| e == "db") {
+        return false
+    }
+
+    path
+        .file_name()
+        .and_then(OsStr::to_str)
+        .is_some_and(|n| n.starts_with("iconcache_") || n.starts_with("thumbcache_"))
 }
 
 fn restart_explorer() -> bool {
-    let script = r#"
-if (-not (Get-Process -Name explorer -ErrorAction SilentlyContinue)) {
-    Start-Sleep -Seconds 2
-    if (-not (Get-Process -Name explorer -ErrorAction SilentlyContinue)) {
-        Start-Process explorer
-    }
-}
-"#;
+    let script = include_str!("restart_explorer.ps1");
 
     let status = Command::new("PowerShell")
         .arg("-Command")
