@@ -5,6 +5,7 @@ use base64::prelude::BASE64_STANDARD;
 use chrono::Local;
 use image::ImageFormat;
 use std::fs::{File, OpenOptions};
+use std::io::{Seek, SeekFrom};
 use std::io::{BufReader, ErrorKind::AlreadyExists, Read, Write};
 use std::path::{Path, PathBuf};
 use win_toast_notify::{CropCircle, WinToastNotify};
@@ -44,28 +45,37 @@ pub fn ensure_logo_exists() -> Result<PathBuf> {
     }
 }
 
-// pub fn ensure_temp_app_folder_exists() -> Result<PathBuf> {
-//     let temp_path = env::var("TEMP")
-//         .map_err(|_| std::io::Error::new(std::io::ErrorKind::NotFound, "TEMP not found"))?;
-//
-//     let temp_link_echo_path = Path::new(&temp_path).join("LinkEcho");
-//
-//     std::fs::create_dir_all(&temp_link_echo_path)
-//         .map_err(|_| std::io::Error::new(std::io::ErrorKind::Other, "Failed to create LinkEcho directory at Local/Temp"))?;
-//
-//     Ok(temp_link_echo_path)
-// }
-
 pub fn write_log(text: String) -> Result<()> {
     let local_app_path = ensure_local_app_folder_exists()?;
     let app_log_path = local_app_path.join("LinkEcho.log");
+    
+    // 以读写模式打开文件（自动创建）
     let mut log_file = OpenOptions::new()
+        .read(true)
+        .write(true)
         .create(true)
-        .append(true)
-        .open(app_log_path)
-        .context("Failed to read the log file")?;
-    let now_time = Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
-    writeln!(log_file, "{now_time}\n{text}\n")?;
+        .open(&app_log_path)
+        .context("Failed to open log file")?;
+
+    // 读取现有内容
+    let mut existing_content = String::new();
+    log_file.read_to_string(&mut existing_content)
+        .context("Failed to read log content")?;
+
+    // 构造新日志条目（带时间戳）
+    let now_time = Local::now().format("[%Y-%m-%d %H:%M:%S%.3f]");
+    let new_entry = format!("{now_time}\n{text}\n\n");
+
+    // 合并内容（新内容在前）
+    let combined = format!("{}{}", new_entry, existing_content);
+
+    // 重置指针并覆写文件
+    log_file.seek(SeekFrom::Start(0))?;
+    log_file.write_all(combined.as_bytes())?;
+    
+    // 截断文件避免残留旧数据
+    log_file.set_len(combined.len() as u64)?;
+
     Ok(())
 }
 

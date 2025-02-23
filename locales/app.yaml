@@ -61,20 +61,10 @@ ERROR_SAVE_OBJECT_COPY_TO_FILE:
 CONFIRM:
   en: Confirm
   zh-CN: 确认
-# load.shortcut.failed:
-#   en: Failed to load the shortcut
-#   zh-CN: 加载快捷方式失败
 
 SHOULD_CLEAR_ICON_CACHE:
   en: Does it clear the system icon cache?
   zh-CN: 是否清理系统图标缓存？
-
-# open.failed:
-#   en: Failed to open the file
-#   zh-CN: 无法打开文件
-# open.failed.icon_parent:
-#   en: Failed to get the directory of the ICON
-#   zh-CN: 无法获取该图标的目录
   
 SELECT_ICONS_FOLDER:
   en: Please select the directory where shortcuts are stored
@@ -91,9 +81,6 @@ ERROR_IMG_TO_ICON:
 ERROR_LOAD_LNK_FILE:
   en: Failed to load shortcut from the folder
   zh-CN: 无法从该文件夹载入快捷方式
-# load.failed.name:
-#   en: Unable to get the directory name
-#   zh-CN: 无法获取该文件夹名称
 
 ERROR_DELETE_ICON_DB:
   en: Failed to delete the icon cache file
@@ -102,10 +89,6 @@ ERROR_DELETE_ICON_DB:
 SUCCESS_CLEAR_ICON_CACHE:
   en: Successfully cleared the icon cache
   zh-CN: 成功清理图标缓存
-
-# clear.icon.cache.error:
-#   en: Failed to restart Explorer
-#   zh-CN: 清理图标缓存失败
 
 ERROR_RESTART_EXPLORER:
   en: Failed to restart Explorer
@@ -128,8 +111,8 @@ LOAD:
   zh-CN: 载入
 
 SHORTCUT:
-  en: Shortcut
-  zh-CN: 快捷方式
+  en: The icon of this shortcut has been replaced
+  zh-CN: 已更换该快捷方式的图标
 
 SEARCH:
   en: 🔍︎ Search
@@ -278,27 +261,27 @@ OTHER:
 
 ## 工具名称/
 TOOL_LOAD_DESKTOP:
-  en: Load Desktop Shortcut
+  en: Load Desktops
   zh-CN: 载入桌面快捷方式
 
 TOOL_LOAD_START_MENU:
-  en: Load Start Menu Shortcuts
+  en: Load Start Menu
   zh-CN: 载入菜单快捷方式
 
 TOOL_LOAD_OTHER:
-  en: Load Other Shortcus
+  en: Load Other Files
   zh-CN: 载入其他快捷方式
 
 TOOL_CLEAN_ICON_CACHE:
-  en: Clear System Icon Cache
+  en: Clear Icon Cache
   zh-CN: 清理系统图标缓存
 
 TOOL_CREATE_SHORTCUT:
-  en: Create Application Shortcuts
+  en: Create Shortcuts
   zh-CN: 创建应用快捷方式
 
 TOOL_OPEN_ICON_DIR:
-  en: Open The Conversion Icon Catalog
+  en: Open Icon Catalog
   zh-CN: 打开转换图标目录
 
 # 

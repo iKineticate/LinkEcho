@@ -1,0 +1,21 @@
+.histroy-container::-webkit-scrollbar {
+    width: 8px;
+    background: transparent;
+}
+
+.histroy-container::-webkit-scrollbar-thumb {
+    background-color: #3f3f3f;
+    border-radius: 3px;
+}
+
+.histroy-container::-webkit-scrollbar-thumb:hover {
+    background-color: #4c4b4b;
+}
+
+.histroy-container {
+    user-select: none;
+    white-space: pre;
+    overflow: auto;
+    height: 100%;
+    width: 100%;
+}

@@ -20,6 +20,7 @@ use crate::components::{
     status::status,
     tabs::tabs,
     tools::tools,
+    history::history,
     about::about,
 };
 use crate::link_list::*;
@@ -81,9 +82,9 @@ fn app() -> Element {
                 } else if read_tab == Tab::Tools {
                     tools::tools { link_list, current_tab, show_msgbox }
                 } else if read_tab == Tab::History {
-
+                    history::history {}
                 } else if read_tab == Tab::About {
-                    about::about {  }
+                    about::about {}
                 }
             }
             status::status{ link_list },
