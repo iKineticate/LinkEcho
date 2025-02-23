@@ -22,6 +22,7 @@ use image::{DynamicImage, Rgba, RgbaImage};
 use rayon::prelude::*;
 use resvg::tiny_skia;
 use std::ffi::OsStr;
+use std::path::Path;
 
 pub fn image_to_ico(image_path: PathBuf, output_path: PathBuf, name: &str) -> Result<()> {
     let sizes = vec![16, 32, 48, 64, 128, 256];
@@ -41,7 +42,7 @@ fn load_image(image_path: &PathBuf, sizes: &[u32]) -> Result<DynamicImage> {
         .extension()
         .and_then(OsStr::to_str)
         .map(str::to_lowercase)
-        == Some("svg".to_owned())
+        .is_some_and(|ext| &ext == "svg")
     {
         load_svg(image_path, sizes)
     } else {
@@ -54,7 +55,10 @@ fn load_svg(image_path: &PathBuf, sizes: &[u32]) -> Result<DynamicImage> {
     let mut opt = resvg::usvg::Options::default();
     opt.resources_dir = std::fs::canonicalize(image_path)
         .ok()
-        .and_then(|p| p.parent().map(|p| p.to_path_buf()));
+        .as_deref()
+        .and_then(Path::parent)
+        .map(Path::to_path_buf);
+
     let mut fontdb = resvg::usvg::fontdb::Database::new();
     fontdb.load_system_fonts();
     opt.fontdb = fontdb.into();
@@ -65,7 +69,7 @@ fn load_svg(image_path: &PathBuf, sizes: &[u32]) -> Result<DynamicImage> {
         .with_context(|| "Failed to parse SVG contents")?;
 
     let pixmap_size = rtree.size();
-    let max_size = *sizes.iter().max().unwrap();
+    let max_size = *sizes.iter().max().unwrap_or(&256);
 
     let mut pixmap = resvg::tiny_skia::Pixmap::new(max_size, max_size)
         .ok_or_else(|| anyhow::anyhow!("Failed to create SVG Pixmap!"))?;
