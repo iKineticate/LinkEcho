@@ -182,7 +182,7 @@ fn process_icon(path_buf: PathBuf, icon_data_path: &Path) -> Result<Option<(Stri
             let logo_path = icon_data_path.join(format!("{icon_name}.ico"));
             if !logo_path.exists() {
                 icongen::image_to_ico(path_buf, logo_path.clone(), &icon_name)?;
-                write_log(format!("{}: {icon_name}.{ext}", t!("SUCCESS_IMG_TO_ICO")))?;  
+                write_log(format!("{}: {icon_name}.{ext}", t!("SUCCESS_IMG_TO_ICO")))?;
             };
             logo_path.to_string_lossy().to_string()
         };
@@ -312,15 +312,14 @@ pub fn clear_icon_cache() {
 
 fn should_delete_file(path: &Path) -> bool {
     if !path.is_file() {
-        return false
+        return false;
     }
 
     if !path.extension().is_some_and(|e| e == "db") {
-        return false
+        return false;
     }
 
-    path
-        .file_name()
+    path.file_name()
         .and_then(OsStr::to_str)
         .is_some_and(|n| n.starts_with("iconcache_") || n.starts_with("thumbcache_"))
 }

@@ -4,7 +4,12 @@ use crate::{
 };
 use anyhow::{Context, Result};
 use chrono::{DateTime, Local};
-use std::{collections::HashMap, env, ffi::{OsStr, OsString}, time::SystemTime};
+use std::{
+    collections::HashMap,
+    env,
+    ffi::{OsStr, OsString},
+    time::SystemTime,
+};
 use winsafe::{IPersistFile, co, prelude::*};
 
 #[allow(unused)]
@@ -149,9 +154,7 @@ impl ManageLinkProp {
                     _ => (converted_icon_path, icon_index.to_string()),
                 }
             })
-            .with_context(|| format!(
-                "Failed get the shortcut icon location: {link_name}"
-            ))?;
+            .with_context(|| format!("Failed get the shortcut icon location: {link_name}"))?;
 
         let link_icon_dir = ManageLinkProp::get_parent_path(&link_icon_location);
 
@@ -160,20 +163,20 @@ impl ManageLinkProp {
             || link_target_ext == "app" // Windows Subsystem for Android - WSA应用
             || link_target_ext == "uwp" // Universal Windows Platform - UWP应用
             || unconverted_icon_path.starts_with("%")  // Icon From System icon - 系统图标 (%windir%/.../powershell.exe  ,  %windir%/.../imageres.dll)
-            || (link_icon_dir == link_target_dir && Path::new(&link_target_dir).is_dir()) // Icons come from the target file's (sub)directory - 图标来源于目标目录
+            || (link_icon_dir == link_target_dir && Path::new(&link_target_dir).is_dir())
+        // Icons come from the target file's (sub)directory - 图标来源于目标目录
         {
             Status::Unchanged
         } else {
             Status::Changed
         };
 
-        let link_arguments = shell_link.GetArguments().with_context(|| format!(
-            "Failed to get the shortcut's arguments: {link_name}"
-        ))?;
+        let link_arguments = shell_link
+            .GetArguments()
+            .with_context(|| format!("Failed to get the shortcut's arguments: {link_name}"))?;
 
-        let metadata = std::fs::metadata(&link_path).with_context(|| format!(
-            "Failed to get the shortcut's metadata: {link_name}"
-        ))?;
+        let metadata = std::fs::metadata(&link_path)
+            .with_context(|| format!("Failed to get the shortcut's metadata: {link_name}"))?;
 
         let link_file_size = format!("{:.2} KB", metadata.len() as f64 / 1024.0);
 
@@ -230,7 +233,7 @@ impl ManageLinkProp {
                 env::var_os(env)
                     .unwrap_or_default()
                     .into_string()
-                    .unwrap_or_default()
+                    .unwrap_or_default(),
             )
         } else {
             env::var_os(env)
