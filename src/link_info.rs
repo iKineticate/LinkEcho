@@ -4,12 +4,7 @@ use crate::{
 };
 use anyhow::{Context, Result};
 use chrono::{DateTime, Local};
-use std::{
-    collections::HashMap,
-    env,
-    ffi::{OsStr, OsString},
-    time::SystemTime,
-};
+use std::{collections::HashMap, env, ffi::OsStr, time::SystemTime};
 use winsafe::{IPersistFile, co, prelude::*};
 
 #[allow(unused)]
@@ -45,7 +40,7 @@ impl SystemLinkDirs {
                 co::KF::NO_ALIAS, // 确保返回文件夹的物理路径，避免别名路径
                 None,
             )
-            .context(format!(
+            .with_context(|| format!(
                 "Failed to get the path from Folder Id: {folder_id}"
             ))?;
             path_vec.push(PathBuf::from(path));
