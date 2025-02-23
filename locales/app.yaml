@@ -304,4 +304,8 @@ TOOL_OPEN_ICON_DIR:
 # 
 SELECT_SHORTCUTS_FOLDER:
   en: Select the directory where the shortcuts are stored
-  zh-CN: 选择存放快捷方式的目录 
+  zh-CN: 选择存放快捷方式的目录
+
+GIVE_ME_A_STAR:
+  en: "If you like this project, please don't forget to give me a ⭐ (star)!"
+  zh-CN: "如果你喜欢这个项目，请不要忘记给我一个⭐ (Star)！"
