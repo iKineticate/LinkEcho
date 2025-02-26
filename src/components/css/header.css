@@ -164,38 +164,3 @@ input:not(:placeholder-shown) {
     opacity: 0;
     visibility: hidden;
 }
-
-/* 窗口控制按钮 */
-.window-buttons {
-    display: flex;
-    height: 100%;
-}
-
-.window-buttons button {
-    width: 45px;
-    height: 100%;
-    color: white;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.window-buttons button:hover {
-    background-color: #3D3D3D;
-}
-
-.window-buttons button.close-button:hover {
-    background-color: #C42B1C;
-}
-
-.window-buttons button svg {
-    height: 40%;
-}
-
-.window-buttons button svg path {
-    fill: #FFFFFF;
-}

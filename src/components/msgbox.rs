@@ -1,6 +1,7 @@
 use crate::{
     LinkList, Tab,
-    modify::{clear_icon_cache, restore_all_shortcuts_icons, restore_single_shortcut_icon},
+    link_modify::{restore_all_shortcuts_icons, restore_single_shortcut_icon},
+    scripts::clear_icon_cache::clear_icon_cache,
     t,
     utils::{notify, write_log},
 };
@@ -75,7 +76,7 @@ pub fn msg_box(
         };
 
         rsx! {
-            style { {include_str!("msgbox.css")} },
+            style { {include_str!("css/msgbox.css")} },
             div {
                 class: "msgbox-container",
                 onmousedown: |event| event.stop_propagation(), // 屏蔽拖拽

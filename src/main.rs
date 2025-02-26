@@ -3,27 +3,19 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod components;
+mod image;
+mod link;
+mod scripts;
 mod config;
-mod icongen;
 #[path = "../locales/language.rs"]
 mod language;
-mod link_info;
-mod link_list;
-mod modify;
 mod utils;
 
-use crate::components::{
-    header::header,
-    home::home,
-    msgbox::msgbox::{self, Action, MsgIcon, Msgbox},
-    properties::properties,
-    status::status,
-    tabs::tabs,
-    tools::tools,
-    history::history,
-    about::about,
+use crate::{
+    components::msgbox::{MsgIcon, Msgbox, Action},
+    image::icongen,
+    link::{link_list::*, link_modify},
 };
-use crate::link_list::*;
 
 use std::{
     env,
@@ -70,26 +62,26 @@ fn app() -> Element {
             display: "flex",
             flex_direction: "column",
             onmousedown: move |_| window().drag(),
-            header::header{ link_list, filter_name, current_tab, show_msgbox},
+            components::header::header{ link_list, filter_name, current_tab, show_msgbox},
             div {
                 display: "flex",
                 flex_direction: "row",
                 overflow: "hidden",
                 height: "100vh",
-                tabs::tabs { current_tab },
+                components::tabs::tabs { current_tab },
                 if read_tab == Tab::Home {
-                    home::home{ filter_name, link_list, show_msgbox, should_show_prop }
+                    components::home::home{ filter_name, link_list, show_msgbox, should_show_prop }
                 } else if read_tab == Tab::Tools {
-                    tools::tools { link_list, current_tab, show_msgbox }
+                    components::tools::tools { link_list, current_tab, show_msgbox }
                 } else if read_tab == Tab::History {
-                    history::history {}
+                    components::history::history {}
                 } else if read_tab == Tab::About {
-                    about::about {}
+                    components::about::about {}
                 }
             }
-            status::status{ link_list },
-            msgbox::msg_box{ show_msgbox, link_list, current_tab },
-            properties::properties{ link_list, should_show_prop },
+            components::status::status{ link_list },
+            components::msgbox::msg_box{ show_msgbox, link_list, current_tab },
+            components::properties::properties{ link_list, should_show_prop },
         }
     }
 }

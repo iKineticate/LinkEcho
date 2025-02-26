@@ -1,4 +1,4 @@
-use crate::link_info::{ManageLinkProp, SystemLinkDirs};
+use crate::link::link_info::{ManageLinkProp, SystemLinkDirs};
 use crate::t;
 use std::path::PathBuf;
 

@@ -16,7 +16,7 @@ pub fn status(link_list: Signal<LinkList>) -> Element {
     ];
 
     rsx! {
-        style { {include_str!("status.css")} },
+        style { {include_str!("css/status.css")} },
         div {
             class: "status-container",
             for (index, text) in status_texts.iter().enumerate() {

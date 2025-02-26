@@ -12,7 +12,6 @@ pub fn desktop_config() -> Config {
     let local_app_folder_path =
         ensure_local_app_folder_exists().expect("Failed to read the webview data folder");
     let _logo_path = ensure_logo_exists().expect("Failed to create logo file to local app data");
-    // set_app_id().expect("Failed to configure");
 
     Config::new()
         .with_data_directory(local_app_folder_path)
@@ -43,7 +42,3 @@ fn load_icon(logo: &[u8]) -> Icon {
     };
     Icon::from_rgba(icon_rgba, icon_width, icon_height).expect("Failed to open icon")
 }
-
-// fn set_app_id() {
-//     // 注册表
-// }

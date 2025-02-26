@@ -18,7 +18,7 @@ pub fn tools(
     // let icon_from = link_list.read().source.name();
 
     rsx! {
-        style { {include_str!("tools.css")} },
+        style { {include_str!("css/tools.css")} },
         div {
             class: "tools-container",
             div {

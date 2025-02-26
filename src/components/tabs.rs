@@ -32,7 +32,7 @@ pub fn tabs(current_tab: Signal<Tab>) -> Element {
     .collect::<Vec<_>>();
 
     rsx! {
-        style { {include_str!("tab.css")} },
+        style { {include_str!("css/tabs.css")} },
         div {
             class: "tab-container",
             for (tab, (d1, d2, d3), color_class) in tab_svg.into_iter() {

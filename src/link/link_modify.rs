@@ -1,12 +1,12 @@
 use crate::{
-    FileDialog, LinkList, LinkProp, Path, PathBuf, Status, env, glob, icongen,
-    link_info::initialize_com_and_create_shell_link,
+    FileDialog, LinkList, LinkProp, Path, PathBuf, Status, glob, icongen,
+    link::link_info::initialize_com_and_create_shell_link,
     t,
-    utils::{ensure_local_app_folder_exists, get_img_base64_by_path, notify, write_log},
+    utils::{ensure_local_app_folder_exists, get_img_base64_by_path, write_log},
 };
 use anyhow::{Context, Result};
 use dioxus::signals::{Readable, Signal, Writable};
-use std::{ffi::OsStr, process::Command};
+use std::ffi::OsStr;
 use winsafe::{IPersistFile, co, prelude::*};
 
 pub fn change_all_shortcuts_icons(mut link_list: Signal<LinkList>) -> Result<bool> {
@@ -272,69 +272,4 @@ fn restore_shortcut_icon(
     shell_link.SetIconLocation(&link_prop.target_path, 0)?;
     persist_file.Save(None, true)?;
     Ok(())
-}
-
-pub fn clear_icon_cache() {
-    let local_app_data = env::var("LOCALAPPDATA").expect("Failed to get the local app data path");
-    let explorer_path = Path::new(&local_app_data).join("Microsoft\\Windows\\Explorer");
-
-    if !explorer_path.exists() {
-        return notify(&t!("EXPLORER_NOT_EXIST"));
-    }
-
-    if !explorer_path.is_dir() {
-        return notify(&t!("ERROR_ITERTATOR_EXPLORER"));
-    }
-
-    if let Ok(entries) = std::fs::read_dir(&explorer_path) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if should_delete_file(&path) {
-                if std::fs::remove_file(&path).is_err() {
-                    let text = format!("{}\n{}", t!("ERROR_DELETE_ICON_DB"), path.display());
-                    write_log(text.clone()).expect("Failure to write to the log");
-                    return notify(&text);
-                }
-            }
-        }
-
-        if restart_explorer() {
-            write_log(t!("SUCCESS_CLEAR_ICON_CACHE").into_owned())
-                .expect("Failure to write to the log");
-            notify(&t!("SUCCESS_CLEAR_ICON_CACHE"));
-        } else {
-            notify(&t!("ERROR_RESTART_EXPLORER"));
-        }
-    } else {
-        notify(&t!("ERROR_ITERTATOR_EXPLORER"));
-    }
-}
-
-fn should_delete_file(path: &Path) -> bool {
-    if !path.is_file() {
-        return false;
-    }
-
-    if !path.extension().is_some_and(|e| e == "db") {
-        return false;
-    }
-
-    path.file_name()
-        .and_then(OsStr::to_str)
-        .is_some_and(|n| n.starts_with("iconcache_") || n.starts_with("thumbcache_"))
-}
-
-fn restart_explorer() -> bool {
-    let script = include_str!("restart_explorer.ps1");
-
-    let status = Command::new("PowerShell")
-        .arg("-Command")
-        .args(["taskkill", "/IM", "explorer.exe", "/F;", "explorer"])
-        .arg(script)
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status()
-        .expect("failed to execute process");
-
-    status.success()
 }

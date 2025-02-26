@@ -1,6 +1,6 @@
 use crate::{
     Action, LinkList, LinkProp, MsgIcon, Msgbox,
-    modify::change_single_shortcut_icon,
+    link_modify::change_single_shortcut_icon,
     t,
     utils::{notify, write_log},
 };
@@ -38,7 +38,7 @@ pub fn home(
     };
 
     rsx! {
-        style { {include_str!("icon.css")} },
+        style { {include_str!("css/home_icon.css")} },
         div {
             class: "icon-container",
             onmousedown: |event| event.stop_propagation(), // 屏蔽拖拽
@@ -104,7 +104,7 @@ pub fn icon_modify(
         let should_open_icon_dir_allow = check_path_exists(&link_icon_path);
 
         rsx! {
-            style { {include_str!("modify.css")} },
+            style { {include_str!("css/home_modify.css")} },
             div {
                 width: "100%",
                 height: "100%",

@@ -16,7 +16,7 @@ pub fn properties(mut link_list: Signal<LinkList>, mut should_show_prop: Signal<
         if let Some(index) = link_list.read().state.select {
             let item = &link_list.read().items[index];
             rsx! {
-                style { {include_str!("properties.css")} },
+                style { {include_str!("css/properties.css")} },
                 div {
                     class: "properties-container",
                     div {
