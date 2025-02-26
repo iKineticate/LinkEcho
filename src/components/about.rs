@@ -9,13 +9,13 @@ pub fn about() -> Element {
             padding_left: "30px",
 
             h3 { "LinkEcho" }
-            
+
             p { "Author: iKineticate" }
-            
+
             p { "Version: 1.0.0" }
 
             p { "Copyright © 2024 iKineticate" }
-            
+
             p {
                 "Github: "
                 a {
@@ -41,9 +41,9 @@ pub fn about() -> Element {
                 //     }
                 // }
 
-                p { 
+                p {
                     color: "#666666",
-                    "Logo designed by Freepik from " 
+                    "Logo designed by Freepik from "
                     a {
                         onmousedown: |event| event.stop_propagation(),
                         color: "#666666",

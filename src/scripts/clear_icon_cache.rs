@@ -1,4 +1,7 @@
-use crate::{t, utils::{notify, write_log}};
+use crate::{
+    t,
+    utils::{notify, write_log},
+};
 use std::env;
 use std::ffi::OsStr;
 use std::path::Path;

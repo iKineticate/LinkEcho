@@ -22,7 +22,6 @@ pub fn history() -> Element {
                 };
             }
         }
-
     }
 
     rsx!()

@@ -40,9 +40,7 @@ impl SystemLinkDirs {
                 co::KF::NO_ALIAS, // 确保返回文件夹的物理路径，避免别名路径
                 None,
             )
-            .with_context(|| format!(
-                "Failed to get the path from Folder Id: {folder_id}"
-            ))?;
+            .with_context(|| format!("Failed to get the path from Folder Id: {folder_id}"))?;
             path_vec.push(PathBuf::from(path));
         }
 

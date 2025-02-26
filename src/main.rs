@@ -3,16 +3,16 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod components;
-mod image;
-mod link;
-mod scripts;
 mod config;
+mod image;
 #[path = "../locales/language.rs"]
 mod language;
+mod link;
+mod scripts;
 mod utils;
 
 use crate::{
-    components::msgbox::{MsgIcon, Msgbox, Action},
+    components::msgbox::{Action, MsgIcon, Msgbox},
     image::icongen,
     link::{link_list::*, link_modify},
 };
