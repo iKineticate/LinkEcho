@@ -122,7 +122,7 @@ pub fn change_single_shortcut_icon(mut link_list: Signal<LinkList>) -> Result<Op
 
     let icon_path_buf = match FileDialog::new()
         .set_title(t!("SELECT_ONE_ICON"))
-        .add_filter("ICONs", &["ico", "png", "bmp", "svg", "tiff"])
+        .add_filter("ICONs", &["ico", "png", "bmp", "svg", "tiff", "exe"])
         .pick_file()
     {
         Some(path_buf) => path_buf,
@@ -166,7 +166,7 @@ fn process_icon(path_buf: PathBuf, icon_data_path: &Path) -> Result<Option<(Stri
         .extension()
         .and_then(OsStr::to_str)
         .map(str::to_lowercase)
-        .filter(|ext| ["ico", "png", "bmp", "svg", "tiff"].contains(&ext.as_str()));
+        .filter(|ext| ["ico", "png", "bmp", "svg", "tiff", "exe"].contains(&ext.as_str()));
 
     if let Some(ext) = ext {
         let icon_name = path_buf
@@ -176,16 +176,18 @@ fn process_icon(path_buf: PathBuf, icon_data_path: &Path) -> Result<Option<(Stri
             .ok_or_else(|| anyhow::anyhow!("Failed to get icon name: {}", path_buf.display()))?;
 
         // 若图标非ICO格式，且数据文件夹中无该名称图标，则将转换图片到数据文件夹中
-        let icon_path = if ext == "ico" {
-            path_buf.to_string_lossy().to_string()
-        } else {
-            let logo_path = icon_data_path.join(format!("{icon_name}.ico"));
-            if !logo_path.exists() {
-                icongen::image_to_ico(path_buf, logo_path.clone(), &icon_name)?;
-                write_log(format!("{}: {icon_name}.{ext}", t!("SUCCESS_IMG_TO_ICO")))?;
-            };
-            logo_path.to_string_lossy().to_string()
+        let icon_path = match ext.as_str() {
+            "ico" | "exe" => path_buf.to_string_lossy().to_string(),
+            _ => {
+                let logo_path = icon_data_path.join(format!("{icon_name}.ico"));
+                if !logo_path.exists() {
+                    icongen::image_to_ico(path_buf, logo_path.clone(), &icon_name)?;
+                    write_log(format!("{}: {icon_name}.{ext}", t!("SUCCESS_IMG_TO_ICO")))?;
+                };
+                logo_path.to_string_lossy().to_string()
+            }
         };
+
         Ok(Some((icon_path, icon_name)))
     } else {
         Ok(None)
