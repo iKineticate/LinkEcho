@@ -1,7 +1,10 @@
 [package]
 name = "LinkEcho"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2024"
+authors = ["iKineticate"]
+license = "MIT License"
+description = "change the icon of shortcuts in batches as they wish"
 
 [dependencies]
 dioxus = { version = "0.6.3", features = ["desktop"] }
