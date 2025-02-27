@@ -31,15 +31,16 @@ pub fn about() -> Element {
 
             div {
                 font_size: "12px",
-                // p {
-                //     "GUI based on "
-                //     a {
-                //         href: "https://dioxuslabs.com/",
-                //         target: "_blank",
-                //         color: "#5BAD72",
-                //         "Dioxus"
-                //     }
-                // }
+                p {
+                    color: "#666666",
+                    "GUI based on "
+                    a {
+                        color: "#666666",
+                        href: "https://dioxuslabs.com/",
+                        target: "_blank",
+                        "Dioxus"
+                    }
+                }
 
                 p {
                     color: "#666666",

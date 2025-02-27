@@ -87,8 +87,8 @@ ERROR_DELETE_ICON_DB:
   zh-CN: 删除图标缓存文件失败
 
 SUCCESS_CLEAR_ICON_CACHE:
-  en: Successfully cleared the icon cache
-  zh-CN: 成功清理图标缓存
+  en: Successfully cleared the system icon cache
+  zh-CN: 成功清理系统图标缓存
 
 ERROR_RESTART_EXPLORER:
   en: Failed to restart Explorer
@@ -284,7 +284,7 @@ TOOL_OPEN_ICON_DIR:
   en: Open Icon Catalog
   zh-CN: 打开转换图标目录
 
-# 
+# About
 SELECT_SHORTCUTS_FOLDER:
   en: Select the directory where the shortcuts are stored
   zh-CN: 选择存放快捷方式的目录
@@ -292,3 +292,24 @@ SELECT_SHORTCUTS_FOLDER:
 GIVE_ME_A_STAR:
   en: "If you like this project, please don't forget to give me a ⭐ (star)!"
   zh-CN: "如果你喜欢这个项目，请不要忘记给我一个⭐ (Star)！"
+
+# Modify Icon
+SELECT_EXE_FILE:
+  en: Please select an executable file
+  zh-CN: 请选择一个可执行文件
+
+SELECT_ICON_FILE:
+  en: Please select an icon file
+  zh-CN: 请选择一个图标文件
+
+MODIFY_ICON:
+  en: Replace EXE icon
+  zh-CN: 更换EXE程序图标
+
+WARN_MODIFY_ICON:
+  en: Are you sure you want to replace the icon of this executable file?This action cannot be undone.This is currently a lab feature and may cause the program to not work properly.
+  zh-CN: 是否确定要更换该可执行文件的图标？此操作无法撤销。目前为实验室功能，可能会导致程序无法正常运行。
+
+ERROR_MODIFY_ICON:
+  en: Failed to replace the icon of the executable file
+  zh-CN: 无法更换该可执行文件的图标

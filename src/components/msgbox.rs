@@ -1,7 +1,7 @@
 use crate::{
     LinkList, Tab,
     link_modify::{restore_all_shortcuts_icons, restore_single_shortcut_icon},
-    scripts::clear_icon_cache::clear_icon_cache,
+    scripts::{clear_icon_cache::clear_icon_cache, editpe::modify_exe_icon},
     t,
     utils::{notify, write_log},
 };
@@ -30,6 +30,7 @@ pub enum MsgIcon {
 pub enum Action {
     RestoreOne,
     RestoreAll,
+    ModyfyExeIcon,
 }
 
 impl Msgbox {
@@ -125,7 +126,10 @@ pub fn msg_box(
                                             notify(&t!("ERROR_RESTORE_ONE"));
                                         }
                                     },
-                                    // _ => ()
+                                    Action::ModyfyExeIcon => if let Err(e) = modify_exe_icon() {
+                                        notify(&format!("{}: {}", t!("ERROR_MODIFY_ICON"), e));
+                                        write_log(e.to_string()).expect("Failed to write log")
+                                    },
                                 }
                             };
 
