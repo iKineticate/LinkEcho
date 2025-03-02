@@ -51,9 +51,9 @@ fn load_image(image_path: &PathBuf, sizes: &[u32]) -> Result<DynamicImage> {
     }
 }
 
-fn load_svg(image_path: &PathBuf, sizes: &[u32]) -> Result<DynamicImage> {
+pub fn load_svg<P: AsRef<Path>>(image_path: P, sizes: &[u32]) -> Result<DynamicImage> {
     let mut opt = resvg::usvg::Options::default();
-    opt.resources_dir = std::fs::canonicalize(image_path)
+    opt.resources_dir = std::fs::canonicalize(&image_path)
         .ok()
         .as_deref()
         .and_then(Path::parent)
@@ -63,8 +63,8 @@ fn load_svg(image_path: &PathBuf, sizes: &[u32]) -> Result<DynamicImage> {
     fontdb.load_system_fonts();
     opt.fontdb = fontdb.into();
 
-    let svg_data = std::fs::read(image_path)
-        .with_context(|| format!("Failed to read file '{}'", image_path.display()))?;
+    let svg_data = std::fs::read(&image_path)
+        .with_context(|| format!("Failed to read file '{}'", image_path.as_ref().display()))?;
     let rtree = resvg::usvg::Tree::from_data(&svg_data, &opt)
         .with_context(|| "Failed to parse SVG contents")?;
 

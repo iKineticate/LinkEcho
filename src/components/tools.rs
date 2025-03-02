@@ -1,7 +1,7 @@
 use std::{ffi::OsStr, path::Path};
 
 use crate::{
-    components::msgbox::Action, image::{background::get_background_image, icongen::{create_frames, save_ico}, rounded_corners::add_rounded_corners}, link::{link_info::{initialize_com_and_create_shell_link, ManageLinkProp}, link_list::LinkProp}, t, utils::{ensure_local_app_folder_exists, get_img_base64_by_path, notify, write_log}, LinkList, MsgIcon, Msgbox, Tab
+    components::msgbox::Action, image::{background::get_background_image, icongen::{create_frames, load_svg, save_ico}, rounded_corners::add_rounded_corners}, link::{link_info::{initialize_com_and_create_shell_link, ManageLinkProp}, link_list::LinkProp}, t, utils::{ensure_local_app_folder_exists, get_img_base64_by_path, notify, write_log}, LinkList, MsgIcon, Msgbox, Tab
 };
 use anyhow::{anyhow, Result};
 use dioxus::prelude::*;
@@ -227,7 +227,9 @@ pub fn tools(
                                     }
                                     
                                     customize_icon.write().link = Some(link_prop);
-                                };
+                                } else {
+                                    customize_icon.write().link = None;
+                                }
                             },
                             span { { t!("打开快捷方式") } }
                         }
@@ -241,12 +243,21 @@ pub fn tools(
                                     .pick_file()
                                 {
                                     if let Some(ref mut link_prop) = customize_icon.write().link {
-                                        link_prop.icon_base64 = get_img_base64_by_path(&icon_path.to_string_lossy());
-                                        link_prop.icon_path = icon_path.to_string_lossy().to_string();
+                                        let icon_path = get_link_icon_path(&link_prop.path)
+                                            .unwrap_or(icon_path.to_string_lossy().to_string());
+                                        link_prop.icon_base64 = get_img_base64_by_path(&icon_path);
+                                        link_prop.icon_path = icon_path;
                                     } else {
                                         let mut link_prop = LinkProp::default();
-                                        link_prop.icon_base64 = get_img_base64_by_path(&icon_path.to_string_lossy());
-                                        link_prop.icon_path = icon_path.to_string_lossy().to_string();
+                                        let icon_path = if icon_path.ends_with(".lnk") {
+                                            get_link_icon_path(&icon_path.to_string_lossy())
+                                                .unwrap_or(icon_path.to_string_lossy().to_string())
+                                        } else {
+                                            icon_path.to_string_lossy().to_string()
+                                        };
+
+                                        link_prop.icon_base64 = get_img_base64_by_path(&icon_path);
+                                        link_prop.icon_path = icon_path;
                                         customize_icon.write().link = Some(link_prop);
                                     }
                                 };
@@ -338,7 +349,7 @@ pub fn tools(
                                     if value.trim().is_empty() {
                                         customize_icon.write().background = None;
                                     } else {
-                                        customize_icon.write().background = Some((value, 90, 30));
+                                        customize_icon.write().background = Some((value, 90, 50));
                                     };
                                 }
                             }
@@ -463,7 +474,8 @@ fn get_customeize_icon_image(icon_path: &str, scaling: u32, radius: u32) -> Resu
         .unwrap_or_default();
 
     let icon_image = match icon_image_ext {
-        "svg" | "ico" | "png" | "bmp" | "tiff" | "webp "=> {
+        "svg" => load_svg(icon_path, &[256])?.to_rgba8(),
+        "ico" | "png" | "bmp" | "tiff" | "webp "=> {
             image::open(icon_path)?.to_rgba8()
         },
         "exe" | "lnk" => {
