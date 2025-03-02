@@ -6,7 +6,7 @@
     overflow: hidden;
     display: flex;
     align-items: center;
-    user-select: none;
+    user-select: none; /* 禁止选中文字 */
 }
 
 .status-container span {

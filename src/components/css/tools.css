@@ -58,8 +58,107 @@
     transform: scale(1.02);
 }
 
+/* 自定义图标的总区域 */
 .customize-icon-container {
     flex: 1;
     min-width: 400px;
     height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 显示图标区域 */
+.show-icon-container {
+    height: 100%;
+    aspect-ratio: 1/1;        /* 保证图标保持比例，不变形 */
+    border:1px solid #333333;
+    display: flex;
+    flex-shrink: 0; /* 禁止收缩 */
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    background: rgba(29, 31, 32, 0.904)
+    radial-gradient(rgba(255, 255, 255, 0.712) 10%, transparent 1%);
+    background-size: 11px 11px;   
+}
+
+.range-input {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+.range-input span {
+    font-family: "Consolas", "Microsoft YaHei UI";
+}
+
+input[type="checkbox"] {
+    width: 12px;
+    height: 12px;
+}
+
+input[type="range"] {
+    width: 40%;
+}
+
+/* input[type="color"] {
+    width: 20px;
+    height: 20px;
+} */
+
+.customize-icon-button-container {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-around;
+    overflow: hidden;
+    text-align: center;
+}
+
+.customize-icon-button-container button {
+    text-align: center;
+    width: 80%;
+    height: 30px;
+    display: inline-block;
+    border-radius: 5px;
+    border: none;
+    transition: all 0.5s;
+    color: #FFFFFF;
+    background-color: #333333;
+}
+
+.customize-icon-button-container button:hover {
+    transform: scale(1.02);
+}
+
+.customize-icon-button-container button:active {
+    transform: scale(0.95);
+}
+
+.customize-icon-button-container button span {
+    display: inline-block;
+    position: relative;
+    transition: 0.5s;
+}
+
+.customize-icon-button-container button span:after {
+    content: '»';
+    position: absolute;
+    opacity: 0;
+    top: 0;
+    right: -15px;
+    transition: 0.5s;
+}
+
+.customize-icon-button-container button:hover span {
+    padding-right: 15px;
+}
+
+.customize-icon-button-container button:hover span:after {
+    opacity: 1;
+    right: 0;
 }

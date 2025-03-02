@@ -236,7 +236,7 @@ impl ManageLinkProp {
         }
     }
 
-    fn convert_env_to_path(env_path: String) -> String {
+    pub fn convert_env_to_path(env_path: String) -> String {
         if !env_path.starts_with('%') {
             return env_path;
         }
@@ -337,13 +337,12 @@ impl ManageLinkProp {
         .collect();
 
         let env_path_lowercase = env_path.to_lowercase();
-        for (env, root) in &envs {
-            if env_path_lowercase.starts_with(env) {
-                return env_path_lowercase.replacen(env, root, 1);
-            }
-        }
-
-        env_path
+        envs.iter()
+            .find_map(|(env, root)| {
+                env_path_lowercase.starts_with(env)
+                    .then(|| env_path_lowercase.replacen(env, root, 1))
+            })
+            .unwrap_or(env_path)
     }
 
     pub fn collect(dirs_vec: &Vec<impl AsRef<Path>>) -> Result<Vec<LinkProp>> {

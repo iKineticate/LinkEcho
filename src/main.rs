@@ -12,7 +12,10 @@ mod scripts;
 mod utils;
 
 use crate::{
-    components::msgbox::{Action, MsgIcon, Msgbox},
+    components::{
+        tools::CustomizeIcon,
+        msgbox::{Action, MsgIcon, Msgbox}
+    },
     image::icongen,
     link::{link_list::*, link_modify},
 };
@@ -54,6 +57,8 @@ fn app() -> Element {
     let show_msgbox: Signal<Option<Msgbox>> = use_signal(|| None);
     let should_show_prop = use_signal(|| false);
     let read_tab = *current_tab.read();
+    let customize_icon = use_signal(|| CustomizeIcon::default());
+
 
     rsx! {
         div {
@@ -72,7 +77,7 @@ fn app() -> Element {
                 if read_tab == Tab::Home {
                     components::home::home{ filter_name, link_list, show_msgbox, should_show_prop }
                 } else if read_tab == Tab::Tools {
-                    components::tools::tools { link_list, current_tab, show_msgbox }
+                    components::tools::tools { link_list, current_tab, customize_icon, show_msgbox }
                 } else if read_tab == Tab::History {
                     components::history::history {}
                 } else if read_tab == Tab::About {
