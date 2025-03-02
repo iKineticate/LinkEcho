@@ -95,19 +95,9 @@
     font-family: "Consolas", "Microsoft YaHei UI";
 }
 
-input[type="checkbox"] {
-    width: 12px;
-    height: 12px;
-}
-
 input[type="range"] {
     width: 40%;
 }
-
-/* input[type="color"] {
-    width: 20px;
-    height: 20px;
-} */
 
 .customize-icon-button-container {
     flex-grow: 1;
@@ -161,4 +151,40 @@ input[type="range"] {
 .customize-icon-button-container button:hover span:after {
     opacity: 1;
     right: 0;
+}
+
+
+.coolinput {
+    display: flex;
+    flex-direction: column;
+    width: fit-content;
+    position: static;
+    width: 80%;
+}
+  
+.coolinput label.text {
+    font-size: 0.75rem;
+    color: #818CF8;
+    font-weight: 700;
+    position: relative;
+    top: 0.5rem;
+    margin: 0 0 0 7px;
+    padding: 0 3px;
+    background: #181818;
+    width: fit-content;
+}
+  
+.coolinput input[type=text].input {
+    box-sizing: border-box;
+    width: 100%;
+    color: #cacaca;
+    padding: 10px;
+    font-size: 0.75rem;
+    border: 2px #818CF8 solid;
+    border-radius: 5px;
+    background: #181818;
+}
+  
+.coolinput input[type=text].input:focus {
+    outline: none;
 }

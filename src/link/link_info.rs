@@ -137,7 +137,7 @@ impl ManageLinkProp {
 
         let mut unconverted_icon_path = String::new();
 
-        let (link_icon_location, link_icon_index) = shell_link
+        let (link_icon_path, link_icon_index) = shell_link
             .GetIconLocation()
             .map(|(icon_path, icon_index)| {
                 unconverted_icon_path = icon_path.clone();
@@ -149,10 +149,10 @@ impl ManageLinkProp {
             })
             .with_context(|| format!("Failed get the shortcut icon location: {link_name}"))?;
 
-        let link_icon_dir = ManageLinkProp::get_parent_path(&link_icon_location);
+        let link_icon_dir = ManageLinkProp::get_parent_path(&link_icon_path);
 
-        let link_icon_status = if link_icon_location.is_empty() // unchanged、non-existent、inaccessible - 未更换图标、图标不存在、图标不可访问（UWP/APP）
-            || link_icon_location == link_target_path // Icon from target file - 图标源于目标文件
+        let link_icon_status = if link_icon_path.is_empty() // unchanged、non-existent、inaccessible - 未更换图标、图标不存在、图标不可访问（UWP/APP）
+            || link_icon_path == link_target_path // Icon from target file - 图标源于目标文件
             || link_target_ext == "app" // Windows Subsystem for Android - WSA应用
             || link_target_ext == "uwp" // Universal Windows Platform - UWP应用
             || unconverted_icon_path.starts_with("%")  // Icon From System icon - 系统图标 (%windir%/.../powershell.exe  ,  %windir%/.../imageres.dll)
@@ -200,9 +200,9 @@ impl ManageLinkProp {
             target_ext: link_target_ext,
             target_dir: link_target_dir,
             target_path: link_target_path,
-            icon: link_icon_base64,
-            target_icon: link_target_icon_base64,
-            icon_location: link_icon_location,
+            icon_base64: link_icon_base64,
+            target_icon_base64: link_target_icon_base64,
+            icon_path: link_icon_path,
             icon_index: link_icon_index,
             arguments: link_arguments,
             file_size: link_file_size,

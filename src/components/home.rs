@@ -41,6 +41,7 @@ pub fn home(
         style { {include_str!("css/home_icon.css")} },
         div {
             class: "icon-container",
+            user_select: "none",
             onmousedown: |event| event.stop_propagation(), // 屏蔽拖拽
             for (filter_index, (item, index)) in filter_link_list_items.into_iter().enumerate() {
                 if let Some(index) = index {
@@ -71,7 +72,7 @@ pub fn icon_button(item: LinkProp, index: usize, mut link_list: Signal<LinkList>
             onclick: move |_| link_list.write().state.select = Some(index),
             div {
                 class: "img-container",
-                img { src: item.icon.clone() },
+                img { src: item.icon_base64.clone() },
                 span { {item.name.clone()} },
             }
         },
@@ -87,9 +88,9 @@ pub fn icon_modify(
     if let Some(index) = link_list.read().state.select {
         let link_target_path = &link_list.read().items[index].target_path;
         let link_target_dir = link_list.read().items[index].target_dir.clone();
-        let link_icon_path = link_list.read().items[index].icon_location.clone();
-        let link_icon_base64 = link_list.read().items[index].icon.clone();
-        let link_target_icon_base64 = link_list.read().items[index].target_icon.clone();
+        let link_icon_path = link_list.read().items[index].icon_path.clone();
+        let link_icon_base64 = link_list.read().items[index].icon_base64.clone();
+        let link_target_icon_base64 = link_list.read().items[index].target_icon_base64.clone();
 
         let check_path_exists = |path: &str| -> &str {
             if Path::new(path).exists() {

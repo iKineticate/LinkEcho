@@ -1,5 +1,5 @@
 use crate::{
-    components::msgbox::Action, link::link_info::{initialize_com_and_create_shell_link, ManageLinkProp}, t, utils::{ensure_local_app_folder_exists, get_img_base64_by_path}, LinkList, MsgIcon, Msgbox, Tab
+    components::msgbox::Action, link::{link_info::{initialize_com_and_create_shell_link, ManageLinkProp}, link_list::LinkProp}, t, utils::{ensure_local_app_folder_exists, get_img_base64_by_path}, LinkList, MsgIcon, Msgbox, Tab
 };
 use anyhow::{anyhow, Result};
 use dioxus::prelude::*;
@@ -16,10 +16,7 @@ const OPEN_ICON_DIR: &str = "M108.8 819.2V204.8c0-19.5392 7.0016-36.1984 21.0048
 
 #[derive(Clone, PartialEq)]
 pub struct CustomizeIcon {
-    pub link_path: Option<String>,
-    pub link_name: Option<String>,
-    pub icon_path: Option<String>,
-    pub icon_base64: Option<String>,
+    pub link: Option<LinkProp>,
     /// size: 0 ~ 100
     pub icon_size: u32,
     pub icon_border: u32,
@@ -30,12 +27,9 @@ pub struct CustomizeIcon {
 impl Default for CustomizeIcon {
     fn default() -> Self {
         Self {
-            link_path: None,
-            link_name: None,
-            icon_path: None,
-            icon_base64: None,
+            link: None,
             icon_size: 80,
-            icon_border: 10,
+            icon_border: 0,
             background: None,
         }
     }
@@ -49,7 +43,7 @@ pub fn tools(
     mut show_msgbox: Signal<Option<Msgbox>>,
 ) -> Element {
     let customize_icon_read = customize_icon.read().clone();
-    let link_name = customize_icon_read.link_name.clone();
+    let link_name = customize_icon_read.link.clone().map(|l| l.name);
     let background_clone = customize_icon_read.background.clone();
 
     rsx! {
@@ -167,7 +161,7 @@ pub fn tools(
                     div {
                         class: "show-icon-container",
                         position: "relative",
-                        if let Some(_) = &customize_icon_read.link_path {
+                        if let Some(link_prop) = &customize_icon_read.link {
                             if let Some(background) = &customize_icon_read.background {
                                 div {
                                     position: "absolute",
@@ -178,10 +172,10 @@ pub fn tools(
                                     z_index: "0",
                                 }
                             }
-                            if let Some(icon_base64) = &customize_icon_read.icon_base64 {
+                            if !link_prop.icon_base64.trim().is_empty() {
                                 img {
                                     z_index: "1",
-                                    src: icon_base64.as_str(),
+                                    src: link_prop.icon_base64.as_str(),
                                     border_radius: format!("{}px", customize_icon_read.icon_border),
                                     width: format!("{}px", customize_icon_read.icon_size * 200 / 100),
                                     height: format!("{}px", customize_icon_read.icon_size * 200 / 100),
@@ -208,23 +202,28 @@ pub fn tools(
                                     .add_filter("LINK", &["lnk"])
                                     .pick_file()
                                 {
-                                    if let Ok(icon_path) = get_link_icon_path(&link_path.to_string_lossy()) {
-                                        customize_icon.write().icon_base64 = Some(get_img_base64_by_path(&icon_path));
-                                        customize_icon.write().icon_path = Some(icon_path);
-                                    }
-                                    
                                     let link_name = link_path
                                         .file_stem()
                                         .and_then(std::ffi::OsStr::to_str)
                                         .map_or(String::from("(╯‵□′)╯︵┻━┻"), str::to_owned);
 
-                                    customize_icon.write().link_path = Some(link_path.to_string_lossy().to_string());
-                                    customize_icon.write().link_name = Some(link_name);
+                                    let mut link_prop = LinkProp::default();
+    
+                                    link_prop.path = link_path.to_string_lossy().to_string();
+
+                                    link_prop.name = link_name;
+
+                                    if let Ok(icon_path) = get_link_icon_path(&link_path.to_string_lossy()) {
+                                        link_prop.icon_base64 = get_img_base64_by_path(&icon_path);
+                                        link_prop.icon_path = icon_path;
+                                    }
+                                    
+                                    customize_icon.write().link = Some(link_prop);
                                 };
                             },
                             span { { t!("打开快捷方式") } }
                         }
-                        // 选择作为快捷方式的图标
+                        // 打开作为快捷方式的图标
                         button {
                             onmousedown: |event| event.stop_propagation(),
                             onclick: move |_| {
@@ -233,70 +232,47 @@ pub fn tools(
                                     .add_filter("ICON", &["ico", "png", "bmp", "svg", "tiff", "exe"])
                                     .pick_file()
                                 {
-                                    customize_icon.write().icon_path = Some(icon_path.to_string_lossy().to_string());
-                                    customize_icon.write().icon_base64 = Some(get_img_base64_by_path(&icon_path.to_string_lossy()));
+                                    if let Some(ref mut link_prop) = customize_icon.write().link {
+                                        link_prop.icon_base64 = get_img_base64_by_path(&icon_path.to_string_lossy());
+                                        link_prop.icon_path = icon_path.to_string_lossy().to_string();
+                                    }
                                 };
                             },
                             span { { t!("选择更换图标") } }
                         }
-                        // 更换快捷方式图标
+                        // 更换快捷方式的图标
                         button {
                             onmousedown: |event| event.stop_propagation(),
                             onclick: move |_| {
-                                if let Some(link_path) = &customize_icon_read.link_path {
+                                if let Some(link_prop) = &customize_icon_read.link {
                                     //
                                 }
                             },
                             span { { t!("更换快捷图标") } }
                         }
-                        // 复选框
+                        // 输入框：添加背景
                         div {
-                            width: "80%",
-                            height: "30px",
-                            display: "flex",
-                            // flex_direction: "row",
-                            align_items: "center",
-                            justify_content: "center",
+                            class: "coolinput",
                             label {
-                                
-                                for: "add-background",
-                                input {
-                                    id: "add-background",
-                                    type: "checkbox",
-                                    checked: customize_icon.read().background.is_some(),
-                                    onmousedown: |event| event.stop_propagation(),
-                                    onchange: move |event| {
-                                        let checked = event.value().parse::<bool>().unwrap_or(false);
-                                        if checked {
-                                            customize_icon.write().background = Some(("#ffffff".to_owned(), 90, 30));
-                                        } else {
-                                            customize_icon.write().background = None;
-                                        }
-                                    },
-                                }
-                                span { { t!("添加背景") } }
+                                class: "text",
+                                r#for: "input","背景颜色:"
                             }
-                            // if let Some(background) = background_clone.clone() {
-                            //     input {
-                            //         type: "color",
-                            //         value: background.0,
-                            //         onmousedown: |event| event.stop_propagation(),
-                            //         onchange: move |event| {
-                            //             let value = event.value();
-                            //             customize_icon.write().background = Some((value, background.1, background.2));
-                            //         },
-                            //     }
-                            // }
+                            input {
+                                class: "input",
+                                name: "input",
+                                placeholder: "Write here...",
+                                r#type: "text",
+                                onmousedown: |event| event.stop_propagation(),
+                                oninput: move |event| {
+                                    let value = event.value();
+                                    if value.trim().is_empty() {
+                                        customize_icon.write().background = None;
+                                    } else {
+                                        customize_icon.write().background = Some((value, 90, 30));
+                                    };
+                                }
+                            }
                         }
-                        // button {
-                        //     onmousedown: |event| event.stop_propagation(),
-                        //     // onclick: move |_| {
-                        //     //     if let Some(link_path) = &customize_icon_read.link_path {
-                        //     //         //
-                        //     //     }
-                        //     // },
-                        //     span { { t!("更换快捷图标") } }
-                        // }
                     }
                 },
                 div {
@@ -309,6 +285,7 @@ pub fn tools(
                     // 调节图标大小
                     div {
                         class: "range-input",
+                        border: "1px solid #ffffff",
                         span { { t!("调节图标大小") } }
                         input {
                             onmousedown: |event| event.stop_propagation(),

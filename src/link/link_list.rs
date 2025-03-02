@@ -97,13 +97,35 @@ pub struct LinkProp {
     pub target_ext: String,
     pub target_dir: String,
     pub target_path: String,
-    pub icon: String,
-    pub target_icon: String,
-    pub icon_location: String,
+    pub icon_base64: String,
+    pub target_icon_base64: String,
+    pub icon_path: String,
     pub icon_index: String,
     pub arguments: String,
     pub file_size: String,
     pub created_at: String,
     pub updated_at: String,
     pub accessed_at: String,
+}
+
+impl Default for LinkProp {
+    fn default() -> Self {
+        Self {
+            name: String::new(),
+            path: String::new(),
+            status: Status::Unchanged,
+            target_ext: String::new(),
+            target_dir: String::new(),
+            target_path: String::new(),
+            icon_base64: String::new(),
+            target_icon_base64: String::new(),
+            icon_path: String::new(),
+            icon_index: String::new(),
+            arguments: String::new(),
+            file_size: String::new(),
+            created_at: String::new(),
+            updated_at: String::new(),
+            accessed_at: String::new(),
+        }
+    }
 }

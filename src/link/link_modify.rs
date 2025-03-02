@@ -52,12 +52,12 @@ pub fn change_all_shortcuts_icons(mut link_list: Signal<LinkList>) -> Result<boo
                     icon_name.contains(link_name_lowercase),
                 ) {
                     (false, false) => continue,
-                    (true, true) => match_same_vec.push(link_prop.path.clone()), // 需排在let ink_prop.icon_location == icon_path上方
+                    (true, true) => match_same_vec.push(link_prop.path.clone()), // 需排在let ink_prop.icon_path == icon_path上方
                     _ => (),
                 }
 
                 // Skip cases with identical icons - 跳过图标相同的情况
-                if link_prop.icon_location == icon_path {
+                if link_prop.icon_path == icon_path {
                     continue;
                 }
 
@@ -85,9 +85,9 @@ pub fn change_all_shortcuts_icons(mut link_list: Signal<LinkList>) -> Result<boo
                 match persist_file.Save(None, true) {
                     Ok(_) => {
                         let mut link_list_write = link_list.write();
-                        link_list_write.items[index].icon_location = icon_path.clone();
+                        link_list_write.items[index].icon_path = icon_path.clone();
                         link_list_write.items[index].status = Status::Changed;
-                        link_list_write.items[index].icon = get_img_base64_by_path(&icon_path);
+                        link_list_write.items[index].icon_base64 = get_img_base64_by_path(&icon_path);
 
                         write_log(format!(
                             "{}:\n{}\n{icon_path}",
@@ -118,7 +118,7 @@ pub fn change_single_shortcut_icon(mut link_list: Signal<LinkList>) -> Result<Op
     let link_name = link_prop.name.clone();
     let link_path = link_prop.path.clone();
     let link_target_path = link_prop.target_path.clone();
-    let link_icon_location = link_prop.icon_location.clone();
+    let link_icon_path = link_prop.icon_path.clone();
 
     let icon_path_buf = match FileDialog::new()
         .set_title(t!("SELECT_ONE_ICON"))
@@ -130,7 +130,7 @@ pub fn change_single_shortcut_icon(mut link_list: Signal<LinkList>) -> Result<Op
     };
     let icon_path = icon_path_buf.to_string_lossy().to_string();
 
-    if icon_path == link_icon_location || icon_path == link_target_path {
+    if icon_path == link_icon_path || icon_path == link_target_path {
         return Ok(None);
     };
 
@@ -152,8 +152,8 @@ pub fn change_single_shortcut_icon(mut link_list: Signal<LinkList>) -> Result<Op
     persist_file.Save(None, true)?;
 
     let mut link_list_write = link_list.write();
-    link_list_write.items[index].icon = icon_base64;
-    link_list_write.items[index].icon_location = icon_path.clone();
+    link_list_write.items[index].icon_base64 = icon_base64;
+    link_list_write.items[index].icon_path = icon_path.clone();
     link_list_write.items[index].status = Status::Changed;
 
     write_log(format!("{}:\n{link_path}\n{icon_path}", t!("SHORTCUT")))?;
@@ -211,9 +211,9 @@ pub fn restore_all_shortcuts_icons(mut link_list: Signal<LinkList>) -> Result<()
         }
 
         let mut link_list_write = link_list.write();
-        link_list_write.items[index].icon_location = link_prop.target_path.clone();
+        link_list_write.items[index].icon_path = link_prop.target_path.clone();
         link_list_write.items[index].status = Status::Unchanged;
-        link_list_write.items[index].icon = get_img_base64_by_path(&link_prop.target_path);
+        link_list_write.items[index].icon_base64 = get_img_base64_by_path(&link_prop.target_path);
 
         write_log(format!(
             "{}:\n{}\n{}",
@@ -251,9 +251,9 @@ pub fn restore_single_shortcut_icon(mut link_list: Signal<LinkList>) -> Result<O
     })?;
 
     let mut link_list_write = link_list.write();
-    link_list_write.items[index].icon_location = link_target_path.clone();
+    link_list_write.items[index].icon_path = link_target_path.clone();
     link_list_write.items[index].status = Status::Unchanged;
-    link_list_write.items[index].icon = get_img_base64_by_path(&link_target_path);
+    link_list_write.items[index].icon_base64 = get_img_base64_by_path(&link_target_path);
 
     write_log(format!(
         "{}:\n{}\n{}",

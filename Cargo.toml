@@ -9,7 +9,7 @@ description = "change the icon of shortcuts in batches as they wish"
 [dependencies]
 dioxus = { version = "0.6.3", features = ["desktop"] }
 dioxus-desktop = "0.6.3"
-winsafe = { version = "0.0.22", features = ["advapi", "shell"] } # Windows's API
+winsafe = { version = "0.0.23", features = ["advapi", "shell"] } # Windows's API
 windows-icons = "0.2.1" # 获取文件图标
 glob = "0.3.2" # 遍历文件夹
 rfd = "0.15.2" # 选择文件夹
