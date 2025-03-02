@@ -16,7 +16,7 @@ pub fn home(
     mut filter_name: Signal<Option<String>>,
     mut link_list: Signal<LinkList>,
     mut show_msgbox: Signal<Option<Msgbox>>,
-    mut should_show_prop: Signal<bool>,
+    mut show_prop: Signal<bool>,
 ) -> Element {
     let filter_link_list_items = match filter_name.read().as_deref() {
         Some(name) => link_list
@@ -53,7 +53,7 @@ pub fn home(
         },
         div {
             class: "icon-modify-container ",
-            icon_modify{ link_list, show_msgbox, should_show_prop },
+            icon_modify{ link_list, show_msgbox, show_prop },
         }
     }
 }
@@ -83,7 +83,7 @@ pub fn icon_button(item: LinkProp, index: usize, mut link_list: Signal<LinkList>
 pub fn icon_modify(
     mut link_list: Signal<LinkList>,
     mut show_msgbox: Signal<Option<Msgbox>>,
-    mut should_show_prop: Signal<bool>,
+    mut show_prop: Signal<bool>,
 ) -> Element {
     if let Some(index) = link_list.read().state.select {
         let link_target_path = &link_list.read().items[index].target_path;
@@ -190,7 +190,7 @@ pub fn icon_modify(
                         class: "allowed",
                         onmousedown: |event| event.stop_propagation(),
                         onclick: move |_| {
-                            *should_show_prop.write() = true;
+                            *show_prop.write() = true;
                         },
                         span { { t!("VIEW_PROPERTIES") } }
                     }

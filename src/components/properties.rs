@@ -2,7 +2,7 @@ use crate::{LinkList, t};
 use dioxus::prelude::*;
 
 #[component]
-pub fn properties(mut link_list: Signal<LinkList>, mut should_show_prop: Signal<bool>) -> Element {
+pub fn properties(mut link_list: Signal<LinkList>, mut show_prop: Signal<bool>) -> Element {
     fn rsx_info(label: &str, value: &str) -> Element {
         rsx! {
             div {
@@ -12,7 +12,7 @@ pub fn properties(mut link_list: Signal<LinkList>, mut should_show_prop: Signal<
         }
     }
 
-    if *should_show_prop.read() {
+    if *show_prop.read() {
         if let Some(index) = link_list.read().state.select {
             let item = &link_list.read().items[index];
             rsx! {
@@ -28,7 +28,7 @@ pub fn properties(mut link_list: Signal<LinkList>, mut should_show_prop: Signal<
                             },
                             button {
                                 onmousedown: |event| event.stop_propagation(), // 屏蔽拖拽
-                                onclick: move |_| *should_show_prop.write() = false,
+                                onclick: move |_| *show_prop.write() = false,
                                 "X"
                             }
                         }
