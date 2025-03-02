@@ -59,7 +59,6 @@ fn app() -> Element {
     let read_tab = *current_tab.read();
     let customize_icon = use_signal(|| CustomizeIcon::default());
 
-
     rsx! {
         div {
             width: "100wh",
@@ -85,7 +84,7 @@ fn app() -> Element {
                 }
             }
             components::status::status{ link_list },
-            components::msgbox::msg_box{ show_msgbox, link_list, current_tab },
+            components::msgbox::msgbox{ show_msgbox, link_list, current_tab },
             components::properties::properties{ link_list, show_prop },
         }
     }

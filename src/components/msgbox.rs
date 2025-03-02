@@ -63,7 +63,7 @@ impl Msgbox {
 }
 
 #[component]
-pub fn msg_box(
+pub fn msgbox(
     mut show_msgbox: Signal<Option<Msgbox>>,
     mut link_list: Signal<LinkList>,
     mut current_tab: Signal<Tab>,
