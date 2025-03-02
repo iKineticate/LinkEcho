@@ -85,7 +85,7 @@ fn app() -> Element {
             }
             components::status::status{ link_list },
             components::msgbox::msgbox{ show_msgbox, link_list, current_tab },
-            components::properties::properties{ link_list, show_prop },
+            components::properties::properties{ show_prop, link_list },
         }
     }
 }

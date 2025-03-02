@@ -1,9 +1,13 @@
+use std::{ffi::OsStr, path::Path};
+
 use crate::{
-    components::msgbox::Action, link::{link_info::{initialize_com_and_create_shell_link, ManageLinkProp}, link_list::LinkProp}, t, utils::{ensure_local_app_folder_exists, get_img_base64_by_path}, LinkList, MsgIcon, Msgbox, Tab
+    components::msgbox::Action, image::{background::get_background_image, icongen::{create_frames, save_ico}, rounded_corners::add_rounded_corners}, link::{link_info::{initialize_com_and_create_shell_link, ManageLinkProp}, link_list::LinkProp}, t, utils::{ensure_local_app_folder_exists, get_img_base64_by_path, notify, write_log}, LinkList, MsgIcon, Msgbox, Tab
 };
 use anyhow::{anyhow, Result};
 use dioxus::prelude::*;
+use image::{RgbaImage, DynamicImage};
 use rfd::FileDialog;
+use windows_icons::get_icon_by_path;
 
 const DESKTOP: &str = "M813.47072 813.96224H215.64928A154.47552 154.47552 0 0 1 61.44 659.56864V236.3136A154.47552 154.47552 0 0 1 215.64928 81.92h597.82144A154.47552 154.47552 0 0 1 967.68 236.3136v423.25504a154.47552 154.47552 0 0 1-154.20928 154.3936zM215.64928 152.064a84.28544 84.28544 0 0 0-84.13696 84.2496v423.25504a84.28544 84.28544 0 0 0 84.14208 84.23936h597.81632a84.28544 84.28544 0 0 0 84.13696-84.23936V236.3136A84.28544 84.28544 0 0 0 813.47072 152.064H215.64928zM834.56 947.2H194.56a35.07712 35.07712 0 0 1 0-70.144h640a35.07712 35.07712 0 0 1 0 70.144z";
 const START_MENU: &str = "M362 62H182c-66 0-120 54-120 120v180c0 66 54 120 120 120h180c66 0 120-54 120-120V182c0-66-54-120-120-120z m30 270c0 33-27 60-60 60H212c-33 0-60-27-60-60V212c0-33 27-60 60-60h120c33 0 60 27 60 60v120zM362 542H182c-66 0-120 54-120 120v180c0 66 54 120 120 120h180c66 0 120-54 120-120V662c0-66-54-120-120-120z m30 270c0 33-27 60-60 60H212c-33 0-60-27-60-60V692c0-33 27-60 60-60h120c33 0 60 27 60 60v120zM842 62H662c-66 0-120 54-120 120v180c0 66 54 120 120 120h180c66 0 120-54 120-120V182c0-66-54-120-120-120z m30 270c0 33-27 60-60 60H692c-33 0-60-27-60-60V212c0-33 27-60 60-60h120c33 0 60 27 60 60v120zM842 542H662c-66 0-120 54-120 120v180c0 66 54 120 120 120h180c66 0 120-54 120-120V662c0-66-54-120-120-120z m30 270c0 33-27 60-60 60H692c-33 0-60-27-60-60V692c0-33 27-60 60-60h120c33 0 60 27 60 60v120z";
@@ -18,9 +22,9 @@ const OPEN_ICON_DIR: &str = "M108.8 819.2V204.8c0-19.5392 7.0016-36.1984 21.0048
 pub struct CustomizeIcon {
     pub link: Option<LinkProp>,
     /// size: 0 ~ 100
-    pub icon_size: u32,
-    pub icon_border: u32,
-    /// (color: String, size: u32, border: u32)
+    pub icon_scaling: u32,
+    pub icon_borders_radius: u32,
+    /// (color: String, scaling: u32, borders_radius: u32)
     pub background: Option<(String, u32, u32)>,
 }
 
@@ -28,8 +32,8 @@ impl Default for CustomizeIcon {
     fn default() -> Self {
         Self {
             link: None,
-            icon_size: 80,
-            icon_border: 0,
+            icon_scaling: 80,
+            icon_borders_radius: 0,
             background: None,
         }
     }
@@ -137,8 +141,8 @@ pub fn tools(
                     onclick: move |_| {
                         if let Ok(path) = ensure_local_app_folder_exists() {
                             let path = path.join("icons");
-                            if let Ok(_) = opener::open(path) {
-                                *current_tab.write() = Tab::Home;
+                            if let Err(e) = opener::open(path) {
+                                println!("{e}")
                             }
                         }
                     },
@@ -158,31 +162,35 @@ pub fn tools(
                     overflow: "none",
                     display: "flex",
                     flex_direction: "row",
+                    // 左侧图标显示区域
                     div {
                         class: "show-icon-container",
                         position: "relative",
                         if let Some(link_prop) = &customize_icon_read.link {
+                            // 背景
                             if let Some(background) = &customize_icon_read.background {
                                 div {
                                     position: "absolute",
-                                    width: format!("{}px", background.1 * 200 / 100),
-                                    height: format!("{}px", background.1 * 200 / 100),
+                                    width: format!("{}px", 200 * background.1 / 100),
+                                    height: format!("{}px", 200 * background.1 / 100),
                                     background: background.0.as_str(),
-                                    border_radius: format!("{}px", background.2),
+                                    border_radius: format!("{}px", background.2 * 200 / 256),
                                     z_index: "0",
                                 }
                             }
+                            // 图标
                             if !link_prop.icon_base64.trim().is_empty() {
                                 img {
                                     z_index: "1",
                                     src: link_prop.icon_base64.as_str(),
-                                    border_radius: format!("{}px", customize_icon_read.icon_border),
-                                    width: format!("{}px", customize_icon_read.icon_size * 200 / 100),
-                                    height: format!("{}px", customize_icon_read.icon_size * 200 / 100),
+                                    border_radius: format!("{}px", customize_icon_read.icon_borders_radius * 200 / 256),
+                                    width: format!("{}px", 200 * customize_icon_read.icon_scaling / 100),
+                                    height: format!("{}px", 200 * customize_icon_read.icon_scaling / 100),
                                 }
                             }
                         }
                     }
+                    // 右侧操作区域
                     div {
                         class: "customize-icon-button-container",
                         if let Some(link_name) = link_name {
@@ -223,7 +231,7 @@ pub fn tools(
                             },
                             span { { t!("打开快捷方式") } }
                         }
-                        // 打开作为快捷方式的图标
+                        // 打开需要更换的图标
                         button {
                             onmousedown: |event| event.stop_propagation(),
                             onclick: move |_| {
@@ -235,6 +243,11 @@ pub fn tools(
                                     if let Some(ref mut link_prop) = customize_icon.write().link {
                                         link_prop.icon_base64 = get_img_base64_by_path(&icon_path.to_string_lossy());
                                         link_prop.icon_path = icon_path.to_string_lossy().to_string();
+                                    } else {
+                                        let mut link_prop = LinkProp::default();
+                                        link_prop.icon_base64 = get_img_base64_by_path(&icon_path.to_string_lossy());
+                                        link_prop.icon_path = icon_path.to_string_lossy().to_string();
+                                        customize_icon.write().link = Some(link_prop);
                                     }
                                 };
                             },
@@ -245,7 +258,64 @@ pub fn tools(
                             onmousedown: |event| event.stop_propagation(),
                             onclick: move |_| {
                                 if let Some(link_prop) = &customize_icon_read.link {
-                                    //
+                                    let link_path = link_prop.path.clone();
+                                    let icon_path = link_prop.icon_path.clone();
+                                    // 问题：怎么更新这个快捷方式在列表里的信息（遍历当前列表的快捷方式，如果有就更新）
+                                    if link_path.trim().is_empty() {
+                                        if !icon_path.trim().is_empty() {
+                                            if let Ok(icon_image) = get_customeize_icon_image(
+                                                &icon_path,
+                                                customize_icon_read.icon_scaling,
+                                                customize_icon_read.icon_borders_radius,
+                                            ) {
+                                                let background_image = customize_icon_read.background
+                                                    .clone()
+                                                    .and_then(|(color, size, radius)|
+                                                        get_background_image(color, size, radius).ok()
+                                                    );
+                                                
+                                                let icon_name = std::path::Path::new(&icon_path)
+                                                    .file_stem()
+                                                    .and_then(std::ffi::OsStr::to_str)
+                                                    .unwrap_or("(╯‵□′)╯︵┻━┻");
+
+                                                if let Err(e) = save_custom_icon(
+                                                    icon_image,
+                                                    background_image,
+                                                    icon_name,
+                                                ) {
+                                                    println!("{e}")
+                                                    // notify("messages");
+                                                    // write_log("text".to_owned()).unwrap()
+                                                } else {
+                                                    println!("保存图标到LinkEcho图标目录中")
+                                                    // notify("messages");
+                                                    // write_log("text".to_owned()).unwrap()
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        let icon_path = if icon_path.trim().is_empty() {
+                                            &link_path
+                                        } else {
+                                            &icon_path
+                                        };
+
+                                        if let Ok(icon_image) = get_customeize_icon_image(
+                                            &icon_path,
+                                            customize_icon_read.icon_scaling,
+                                            customize_icon_read.icon_borders_radius,
+                                        ) {
+                                            let background_image = customize_icon_read.background.clone().and_then(|(color, size, radius)| {
+                                                let iamge = get_background_image(color, size, radius);
+                                                if let Err(e) = &iamge {
+                                                    println!("{:?}", e);
+                                                }
+                                                iamge.ok()
+                                            });
+
+                                        }
+                                    }
                                 }
                             },
                             span { { t!("更换快捷图标") } }
@@ -260,7 +330,7 @@ pub fn tools(
                             input {
                                 class: "input",
                                 name: "input",
-                                placeholder: "Write here...",
+                                placeholder: "e.g. #FFFFFF",
                                 r#type: "text",
                                 onmousedown: |event| event.stop_propagation(),
                                 oninput: move |event| {
@@ -275,6 +345,7 @@ pub fn tools(
                         }
                     }
                 },
+                // 下方调节图标和背景区域
                 div {
                     width: "100%",
                     flex_grow: "1",
@@ -285,20 +356,19 @@ pub fn tools(
                     // 调节图标大小
                     div {
                         class: "range-input",
-                        border: "1px solid #ffffff",
                         span { { t!("调节图标大小") } }
                         input {
                             onmousedown: |event| event.stop_propagation(),
                             type: "range",
                             min: "0",
                             max: "100",
-                            value: customize_icon_read.icon_size.to_string(),
+                            value: customize_icon_read.icon_scaling.to_string(),
                             oninput: move |event| {
                                 let value = event.value().parse::<u32>().unwrap_or(0);
-                                customize_icon.write().icon_size = value;
+                                customize_icon.write().icon_scaling = value;
                             },
                         }
-                        span { width: "10%", { format!("{}%", customize_icon.read().icon_size) } }
+                        span { width: "10%", { format!("{}%", customize_icon.read().icon_scaling) } }
                     }
                     // 调节图标圆角
                     div {
@@ -309,15 +379,15 @@ pub fn tools(
                             type: "range",
                             min: "0",
                             max: "100",
-                            value: customize_icon_read.icon_border.to_string(),
+                            value: customize_icon_read.icon_borders_radius.to_string(),
                             oninput: move |event| {
                                 let value = event.value().parse::<u32>().unwrap_or(0);
-                                customize_icon.write().icon_border = value;
+                                customize_icon.write().icon_borders_radius = value;
                             },
                         }
-                        span { width: "10%", { format!("{}R", customize_icon.read().icon_border) } }
+                        span { width: "10%", { format!("{}R", customize_icon.read().icon_borders_radius) } }
                     }
-                    if let Some(background) = customize_icon_read.background {
+                    if let Some(background) = customize_icon_read.background.clone() {
                         // 调节背景大小
                         div {
                             class: "range-input",
@@ -382,4 +452,64 @@ fn get_link_icon_path(link_path: &str) -> Result<String> {
     }
 
     Err(anyhow!("Failed to get the icon path."))
+}
+
+fn get_customeize_icon_image(icon_path: &str, scaling: u32, radius: u32) -> Result<RgbaImage> {
+    let icon_sizes = 256 * scaling / 100;
+
+    let icon_image_ext = Path::new(icon_path)
+        .extension()
+        .and_then(OsStr::to_str)
+        .unwrap_or_default();
+
+    let icon_image = match icon_image_ext {
+        "svg" | "ico" | "png" | "bmp" | "tiff" | "webp "=> {
+            image::open(icon_path)?.to_rgba8()
+        },
+        "exe" | "lnk" => {
+            get_icon_by_path(icon_path)
+                .map_err(|e| anyhow!("Failed to get the icon image. {e}"))?
+        }
+        _ => return Err(anyhow!("the icon is not an image 、lnk or exe."))
+    };
+
+    let icon_image = image::imageops::resize(
+        &icon_image,
+        icon_sizes,
+        icon_sizes,
+        image::imageops::FilterType::Triangle,
+    );
+
+    // 这里出现BUG，添加圆角出现问题........
+    Ok(add_rounded_corners(&DynamicImage::from(icon_image), radius))
+}
+
+fn save_custom_icon(icon_image: RgbaImage, background_image: Option<RgbaImage>, name: &str) -> Result<()> {
+    let mut combined_image = RgbaImage::new(256, 256);
+
+    if let Some(bg_image) = background_image {
+        let (bg_width, bg_height) = bg_image.dimensions();
+        let bg_x = (256 - bg_width) as i64 / 2;
+        let bg_y = (256 - bg_height) as i64 / 2;
+        image::imageops::overlay(&mut combined_image, &bg_image, bg_x, bg_y);
+    }
+
+    let (icon_width, icon_height) = icon_image.dimensions();
+    let icon_x = (256 - icon_width) as i64 / 2;
+    let icon_y = (256 - icon_height) as i64 / 2;
+    image::imageops::overlay(&mut combined_image, &icon_image, icon_x, icon_y);
+
+    let dyn_combined_image = DynamicImage::from(combined_image);
+    let frames = create_frames(
+        &dyn_combined_image,
+        vec![16, 32, 48, 64, 128, 256],
+        image::imageops::FilterType::Triangle
+    )?;
+
+    let app_data_path = ensure_local_app_folder_exists().expect("Failed to get the app data path");
+    let icon_data_path = app_data_path.join(format!("icons\\{name}.ico"));
+
+    save_ico(frames, &icon_data_path)?;
+
+    Ok(())
 }

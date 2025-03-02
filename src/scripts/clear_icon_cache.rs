@@ -67,14 +67,13 @@ if (-not (Get-Process -Name explorer -ErrorAction SilentlyContinue)) {
 }    
 "#;
 
-    let status = Command::new("PowerShell")
+    Command::new("PowerShell")
         .arg("-Command")
         .args(["taskkill", "/IM", "explorer.exe", "/F;", "explorer"])
         .arg(script)
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
         .status()
-        .expect("failed to execute process");
-
-    status.success()
+        .map(|status| status.success())
+        .unwrap_or(false)
 }

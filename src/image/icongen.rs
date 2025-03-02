@@ -108,7 +108,7 @@ fn check_image_dimensions(image: &DynamicImage, name: &str) {
     }
 }
 
-fn create_frames(
+pub fn create_frames(
     image: &DynamicImage,
     sizes: Vec<u32>,
     filter: image::imageops::FilterType,
@@ -131,7 +131,7 @@ fn create_frames(
         .collect()
 }
 
-fn save_ico(frames: Vec<IcoFrame>, output_path: &PathBuf) -> Result<()> {
+pub fn save_ico(frames: Vec<IcoFrame>, output_path: &PathBuf) -> Result<()> {
     let file = std::fs::File::create(output_path)
         .with_context(|| format!("Failed to create file '{}'", output_path.display()))?;
     let encoder = IcoEncoder::new(file);

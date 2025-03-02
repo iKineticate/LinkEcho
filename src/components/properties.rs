@@ -2,7 +2,7 @@ use crate::{LinkList, t};
 use dioxus::prelude::*;
 
 #[component]
-pub fn properties(mut link_list: Signal<LinkList>, mut show_prop: Signal<bool>) -> Element {
+pub fn properties(mut show_prop: Signal<bool>, mut link_list: Signal<LinkList>) -> Element {
     fn rsx_info(label: &str, value: &str) -> Element {
         rsx! {
             div {
