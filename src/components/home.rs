@@ -1,8 +1,5 @@
 use crate::{
-    Action, LinkList, LinkProp, MsgIcon, Msgbox,
-    link_modify::change_single_shortcut_icon,
-    t,
-    utils::{notify, write_log},
+    link_modify::change_single_shortcut_icon, t, utils::{get_img_base64_by_path, notify, write_log}, Action, CustomizeIcon, LinkList, LinkProp, MsgIcon, Msgbox, Tab
 };
 use dioxus::prelude::*;
 use std::path::Path;
@@ -15,6 +12,8 @@ static RIGHT_ARROW3: &str = "M174.8 492.1m-55 0a55 55 0 1 0 110 0 55 55 0 1 0-11
 pub fn home(
     mut filter_name: Signal<Option<String>>,
     mut link_list: Signal<LinkList>,
+    mut current_tab: Signal<Tab>,
+    mut customize_icon: Signal<CustomizeIcon>,
     mut show_msgbox: Signal<Option<Msgbox>>,
     mut show_prop: Signal<bool>,
 ) -> Element {
@@ -53,7 +52,7 @@ pub fn home(
         },
         div {
             class: "icon-modify-container ",
-            icon_modify{ link_list, show_msgbox, show_prop },
+            icon_modify{ link_list, current_tab, customize_icon, show_msgbox, show_prop },
         }
     }
 }
@@ -82,6 +81,8 @@ pub fn icon_button(item: LinkProp, index: usize, mut link_list: Signal<LinkList>
 #[component]
 pub fn icon_modify(
     mut link_list: Signal<LinkList>,
+    mut current_tab: Signal<Tab>,
+    mut customize_icon: Signal<CustomizeIcon>,
     mut show_msgbox: Signal<Option<Msgbox>>,
     mut show_prop: Signal<bool>,
 ) -> Element {
@@ -135,6 +136,24 @@ pub fn icon_modify(
                 },
                 div {
                     class: "modify-icon-container",
+                    button {
+                        class: "allowed",
+                        onmousedown: |event| event.stop_propagation(),
+                        onclick: move |_| {
+                            let mut link_prop = link_list.read().items[index].clone();
+                            if Path::new(&link_prop.icon_path).exists() {
+                                link_prop.icon_base64 = get_img_base64_by_path(&link_prop.icon_path);
+                            }
+
+                            *customize_icon.write() = CustomizeIcon {
+                                link: Some(link_prop),
+                                ..Default::default()
+                            };
+                            *current_tab.write() = Tab::Tools;
+                            
+                        },
+                        span { { t!("自定义图标") } }
+                    }
                     button {
                         class: "allowed",
                         onmousedown: |event| event.stop_propagation(),

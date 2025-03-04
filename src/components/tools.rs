@@ -45,7 +45,7 @@ impl Default for CustomizeIcon {
     fn default() -> Self {
         Self {
             link: None,
-            icon_scaling: 80,
+            icon_scaling: 100,
             icon_borders_radius: 0,
             background: None,
         }
@@ -63,8 +63,13 @@ pub fn tools(
     let link_name = customize_icon_read
         .link
         .as_ref() // 避免复制整个结构，只需克隆的 name 字段
-        .filter(|l| !l.name.trim().is_empty())
-        .map(|l| l.name.as_str());
+        .and_then(|l| Path::new(&l.path).exists().then_some(Path::new(&l.path)))
+        .map(|p| p.file_name().and_then(OsStr::to_str).unwrap_or_default());
+    let icon_name = customize_icon_read
+        .link
+        .as_ref()
+        .and_then(|l| Path::new(&l.icon_path).exists().then_some(Path::new(&l.icon_path)))
+        .map(|p| p.file_name().and_then(OsStr::to_str).unwrap_or_default());
     let background_clone = customize_icon_read.background.clone();
 
     rsx! {
@@ -217,6 +222,15 @@ pub fn tools(
                                 color: "#ffffff",
                                 { link_name }
                             }
+                        } else {
+                            if let Some(icon_name) = &icon_name {
+                                span {
+                                    width: "80%",
+                                    user_select: "none",
+                                    color: "#ffffff",
+                                    { icon_name }
+                                }
+                            }
                         }
                         // 打开快捷方式或图标
                         button {
@@ -364,7 +378,12 @@ pub fn tools(
                                     if value.trim().is_empty() {
                                         customize_icon.write().background = None;
                                     } else {
-                                        customize_icon.write().background = Some((value, 90, 50));
+                                        let bg = customize_icon.read().background.clone();
+                                        if let Some(bg) = bg {
+                                            customize_icon.write().background = Some((value, bg.1, bg.2));
+                                        } else {
+                                            customize_icon.write().background = Some((value, 100, 58));
+                                        }
                                     };
                                 }
                             }

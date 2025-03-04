@@ -74,7 +74,7 @@ fn app() -> Element {
                 height: "100vh",
                 components::tabs::tabs { current_tab },
                 if read_tab == Tab::Home {
-                    components::home::home{ filter_name, link_list, show_msgbox, show_prop }
+                    components::home::home{ filter_name, link_list, current_tab, customize_icon, show_msgbox, show_prop }
                 } else if read_tab == Tab::Tools {
                     components::tools::tools { link_list, current_tab, customize_icon, show_msgbox }
                 } else if read_tab == Tab::History {
