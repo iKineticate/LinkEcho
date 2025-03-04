@@ -85,7 +85,8 @@ impl ManageLinkProp {
             let link_target_file_name = Path::new(&link_target_path)
                 .file_name()
                 .and_then(OsStr::to_str)
-                .map_or(String::new(), str::to_lowercase);
+                .map(str::to_lowercase)
+                .unwrap_or_default();
 
             match &*link_target_file_name {
                 "schtasks.exe" => String::from("schtasks"), // 任务计划程序
@@ -113,11 +114,14 @@ impl ManageLinkProp {
                     let ext = Path::new(&link_target_path)
                         .extension()
                         .and_then(OsStr::to_str)
-                        .map(str::to_lowercase);
+                        .map(str::to_lowercase)
+                        .unwrap_or_default();
+
                     let is_app = link_target_path
                         .to_lowercase()
                         .contains("windowssubsystemforandroid")
                         .then_some("app".to_owned());
+
                     let is_uwp = link_target_path
                         .to_lowercase()
                         .contains(r"appdata\local\microsoft\windowsapps")
@@ -126,7 +130,7 @@ impl ManageLinkProp {
                     match (is_app, is_uwp) {
                         (Some(app), _) => app,
                         (_, Some(uwp)) => uwp,
-                        _ => ext.unwrap_or_default(),
+                        _ => ext,
                     }
                 }
             }
@@ -339,7 +343,8 @@ impl ManageLinkProp {
         let env_path_lowercase = env_path.to_lowercase();
         envs.iter()
             .find_map(|(env, root)| {
-                env_path_lowercase.starts_with(env)
+                env_path_lowercase
+                    .starts_with(env)
                     .then(|| env_path_lowercase.replacen(env, root, 1))
             })
             .unwrap_or(env_path)

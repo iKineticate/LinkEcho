@@ -104,7 +104,8 @@ input[type="range"] {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: space-around;
+    justify-content: center;
+    gap: 5px;
     overflow: hidden;
     text-align: center;
 }

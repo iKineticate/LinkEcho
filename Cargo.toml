@@ -17,7 +17,7 @@ opener = "0.7.2" # 打开文件(夹)
 chrono = "0.4.40" # 获取系统时间
 win-toast-notify = "0.1.5"
 rust-i18n = "3.1.3" # 国际化文本
-anyhow = "1.0.96" # 错误处理
+anyhow = "1.0.97" # 错误处理
 base64 = "0.22.1" # 图像转码
 editpe = "0.2.1" # 修改可执行程序图标
 csscolorparser = "0.7.0" # CSS颜色解析
@@ -47,7 +47,7 @@ features = [
 ]
 
 [build-dependencies]
-embed-resource = "3.0.1" # 载入清单
+embed-resource = "3.0.2" # 载入清单
 
 [profile.release]
 lto = "fat"

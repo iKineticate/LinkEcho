@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Ok, Result};
+use anyhow::{Ok, Result, anyhow};
 use image::{DynamicImage, ImageBuffer, Rgba, RgbaImage};
 use regex::Regex;
 
@@ -13,7 +13,9 @@ enum GradientDirection {
     None,
 }
 
-pub fn get_background_image(color: String, scaling: u32, radius: u32) -> Result<RgbaImage> {
+pub fn get_background_image(bg: (String, u32, u32)) -> Result<RgbaImage> {
+    let (color, scaling, radius) = bg;
+
     let (width, height) = calculate_dimensions(scaling);
 
     let background_image = if color.starts_with("linear-gradient(") {
@@ -25,7 +27,10 @@ pub fn get_background_image(color: String, scaling: u32, radius: u32) -> Result<
     }?;
 
     if radius != 0 {
-        Ok(add_rounded_corners(&DynamicImage::from(background_image), radius))
+        Ok(add_rounded_corners(
+            &DynamicImage::from(background_image),
+            radius,
+        ))
     } else {
         Ok(background_image)
     }
@@ -47,14 +52,17 @@ fn parse_color_str(color_str: &str) -> Result<Rgba<u8>> {
 /// 解析渐变参数
 fn parse_gradient(gradient_str: &str) -> Result<(GradientDirection, Vec<(Rgba<u8>, f32)>)> {
     let re = Regex::new(r"linear-gradient\(([^)]+)\)").unwrap();
-    let capstures = re.captures(gradient_str)
+    let capstures = re
+        .captures(gradient_str)
         .ok_or_else(|| anyhow!("Invalid gradient syntax"))?;
 
     let content = capstures[1].trim();
     let mut parts = content.splitn(2, ',');
-    
+
     // 解析方向
-    let direction_str = parts.clone().next()
+    let direction_str = parts
+        .clone()
+        .next()
         .ok_or_else(|| anyhow!("Missing gradient direction"))?
         .trim();
     let direction = parse_direction(direction_str)?;
@@ -68,7 +76,8 @@ fn parse_gradient(gradient_str: &str) -> Result<(GradientDirection, Vec<(Rgba<u8
             .trim()
             .to_owned()
     } else {
-        parts.nth(1)
+        parts
+            .nth(1)
             .ok_or_else(|| anyhow!("Missing color stops"))?
             .trim()
             .to_owned()
@@ -82,10 +91,11 @@ fn parse_gradient(gradient_str: &str) -> Result<(GradientDirection, Vec<(Rgba<u8
 /// 解析渐变方向
 fn parse_direction(direction_str: &str) -> Result<GradientDirection> {
     let dir_str = direction_str.trim().to_lowercase();
-    
+
     // 处理角度格式
     if let Some(degrees) = dir_str.strip_suffix("deg") {
-        let angle = degrees.parse::<f32>()
+        let angle = degrees
+            .parse::<f32>()
             .map_err(|_| anyhow!("Invalid angle: {}", dir_str))?;
         return Ok(GradientDirection::Angle(angle));
     }
@@ -107,7 +117,7 @@ fn parse_direction(direction_str: &str) -> Result<GradientDirection> {
             } else {
                 Err(anyhow!("Unsupported direction: {}", dir_str))
             }
-        },
+        }
     }
 }
 
@@ -134,7 +144,7 @@ fn parse_color_stops(stops_str: &str) -> Result<Vec<(Rgba<u8>, f32)>> {
     // 自动分配位置
     assign_positions(&mut stops);
     stops.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
-    
+
     Ok(stops)
 }
 
@@ -150,18 +160,26 @@ fn parse_position(pos_str: &str) -> Result<f32> {
 /// 自动分配未指定位置
 fn assign_positions(stops: &mut [(Rgba<u8>, f32)]) {
     let has_custom_pos = stops.iter().any(|(_, pos)| *pos >= 0.0);
-    
+
     if !has_custom_pos {
         // 均匀分布
         let len = stops.len();
         for (i, (_, pos)) in stops.iter_mut().enumerate() {
-            *pos = if len == 1 { 0.5 } else { i as f32 / (len - 1) as f32 };
+            *pos = if len == 1 {
+                0.5
+            } else {
+                i as f32 / (len - 1) as f32
+            };
         }
     } else {
         // 处理首尾
-        if stops[0].1 < 0.0 { stops[0].1 = 0.0; }
-        if stops.last().unwrap().1 < 0.0 { stops.last_mut().unwrap().1 = 1.0; }
-        
+        if stops[0].1 < 0.0 {
+            stops[0].1 = 0.0;
+        }
+        if stops.last().unwrap().1 < 0.0 {
+            stops.last_mut().unwrap().1 = 1.0;
+        }
+
         // 填充中间位置
         let mut prev_idx = 0;
         for i in 1..stops.len() {
@@ -184,7 +202,7 @@ fn generate_gradient_image(
     stops: Vec<(Rgba<u8>, f32)>,
 ) -> Result<RgbaImage> {
     let mut img = ImageBuffer::new(width, height);
-    
+
     for (x, y, pixel) in img.enumerate_pixels_mut() {
         let t = match direction {
             GradientDirection::Horizontal => x as f32 / (width - 1) as f32,
@@ -198,19 +216,21 @@ fn generate_gradient_image(
                 let (dx, dy) = (rad.cos(), -rad.sin());
 
                 // 计算投影范围
-                let min_proj = (0.0 * dx + 0.0 * dy).min(0.0 * dx + height as f32 * dy)
+                let min_proj = (0.0 * dx + 0.0 * dy)
+                    .min(0.0 * dx + height as f32 * dy)
                     .min(width as f32 * dx + 0.0 * dy)
                     .min(width as f32 * dx + height as f32 * dy);
-                let max_proj = (0.0 * dx + 0.0 * dy).max(0.0 * dx + height as f32 * dy)
+                let max_proj = (0.0 * dx + 0.0 * dy)
+                    .max(0.0 * dx + height as f32 * dy)
                     .max(width as f32 * dx + 0.0 * dy)
                     .max(width as f32 * dx + height as f32 * dy);
-                
+
                 let proj = x as f32 * dx + y as f32 * dy;
                 let t = (proj - min_proj) / (max_proj - min_proj);
                 t.clamp(0.0, 1.0)
             }
         };
-        
+
         *pixel = interpolate_color(t, &stops);
     }
 
@@ -220,13 +240,14 @@ fn generate_gradient_image(
 /// 颜色插值
 fn interpolate_color(t: f32, stops: &[(Rgba<u8>, f32)]) -> Rgba<u8> {
     let t = t.clamp(0.0, 1.0);
-    
+
     // 查找相邻停止点
-    let (prev, next) = stops.windows(2)
+    let (prev, next) = stops
+        .windows(2)
         .find(|w| w[0].1 <= t && t <= w[1].1)
         .map(|w| (w[0], w[1]))
         .unwrap_or((stops[0], *stops.last().unwrap()));
-    
+
     let ratio = (t - prev.1) / (next.1 - prev.1);
     lerp_color(prev.0, next.0, ratio)
 }

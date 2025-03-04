@@ -13,8 +13,8 @@ mod utils;
 
 use crate::{
     components::{
+        msgbox::{Action, MsgIcon, Msgbox},
         tools::CustomizeIcon,
-        msgbox::{Action, MsgIcon, Msgbox}
     },
     image::icongen,
     link::{link_list::*, link_modify},

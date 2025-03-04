@@ -32,11 +32,10 @@ fn calculate_alpha(x: u32, y: u32, width: u32, height: u32, radius: u32, origina
     let height_f = height as f32;
 
     // 判断是否在圆角处理范围内
-    let is_in_corner = 
-        (x < radius && y < radius) || 
-        (x >= width - radius && y < radius) || 
-        (x < radius && y >= height - radius) || 
-        (x >= width - radius && y >= height - radius);
+    let is_in_corner = (x < radius && y < radius)
+        || (x >= width - radius && y < radius)
+        || (x < radius && y >= height - radius)
+        || (x >= width - radius && y >= height - radius);
 
     if !is_in_corner {
         return original_alpha;
@@ -46,8 +45,8 @@ fn calculate_alpha(x: u32, y: u32, width: u32, height: u32, radius: u32, origina
     let (cx, cy) = match (x < radius, y < radius) {
         (true, true) => (radius_f, radius_f),
         (false, true) => (width_f - radius_f, radius_f),
-        (true, false)  => (radius_f, height_f - radius_f),
-        (false, false)  => (width_f - radius_f, height_f - radius_f),
+        (true, false) => (radius_f, height_f - radius_f),
+        (false, false) => (width_f - radius_f, height_f - radius_f),
     };
 
     let dx = x_f - cx;

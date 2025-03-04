@@ -1,5 +1,5 @@
 use crate::{
-    FileDialog, LinkList, LinkProp, Path, PathBuf, Status, glob, icongen,
+    FileDialog, LinkList, LinkProp, PathBuf, Status, glob, icongen,
     link::link_info::initialize_com_and_create_shell_link,
     t,
     utils::{ensure_local_app_folder_exists, get_img_base64_by_path, write_log},
@@ -16,12 +16,6 @@ pub fn change_all_shortcuts_icons(mut link_list: Signal<LinkList>) -> Result<boo
     // Vec of matched objects - 存储已匹配的对象们
     let mut match_same_vec: Vec<String> = Vec::new();
 
-    // Get data folder path - 获取数据文件夹路径
-    let app_data_path = ensure_local_app_folder_exists().expect("Failed to get the app data path");
-    let icon_data_path = app_data_path.join("icons");
-    std::fs::create_dir_all(&icon_data_path)
-        .context("Failed to create LinkEcho's icons directory at Appdata/Local")?;
-
     // Select the folder with the icons - 选择存放图标文件夹
     let select_icons_folder_path = match FileDialog::new()
         .set_title(t!("SELECT_ICONS_FOLDER"))
@@ -36,7 +30,7 @@ pub fn change_all_shortcuts_icons(mut link_list: Signal<LinkList>) -> Result<boo
         .unwrap()
         .filter_map(Result::ok)
     {
-        if let Some((icon_path, icon_name)) = process_icon(path_buf, &icon_data_path)? {
+        if let Some((icon_path, icon_name)) = process_icon(path_buf)? {
             let items = link_list.read().items.clone();
             // Iterate over the vec that stores the shortcut properties - 遍历快捷方式的属性
             for (index, link_prop) in items.iter().enumerate() {
@@ -87,7 +81,8 @@ pub fn change_all_shortcuts_icons(mut link_list: Signal<LinkList>) -> Result<boo
                         let mut link_list_write = link_list.write();
                         link_list_write.items[index].icon_path = icon_path.clone();
                         link_list_write.items[index].status = Status::Changed;
-                        link_list_write.items[index].icon_base64 = get_img_base64_by_path(&icon_path);
+                        link_list_write.items[index].icon_base64 =
+                            get_img_base64_by_path(&icon_path);
 
                         write_log(format!(
                             "{}:\n{}\n{icon_path}",
@@ -137,11 +132,7 @@ pub fn change_single_shortcut_icon(mut link_list: Signal<LinkList>) -> Result<Op
     let (shell_link, persist_file) = initialize_com_and_create_shell_link()?;
     persist_file.Load(&link_path, co::STGM::WRITE)?;
 
-    let app_data_path = ensure_local_app_folder_exists().expect("Failed to get the app data path");
-    let icon_data_path = app_data_path.join("icons");
-    std::fs::create_dir_all(&icon_data_path)?;
-
-    let (icon_path, _) = match process_icon(icon_path_buf, &icon_data_path)? {
+    let (icon_path, _) = match process_icon(icon_path_buf)? {
         Some((icon_path, icon_name)) => (icon_path, icon_name),
         None => return Ok(None),
     };
@@ -161,7 +152,13 @@ pub fn change_single_shortcut_icon(mut link_list: Signal<LinkList>) -> Result<Op
     Ok(Some(link_name))
 }
 
-fn process_icon(path_buf: PathBuf, icon_data_path: &Path) -> Result<Option<(String, String)>> {
+fn process_icon(path_buf: PathBuf) -> Result<Option<(String, String)>> {
+    // Get data folder path - 获取软件的图标目录路径
+    let app_data_path = ensure_local_app_folder_exists().expect("Failed to get the app data path");
+    let icon_data_path = app_data_path.join("icons");
+    std::fs::create_dir_all(&icon_data_path)
+        .context("Failed to create LinkEcho's icons directory at Appdata/Local")?;
+
     let ext = path_buf
         .extension()
         .and_then(OsStr::to_str)

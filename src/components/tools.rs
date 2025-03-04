@@ -1,13 +1,26 @@
 use std::{ffi::OsStr, path::Path};
 
 use crate::{
-    components::msgbox::Action, image::{background::get_background_image, icongen::{create_frames, load_svg, save_ico}, rounded_corners::add_rounded_corners}, link::{link_info::{initialize_com_and_create_shell_link, ManageLinkProp}, link_list::LinkProp}, t, utils::{ensure_local_app_folder_exists, get_img_base64_by_path, notify, write_log}, LinkList, MsgIcon, Msgbox, Tab
+    LinkList, MsgIcon, Msgbox, Tab,
+    components::msgbox::Action,
+    image::{
+        background::get_background_image,
+        icongen::{create_frames, load_svg, save_ico},
+        rounded_corners::add_rounded_corners,
+    },
+    link::{
+        link_info::{ManageLinkProp, initialize_com_and_create_shell_link},
+        link_list::LinkProp,
+    },
+    t,
+    utils::{ensure_local_app_folder_exists, get_img_base64_by_path, notify, write_log},
 };
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use dioxus::prelude::*;
-use image::{RgbaImage, DynamicImage};
+use image::{DynamicImage, RgbaImage};
 use rfd::FileDialog;
 use windows_icons::get_icon_by_path;
+use winsafe::prelude::{ole_IPersistFile, shell_IShellLink};
 
 const DESKTOP: &str = "M813.47072 813.96224H215.64928A154.47552 154.47552 0 0 1 61.44 659.56864V236.3136A154.47552 154.47552 0 0 1 215.64928 81.92h597.82144A154.47552 154.47552 0 0 1 967.68 236.3136v423.25504a154.47552 154.47552 0 0 1-154.20928 154.3936zM215.64928 152.064a84.28544 84.28544 0 0 0-84.13696 84.2496v423.25504a84.28544 84.28544 0 0 0 84.14208 84.23936h597.81632a84.28544 84.28544 0 0 0 84.13696-84.23936V236.3136A84.28544 84.28544 0 0 0 813.47072 152.064H215.64928zM834.56 947.2H194.56a35.07712 35.07712 0 0 1 0-70.144h640a35.07712 35.07712 0 0 1 0 70.144z";
 const START_MENU: &str = "M362 62H182c-66 0-120 54-120 120v180c0 66 54 120 120 120h180c66 0 120-54 120-120V182c0-66-54-120-120-120z m30 270c0 33-27 60-60 60H212c-33 0-60-27-60-60V212c0-33 27-60 60-60h120c33 0 60 27 60 60v120zM362 542H182c-66 0-120 54-120 120v180c0 66 54 120 120 120h180c66 0 120-54 120-120V662c0-66-54-120-120-120z m30 270c0 33-27 60-60 60H212c-33 0-60-27-60-60V692c0-33 27-60 60-60h120c33 0 60 27 60 60v120zM842 62H662c-66 0-120 54-120 120v180c0 66 54 120 120 120h180c66 0 120-54 120-120V182c0-66-54-120-120-120z m30 270c0 33-27 60-60 60H692c-33 0-60-27-60-60V212c0-33 27-60 60-60h120c33 0 60 27 60 60v120zM842 542H662c-66 0-120 54-120 120v180c0 66 54 120 120 120h180c66 0 120-54 120-120V662c0-66-54-120-120-120z m30 270c0 33-27 60-60 60H692c-33 0-60-27-60-60V692c0-33 27-60 60-60h120c33 0 60 27 60 60v120z";
@@ -47,7 +60,11 @@ pub fn tools(
     mut show_msgbox: Signal<Option<Msgbox>>,
 ) -> Element {
     let customize_icon_read = customize_icon.read().clone();
-    let link_name = customize_icon_read.link.clone().map(|l| l.name);
+    let link_name = customize_icon_read
+        .link
+        .as_ref() // 避免复制整个结构，只需克隆的 name 字段
+        .filter(|l| !l.name.trim().is_empty())
+        .map(|l| l.name.as_str());
     let background_clone = customize_icon_read.background.clone();
 
     rsx! {
@@ -193,7 +210,7 @@ pub fn tools(
                     // 右侧操作区域
                     div {
                         class: "customize-icon-button-container",
-                        if let Some(link_name) = link_name {
+                        if let Some(link_name) = &link_name {
                             span {
                                 width: "80%",
                                 user_select: "none",
@@ -201,40 +218,58 @@ pub fn tools(
                                 { link_name }
                             }
                         }
-                        // 打开快捷方式
+                        // 打开快捷方式或图标
                         button {
                             onmousedown: |event| event.stop_propagation(),
                             onclick: move |_| {
-                                if let Some(link_path) = FileDialog::new()
-                                    .set_title(t!("选择快捷方式"))
-                                    .add_filter("LINK", &["lnk"])
+                                if let Some(file_path) = FileDialog::new()
+                                    .set_title(t!("选择快捷方式或图标"))
+                                    .add_filter("LINK or ICON", &["lnk", "ico", "png", "bmp", "svg", "tiff", "exe"])
                                     .pick_file()
                                 {
-                                    let link_name = link_path
+                                    let file_name = file_path
                                         .file_stem()
-                                        .and_then(std::ffi::OsStr::to_str)
-                                        .map_or(String::from("(╯‵□′)╯︵┻━┻"), str::to_owned);
+                                        .and_then(OsStr::to_str)
+                                        .map(str::to_owned);
 
-                                    let mut link_prop = LinkProp::default();
-    
-                                    link_prop.path = link_path.to_string_lossy().to_string();
+                                    let file_ext = file_path
+                                        .extension()
+                                        .and_then(OsStr::to_str);
 
-                                    link_prop.name = link_name;
+                                    let file_path = file_path
+                                        .to_str()
+                                        .map(str::to_owned);
 
-                                    if let Ok(icon_path) = get_link_icon_path(&link_path.to_string_lossy()) {
-                                        link_prop.icon_base64 = get_img_base64_by_path(&icon_path);
-                                        link_prop.icon_path = icon_path;
+                                    if let (Some(name), Some(ext), Some(path)) = (file_name, file_ext, file_path) {
+                                        let is_lnk = ext == "lnk";
+
+                                        let icon_path = if is_lnk {
+                                            get_link_icon_path(&path).unwrap_or(path.to_owned())
+                                        } else {
+                                            path.to_owned()
+                                        };
+
+                                        let link_prop = LinkProp {
+                                            name: is_lnk.then(|| name).unwrap_or_default(),
+                                            path: is_lnk.then(|| path).unwrap_or_default(),
+                                            icon_base64: get_img_base64_by_path(&icon_path),
+                                            icon_path,
+                                            ..Default::default()
+                                        };
+
+                                        customize_icon.write().link = Some(link_prop);
+
+                                        return;
                                     }
-                                    
-                                    customize_icon.write().link = Some(link_prop);
-                                } else {
-                                    customize_icon.write().link = None;
                                 }
+
+                                customize_icon.write().link = None;
                             },
-                            span { { t!("打开快捷方式") } }
+                            span { { t!("选择快捷方式或图标") } }
                         }
-                        // 打开需要更换的图标
+                        // 选择快捷方式的新图标
                         button {
+                            display: link_name.map_or("none", |_| "inline-block"),
                             onmousedown: |event| event.stop_propagation(),
                             onclick: move |_| {
                                 if let Some(icon_path) = FileDialog::new()
@@ -262,86 +297,66 @@ pub fn tools(
                                     }
                                 };
                             },
-                            span { { t!("选择更换图标") } }
+                            span { { t!("选择快捷方式新图标") } }
                         }
-                        // 更换快捷方式的图标
+                        // 更换快捷方式的图标或保存自定义的图标
                         button {
+                            display: customize_icon.read().link.clone().map_or("none", |_| "inline-block"),
                             onmousedown: |event| event.stop_propagation(),
                             onclick: move |_| {
                                 if let Some(link_prop) = &customize_icon_read.link {
                                     let link_path = link_prop.path.clone();
                                     let icon_path = link_prop.icon_path.clone();
-                                    // 问题：怎么更新这个快捷方式在列表里的信息（遍历当前列表的快捷方式，如果有就更新）
-                                    if link_path.trim().is_empty() {
-                                        if !icon_path.trim().is_empty() {
-                                            if let Ok(icon_image) = get_customeize_icon_image(
-                                                &icon_path,
-                                                customize_icon_read.icon_scaling,
-                                                customize_icon_read.icon_borders_radius,
-                                            ) {
-                                                let background_image = customize_icon_read.background
-                                                    .clone()
-                                                    .and_then(|(color, size, radius)|
-                                                        get_background_image(color, size, radius).ok()
-                                                    );
-                                                
-                                                let icon_name = std::path::Path::new(&icon_path)
-                                                    .file_stem()
-                                                    .and_then(std::ffi::OsStr::to_str)
-                                                    .unwrap_or("(╯‵□′)╯︵┻━┻");
 
-                                                if let Err(e) = save_custom_icon(
-                                                    icon_image,
-                                                    background_image,
-                                                    icon_name,
-                                                ) {
-                                                    println!("{e}")
-                                                    // notify("messages");
-                                                    // write_log("text".to_owned()).unwrap()
+                                    if let Ok(icon_image) = get_customize_icon_image(
+                                        &icon_path,
+                                        customize_icon_read.icon_scaling,
+                                        customize_icon_read.icon_borders_radius,
+                                    ) {
+                                        let background_image = customize_icon_read.background
+                                            .clone()
+                                            .map(get_background_image)
+                                            .and_then(Result::ok);
+
+                                        let icon_name = Path::new(&icon_path)
+                                            .file_stem()
+                                            .and_then(OsStr::to_str)
+                                            .unwrap_or("(╯‵□′)╯︵┻━┻");
+
+                                        match save_customize_icon(icon_image, background_image, icon_name) {
+                                            Ok(customize_icon_path) => {
+                                                println!("保存图标到LinkEcho图标目录中");
+                                                if !Path::new(&link_path).exists() {
+                                                    return;
+                                                }
+                                                // 更换快捷方式图标
+                                                if let Err(e) = set_link_icon_path(&link_path, &customize_icon_path) {
+                                                    println!("{e}");
                                                 } else {
-                                                    println!("保存图标到LinkEcho图标目录中")
-                                                    // notify("messages");
-                                                    // write_log("text".to_owned()).unwrap()
-                                                }
-                                            }
-                                        }
-                                    } else {
-                                        let icon_path = if icon_path.trim().is_empty() {
-                                            &link_path
-                                        } else {
-                                            &icon_path
-                                        };
+                                                // 遍历当前快捷方式列表，如果找到同样的LinkPath则更新它所有的信息
 
-                                        if let Ok(icon_image) = get_customeize_icon_image(
-                                            &icon_path,
-                                            customize_icon_read.icon_scaling,
-                                            customize_icon_read.icon_borders_radius,
-                                        ) {
-                                            let background_image = customize_icon_read.background.clone().and_then(|(color, size, radius)| {
-                                                let iamge = get_background_image(color, size, radius);
-                                                if let Err(e) = &iamge {
-                                                    println!("{:?}", e);
                                                 }
-                                                iamge.ok()
-                                            });
-
+                                            },
+                                            Err(e) => println!("{e}")
                                         }
                                     }
                                 }
                             },
-                            span { { t!("更换快捷图标") } }
+                            span { { link_name.map_or(t!("保存图标到软件目录"), |_| t!("更换快捷方式的图标")) } }
                         }
                         // 输入框：添加背景
                         div {
                             class: "coolinput",
                             label {
                                 class: "text",
-                                r#for: "input","背景颜色:"
+                                r#for: "input",
+                                { t!("背景颜色:") }
                             }
                             input {
                                 class: "input",
                                 name: "input",
                                 placeholder: "e.g. #FFFFFF",
+                                autocomplete: "off", // 关闭自动填充
                                 r#type: "text",
                                 onmousedown: |event| event.stop_propagation(),
                                 oninput: move |event| {
@@ -379,7 +394,7 @@ pub fn tools(
                                 customize_icon.write().icon_scaling = value;
                             },
                         }
-                        span { width: "10%", { format!("{}%", customize_icon.read().icon_scaling) } }
+                        span { width: "30px", { format!("{}%", customize_icon.read().icon_scaling) } }
                     }
                     // 调节图标圆角
                     div {
@@ -396,7 +411,7 @@ pub fn tools(
                                 customize_icon.write().icon_borders_radius = value;
                             },
                         }
-                        span { width: "10%", { format!("{}R", customize_icon.read().icon_borders_radius) } }
+                        span { width: "30px", { format!("{}R", customize_icon.read().icon_borders_radius) } }
                     }
                     if let Some(background) = customize_icon_read.background.clone() {
                         // 调节背景大小
@@ -412,13 +427,13 @@ pub fn tools(
                                 oninput: move |event| {
                                     let value = event.value().parse::<u32>().unwrap_or(0);
                                     customize_icon.write().background = Some((
-                                        background_clone.as_ref().map(|(color, _, _)| color.to_string()).unwrap_or("#ffffff".to_owned()),
+                                        background_clone.as_ref().map_or("#ffffff".into(), |(c, _, _)| c.to_string()),
                                         value,
                                         background.2
                                     ));
                                 },
                             }
-                            span { width: "10%",{ format!("{}%", background.1) } }
+                            span { width: "30px", { format!("{}%", background.1) } }
                         }
                         // 调节背景圆角
                         div {
@@ -435,7 +450,7 @@ pub fn tools(
                                     customize_icon.write().background = Some((background.0.clone(), background.1, value));
                                 },
                             }
-                            span { width: "10%",{ format!("{}R", background.2) } }
+                            span { width: "30px", { format!("{}R", background.2) } }
                         }
                     }
                 }
@@ -444,8 +459,25 @@ pub fn tools(
     }
 }
 
+fn set_link_icon_path(link_path: &str, icon_path: &str) -> Result<()> {
+    if let Ok((shell_link, persist_file)) = initialize_com_and_create_shell_link() {
+        persist_file
+            .Load(&link_path, winsafe::co::STGM::WRITE)
+            .map_err(|e| anyhow!("Failed to load the shortcut by COM interface. {e}"))?;
+
+        shell_link
+            .SetIconLocation(&icon_path, 0)
+            .map_err(|e| anyhow!("Failed to set the icon location. {e}"))?;
+
+        persist_file
+            .Save(None, true)
+            .map_err(|e| anyhow!("Failed to save the shortcut by COM interface. {e}"))?;
+    }
+
+    Ok(())
+}
+
 fn get_link_icon_path(link_path: &str) -> Result<String> {
-    use winsafe::prelude::{shell_IShellLink, ole_IPersistFile};
     if let Ok((shell_link, persist_file)) = initialize_com_and_create_shell_link() {
         persist_file
             .Load(&link_path, winsafe::co::STGM::READ)
@@ -465,7 +497,7 @@ fn get_link_icon_path(link_path: &str) -> Result<String> {
     Err(anyhow!("Failed to get the icon path."))
 }
 
-fn get_customeize_icon_image(icon_path: &str, scaling: u32, radius: u32) -> Result<RgbaImage> {
+fn get_customize_icon_image(icon_path: &str, scaling: u32, radius: u32) -> Result<RgbaImage> {
     let icon_sizes = 256 * scaling / 100;
 
     let icon_image_ext = Path::new(icon_path)
@@ -475,14 +507,11 @@ fn get_customeize_icon_image(icon_path: &str, scaling: u32, radius: u32) -> Resu
 
     let icon_image = match icon_image_ext {
         "svg" => load_svg(icon_path, &[256])?.to_rgba8(),
-        "ico" | "png" | "bmp" | "tiff" | "webp "=> {
-            image::open(icon_path)?.to_rgba8()
-        },
+        "ico" | "png" | "bmp" | "tiff" | "webp " => image::open(icon_path)?.to_rgba8(),
         "exe" | "lnk" => {
-            get_icon_by_path(icon_path)
-                .map_err(|e| anyhow!("Failed to get the icon image. {e}"))?
+            get_icon_by_path(icon_path).map_err(|e| anyhow!("Failed to get the icon image. {e}"))?
         }
-        _ => return Err(anyhow!("the icon is not an image 、lnk or exe."))
+        _ => return Err(anyhow!("the icon is not an image 、lnk or exe.")),
     };
 
     let icon_image = image::imageops::resize(
@@ -496,7 +525,11 @@ fn get_customeize_icon_image(icon_path: &str, scaling: u32, radius: u32) -> Resu
     Ok(add_rounded_corners(&DynamicImage::from(icon_image), radius))
 }
 
-fn save_custom_icon(icon_image: RgbaImage, background_image: Option<RgbaImage>, name: &str) -> Result<()> {
+fn save_customize_icon(
+    icon_image: RgbaImage,
+    background_image: Option<RgbaImage>,
+    name: &str,
+) -> Result<String> {
     let mut combined_image = RgbaImage::new(256, 256);
 
     if let Some(bg_image) = background_image {
@@ -515,7 +548,7 @@ fn save_custom_icon(icon_image: RgbaImage, background_image: Option<RgbaImage>, 
     let frames = create_frames(
         &dyn_combined_image,
         vec![16, 32, 48, 64, 128, 256],
-        image::imageops::FilterType::Triangle
+        image::imageops::FilterType::Triangle,
     )?;
 
     let app_data_path = ensure_local_app_folder_exists().expect("Failed to get the app data path");
@@ -523,5 +556,5 @@ fn save_custom_icon(icon_image: RgbaImage, background_image: Option<RgbaImage>, 
 
     save_ico(frames, &icon_data_path)?;
 
-    Ok(())
+    Ok(icon_data_path.to_string_lossy().into_owned())
 }
