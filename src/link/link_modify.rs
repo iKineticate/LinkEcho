@@ -2,10 +2,11 @@ use crate::{
     FileDialog, LinkList, LinkProp, PathBuf, Status, glob, icongen,
     link::link_info::initialize_com_and_create_shell_link,
     t,
-    utils::{ensure_local_app_folder_exists, get_img_base64_by_path, write_log},
+    utils::{ensure_local_app_folder_exists, get_img_base64_by_path},
 };
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, anyhow};
 use dioxus::signals::{Readable, Signal, Writable};
+use log::*;
 use std::ffi::OsStr;
 use winsafe::{IPersistFile, co, prelude::*};
 
@@ -21,13 +22,17 @@ pub fn change_all_shortcuts_icons(mut link_list: Signal<LinkList>) -> Result<boo
         .set_title(t!("SELECT_ICONS_FOLDER"))
         .pick_folder()
     {
-        Some(path_buf) => format!(r"{}\**\*.*", path_buf.display()),
+        Some(path_buf) => path_buf
+            .join("**\\*.*")
+            .to_str()
+            .map(str::to_owned)
+            .ok_or(anyhow!("Failed to get the path"))?,
         None => return Ok(false),
     };
 
     // Iterate through the folder of icons - 遍历快捷方式目录中的图标（包括子目录）
     for path_buf in glob(&select_icons_folder_path)
-        .unwrap()
+        .map_err(|e| anyhow!("Glob failed for {select_icons_folder_path}: {e}"))?
         .filter_map(Result::ok)
     {
         if let Some((icon_path, icon_name)) = process_icon(path_buf)? {
@@ -57,21 +62,17 @@ pub fn change_all_shortcuts_icons(mut link_list: Signal<LinkList>) -> Result<boo
 
                 // Load the shortcut file (LNK file) - 载入快捷方式的文件
                 if persist_file.Load(&link_prop.path, co::STGM::WRITE).is_err() {
-                    write_log(format!(
-                        "{}: {}",
-                        t!("ERROR_LOAD_LNK_FILE"),
-                        &link_prop.path
-                    ))?;
+                    error!("{}: {}", t!("ERROR_LOAD_LNK_FILE"), link_prop.path);
                     continue;
                 }
 
                 // Set the icon location - 设置图标位置
                 if shell_link.SetIconLocation(&icon_path, 0).is_err() {
-                    write_log(format!(
+                    error!(
                         "{}:\n{}\n{icon_path}",
                         t!("ERROR_SET_ICON_LOCATION"),
-                        &link_prop.path
-                    ))?;
+                        link_prop.path
+                    );
                     continue;
                 }
 
@@ -84,18 +85,14 @@ pub fn change_all_shortcuts_icons(mut link_list: Signal<LinkList>) -> Result<boo
                         link_list_write.items[index].icon_base64 =
                             get_img_base64_by_path(&icon_path);
 
-                        write_log(format!(
-                            "{}:\n{}\n{icon_path}",
-                            t!("SHORTCUT"),
-                            &link_prop.path
-                        ))?;
+                        info!("{}:\n{}\n{icon_path}", t!("SHORTCUT"), link_prop.path);
                     }
-                    Err(err) => {
-                        write_log(format!(
-                            "{}:\n{}\n{err}",
+                    Err(e) => {
+                        error!(
+                            "{}:\n{}\n{e}",
                             t!("ERROR_SAVE_OBJECT_COPY_TO_FILE"),
-                            &link_prop.path
-                        ))?;
+                            link_prop.path
+                        );
                         continue;
                     }
                 }
@@ -147,7 +144,7 @@ pub fn change_single_shortcut_icon(mut link_list: Signal<LinkList>) -> Result<Op
     link_list_write.items[index].icon_path = icon_path.clone();
     link_list_write.items[index].status = Status::Changed;
 
-    write_log(format!("{}:\n{link_path}\n{icon_path}", t!("SHORTCUT")))?;
+    info!("{}:\n{link_path}\n{icon_path}", t!("SHORTCUT"));
 
     Ok(Some(link_name))
 }
@@ -179,7 +176,7 @@ fn process_icon(path_buf: PathBuf) -> Result<Option<(String, String)>> {
                 let logo_path = icon_data_path.join(format!("{icon_name}.ico"));
                 if !logo_path.exists() {
                     icongen::image_to_ico(path_buf, logo_path.clone(), &icon_name)?;
-                    write_log(format!("{}: {icon_name}.{ext}", t!("SUCCESS_IMG_TO_ICO")))?;
+                    info!("{}: {icon_name}.{ext}", t!("SUCCESS_IMG_TO_ICO"));
                 };
                 logo_path.to_string_lossy().to_string()
             }
@@ -202,8 +199,8 @@ pub fn restore_all_shortcuts_icons(mut link_list: Signal<LinkList>) -> Result<()
             continue;
         }
 
-        if let Err(err) = restore_shortcut_icon(&link_prop, &shell_link, &persist_file) {
-            write_log(format!("{}: {}", t!("ERROR_RESTORE_ONE"), err))?;
+        if let Err(e) = restore_shortcut_icon(&link_prop, &shell_link, &persist_file) {
+            error!("{}: {e}", t!("ERROR_RESTORE_ONE"));
             continue;
         }
 
@@ -212,19 +209,19 @@ pub fn restore_all_shortcuts_icons(mut link_list: Signal<LinkList>) -> Result<()
         link_list_write.items[index].status = Status::Unchanged;
         link_list_write.items[index].icon_base64 = get_img_base64_by_path(&link_prop.target_path);
 
-        write_log(format!(
+        info!(
             "{}:\n{}\n{}",
             t!("SUCCESS_RESTORE_ONE"),
-            &link_prop.path,
-            &link_prop.target_path
-        ))?;
+            link_prop.path,
+            link_prop.target_path
+        );
     }
 
     Ok(())
 }
 
 pub fn restore_single_shortcut_icon(mut link_list: Signal<LinkList>) -> Result<Option<String>> {
-    let index = link_list.read().state.select.ok_or(anyhow::anyhow!(
+    let index = link_list.read().state.select.ok_or(anyhow!(
         "LinkList's State prompt does not have a selection icon"
     ))?;
     let link_prop = link_list.read().items[index].clone();
@@ -236,28 +233,20 @@ pub fn restore_single_shortcut_icon(mut link_list: Signal<LinkList>) -> Result<O
 
     let (shell_link, persist_file) = initialize_com_and_create_shell_link()?;
 
-    restore_shortcut_icon(&link_prop, &shell_link, &persist_file).map_err(|err| {
-        write_log(format!(
-            "{}: {}\n{}",
-            t!("ERROR_RESTORE_ONE"),
-            link_name,
-            err
-        ))
-        .unwrap();
-        err
-    })?;
+    restore_shortcut_icon(&link_prop, &shell_link, &persist_file)
+        .map_err(|e| anyhow!("{}: {link_name}\n{e}", t!("ERROR_RESTORE_ONE")))?;
 
     let mut link_list_write = link_list.write();
     link_list_write.items[index].icon_path = link_target_path.clone();
     link_list_write.items[index].status = Status::Unchanged;
     link_list_write.items[index].icon_base64 = get_img_base64_by_path(&link_target_path);
 
-    write_log(format!(
+    info!(
         "{}:\n{}\n{}",
         t!("SUCCESS_RESTORE_ONE"),
-        &link_prop.path,
-        &link_target_path
-    ))?;
+        link_prop.path,
+        link_target_path
+    );
 
     Ok(Some(link_name))
 }

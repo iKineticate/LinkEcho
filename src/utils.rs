@@ -2,11 +2,9 @@ use crate::env;
 use anyhow::{Context, Result};
 use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
-use chrono::Local;
 use image::ImageFormat;
 use std::fs::{File, OpenOptions};
 use std::io::{BufReader, ErrorKind::AlreadyExists, Read, Write};
-use std::io::{Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use win_toast_notify::{CropCircle, WinToastNotify};
 use windows_icons::get_icon_base64_by_path;
@@ -43,41 +41,6 @@ pub fn ensure_logo_exists() -> Result<PathBuf> {
         Err(e) if e.kind() == AlreadyExists => Ok(logo_path),
         Err(e) => Err(e.into()),
     }
-}
-
-pub fn write_log(text: String) -> Result<()> {
-    let local_app_path = ensure_local_app_folder_exists()?;
-    let app_log_path = local_app_path.join("LinkEcho.log");
-
-    // 以读写模式打开文件（自动创建）
-    let mut log_file = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .open(&app_log_path)
-        .context("Failed to open log file")?;
-
-    // 读取现有内容
-    let mut existing_content = String::new();
-    log_file
-        .read_to_string(&mut existing_content)
-        .context("Failed to read log content")?;
-
-    // 构造新日志条目（带时间戳）
-    let now_time = Local::now().format("[%Y-%m-%d %H:%M:%S%.3f]");
-    let new_entry = format!("{now_time}\n{text}\n\n");
-
-    // 合并内容（新内容在前）
-    let combined = format!("{}{}", new_entry, existing_content);
-
-    // 重置指针并覆写文件
-    log_file.seek(SeekFrom::Start(0))?;
-    log_file.write_all(combined.as_bytes())?;
-
-    // 截断文件避免残留旧数据
-    log_file.set_len(combined.len() as u64)?;
-
-    Ok(())
 }
 
 pub fn notify(messages: &str) {

@@ -1,7 +1,5 @@
-use crate::{
-    t,
-    utils::{notify, write_log},
-};
+use crate::{t, utils::notify};
+use log::*;
 use std::env;
 use std::ffi::OsStr;
 use std::path::Path;
@@ -25,20 +23,21 @@ pub fn clear_icon_cache() {
             if should_delete_file(&path) {
                 if std::fs::remove_file(&path).is_err() {
                     let text = format!("{}\n{}", t!("ERROR_DELETE_ICON_DB"), path.display());
-                    write_log(text.clone()).expect("Failure to write to the log");
+                    log::error!("{text}");
                     return notify(&text);
                 }
             }
         }
 
         if restart_explorer() {
-            write_log(t!("SUCCESS_CLEAR_ICON_CACHE").into_owned())
-                .expect("Failure to write to the log");
+            info!("{}", t!("SUCCESS_CLEAR_ICON_CACHE"));
             notify(&t!("SUCCESS_CLEAR_ICON_CACHE"));
         } else {
+            error!("{}", t!("ERROR_RESTART_EXPLORER"));
             notify(&t!("ERROR_RESTART_EXPLORER"));
         }
     } else {
+        error!("{}", t!("ERROR_ITERTATOR_EXPLORER"));
         notify(&t!("ERROR_ITERTATOR_EXPLORER"));
     }
 }

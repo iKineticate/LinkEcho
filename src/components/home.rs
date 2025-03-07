@@ -1,7 +1,11 @@
 use crate::{
-    link_modify::change_single_shortcut_icon, t, utils::{get_img_base64_by_path, notify, write_log}, Action, CustomizeIcon, LinkList, LinkProp, MsgIcon, Msgbox, Tab
+    Action, CustomizeIcon, LinkList, LinkProp, MsgIcon, Msgbox, Tab,
+    link_modify::change_single_shortcut_icon,
+    t,
+    utils::{get_img_base64_by_path, notify},
 };
 use dioxus::prelude::*;
+use log::*;
 use std::path::Path;
 
 static RIGHT_ARROW1: &str = "M755.2 510.2L405.7 174.3c-13.7-16.4-16.4-41 0-57.3 16.4-19.1 41-19.1 57.3-2.7l379.6 365.9c8.2 8.2 13.7 19.1 13.7 30 0 10.9-5.5 21.8-13.7 30L463 906.1c-8.2 8.2-16.4 10.9-27.3 10.9-10.9 0-21.8-5.5-30-13.7-16.4-16.4-16.4-41 0-57.3l349.5-335.8zM405.7 846";
@@ -65,6 +69,7 @@ pub fn icon_button(item: LinkProp, index: usize, mut link_list: Signal<LinkList>
             ondoubleclick: move |_| {
                 match change_single_shortcut_icon(link_list) {
                     Ok(Some(name)) => notify(&format!("{}: {}", t!("SUCCESS_CHANGE_ONE"), name)),
+                    Err(e) => error!("Failed to change the shortcut icon - {e}"),
                     _ => (),
                 };
             },
@@ -150,7 +155,7 @@ pub fn icon_modify(
                                 ..Default::default()
                             };
                             *current_tab.write() = Tab::Tools;
-                            
+
                         },
                         span { { t!("CUSTOMIZE_ICON") } }
                     }
@@ -160,6 +165,7 @@ pub fn icon_modify(
                         onclick: move |_| {
                             match change_single_shortcut_icon(link_list) {
                                 Ok(Some(name)) => notify(&format!("{}: {}", t!("SUCCESS_CHANGE_ONE"), name)),
+                                Err(e) => error!("Failed to change the shortcut icon - {e}"),
                                 _ => (),
                             };
                         },
@@ -183,8 +189,8 @@ pub fn icon_modify(
                         onmousedown: |event| event.stop_propagation(),
                         onclick: move |_| {
                             if should_open_target_dir_allow == "allowed" {
-                                if let Err(err) = opener::open(&link_target_dir) {
-                                    write_log(format!("Failed to open {link_target_dir}: {err}")).expect("Failed to write the log");
+                                if let Err(e) = opener::open(&link_target_dir) {
+                                    error!("Failed to open {link_target_dir}: {e}");
                                 }
                             }
                         },
@@ -197,8 +203,8 @@ pub fn icon_modify(
                             if should_open_icon_dir_allow == "allowed" {
                                 let link_icon_dir_path = Path::new(&link_icon_path).parent();
                                 if let Some(path) = link_icon_dir_path {
-                                    if let Err(err) = opener::open(path) {
-                                        write_log(format!("Failed to open {}: {err}", path.display())).expect("Failed to write the log");
+                                    if let Err(e) = opener::open(path) {
+                                        error!("Failed to open {path:?}: {e}");
                                     }
                                 }
                             }
@@ -208,9 +214,7 @@ pub fn icon_modify(
                     button {
                         class: "allowed",
                         onmousedown: |event| event.stop_propagation(),
-                        onclick: move |_| {
-                            *show_prop.write() = true;
-                        },
+                        onclick: move |_| *show_prop.write() = true,
                         span { { t!("VIEW_PROPERTIES") } }
                     }
                 }

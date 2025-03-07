@@ -15,14 +15,13 @@
 //
 // Note: This file has been modified from the original version.
 
-use crate::{PathBuf, utils::notify};
 use anyhow::{Context, Result};
 use image::codecs::ico::{IcoEncoder, IcoFrame};
 use image::{DynamicImage, Rgba, RgbaImage};
 use rayon::prelude::*;
 use resvg::tiny_skia;
 use std::ffi::OsStr;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 pub fn image_to_ico(image_path: PathBuf, output_path: PathBuf, name: &str) -> Result<()> {
     let sizes = vec![16, 32, 48, 64, 128, 256];
@@ -96,15 +95,11 @@ pub fn load_svg<P: AsRef<Path>>(image_path: P, sizes: &[u32]) -> Result<DynamicI
 
 fn check_image_dimensions(image: &DynamicImage, name: &str) {
     if image.width() != image.height() {
-        notify(&format!(
-            "Warning: {name} is not square, and will appear squished!"
-        ));
+        log::warn!("{name} is not square, and will appear squished!")
     }
 
     if image.width() < 64 {
-        notify(&format!(
-            "Warning: You've requested sizes bigger than your input, your image: {name} will be scaled up!"
-        ));
+        log::warn!("{name} is smaller than 64x64, and may appear blurry!")
     }
 }
 

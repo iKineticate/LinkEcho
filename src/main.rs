@@ -18,6 +18,7 @@ use crate::{
     },
     image::icongen,
     link::{link_list::*, link_modify},
+    utils::ensure_local_app_folder_exists,
 };
 
 use std::{
@@ -25,6 +26,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use anyhow::Result;
 use config::desktop_config;
 use dioxus::desktop::window;
 use dioxus::prelude::*;
@@ -37,17 +39,21 @@ rust_i18n::i18n!("locales");
 pub enum Tab {
     Home,
     Tools,
-    History,
+    Log,
     Setting,
     About,
 }
 
-fn main() {
+fn main() -> Result<()> {
+    setup_logger()?;
+
     language::set_locale();
 
     LaunchBuilder::desktop()
         .with_cfg(desktop_config())
-        .launch(app)
+        .launch(app);
+
+    Ok(())
 }
 
 fn app() -> Element {
@@ -77,8 +83,8 @@ fn app() -> Element {
                     components::home::home{ filter_name, link_list, current_tab, customize_icon, show_msgbox, show_prop }
                 } else if read_tab == Tab::Tools {
                     components::tools::tools { link_list, current_tab, customize_icon, show_msgbox }
-                } else if read_tab == Tab::History {
-                    components::history::history {}
+                } else if read_tab == Tab::Log {
+                    components::log::history {}
                 } else if read_tab == Tab::About {
                     components::about::about {}
                 }
@@ -88,4 +94,24 @@ fn app() -> Element {
             components::properties::properties{ show_prop, link_list },
         }
     }
+}
+
+fn setup_logger() -> Result<()> {
+    let local_app_path = ensure_local_app_folder_exists()?;
+    let app_log_path = local_app_path.join("LinkEcho.log");
+
+    fern::Dispatch::new()
+        .format(|out, message, record| {
+            out.finish(format_args!(
+                "[{}][{}] {}\n",
+                chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
+                record.level(),
+                message
+            ))
+        })
+        .level(log::LevelFilter::Debug)
+        .chain(std::io::stdout())
+        .chain(fern::log_file(app_log_path)?)
+        .apply()?;
+    Ok(())
 }

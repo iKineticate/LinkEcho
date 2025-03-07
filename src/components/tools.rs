@@ -15,9 +15,11 @@ use crate::{
     t,
     utils::{ensure_local_app_folder_exists, get_img_base64_by_path, notify},
 };
+
 use anyhow::{Result, anyhow};
 use dioxus::prelude::*;
 use image::{DynamicImage, RgbaImage};
+use log::*;
 use rfd::FileDialog;
 use windows_icons::get_icon_by_path;
 use winsafe::prelude::{ole_IPersistFile, shell_IShellLink};
@@ -68,7 +70,11 @@ pub fn tools(
     let icon_name = customize_icon_read
         .link
         .as_ref()
-        .and_then(|l| Path::new(&l.icon_path).exists().then_some(Path::new(&l.icon_path)))
+        .and_then(|l| {
+            Path::new(&l.icon_path)
+                .exists()
+                .then_some(Path::new(&l.icon_path))
+        })
         .map(|p| p.file_name().and_then(OsStr::to_str).unwrap_or_default());
     let background_clone = customize_icon_read.background.clone();
 
@@ -149,7 +155,8 @@ pub fn tools(
                         if let Ok(path) = ensure_local_app_folder_exists() {
                             let path = path.join("icons");
                             if let Err(e) = opener::open(path) {
-                                println!("{e}")
+                                error!("{e}");
+                                notify(&format!("{e}"));
                             }
                         }
                     },
@@ -335,12 +342,16 @@ pub fn tools(
                                         let icon_name = Path::new(&icon_path)
                                             .file_stem()
                                             .and_then(OsStr::to_str)
-                                            .unwrap_or(
+                                            .unwrap_or_else(|| {
+                                                warn!("Icon name is invalid unicode:\n{icon_path}");
                                                 Path::new(&link_path)
                                                     .file_stem()
                                                     .and_then(OsStr::to_str)
-                                                    .unwrap_or("(╯‵□′)╯︵┻━┻")
-                                            );
+                                                    .unwrap_or_else(|| {
+                                                        warn!("Icon name is invalid unicode:\n{link_path}");
+                                                        "(╯‵□′)╯︵┻━┻"
+                                                })
+                                            });
 
                                         match save_customize_icon(icon_image, background_image, icon_name) {
                                             Ok(customize_icon_path) => {
@@ -351,19 +362,25 @@ pub fn tools(
                                                         let link = link_list.items.iter_mut().find(|l| l.path == link_path);
                                                         if let Some(link) = link {
                                                             link.icon_base64 = get_img_base64_by_path(&customize_icon_path);
-                                                            link.icon_path = customize_icon_path;
+                                                            link.icon_path = customize_icon_path.clone();
                                                         }
+                                                        info!("{}:\n{link_path}\n{customize_icon_path}", t!("SUCCESS_CHANGE_ONE"));
                                                         notify(&t!("SUCCESS_CHANGE_ONE"));
                                                     },
                                                     Ok(false) => {
+                                                        info!("{}", t!("SUCCESS_SAVE_ICON_TO_ICON_DIR"));
                                                         notify(&t!("SUCCESS_SAVE_ICON_TO_ICON_DIR"));
                                                     },
                                                     Err(e) => {
+                                                        error!("{e}");
                                                         notify(&format!("{e}"));
                                                     }
                                                 }
                                             },
-                                            Err(e) => notify(&format!("{e}")),
+                                            Err(e) => {
+                                                error!("{e}");
+                                                notify(&format!("{e}"))
+                                            },
                                         }
                                     }
                                 }
@@ -542,7 +559,7 @@ fn get_link_icon_path(link_path: &str) -> Result<String> {
             .GetIconLocation()
             .map_err(|e| anyhow!("Failed to get the icon location. {e}"))?;
 
-        let link_icon_path = ManageLinkProp::convert_env_to_path(link_icon_path);
+        let link_icon_path = ManageLinkProp::convert_env_to_path(&link_icon_path);
 
         if std::path::Path::new(&link_icon_path).is_file() && !link_icon_path.ends_with(".dll") {
             return Ok(link_icon_path);

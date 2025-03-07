@@ -1,8 +1,6 @@
 use crate::{
-    Action, LinkList, MsgIcon, Msgbox, Tab,
-    link_modify::change_all_shortcuts_icons,
-    t,
-    utils::{notify, write_log},
+    Action, LinkList, MsgIcon, Msgbox, Tab, link_modify::change_all_shortcuts_icons, t,
+    utils::notify,
 };
 use dioxus::prelude::*;
 use dioxus_desktop::window;
@@ -72,9 +70,9 @@ pub fn header(
                                 };
                             },
                             Ok(false) => println!("{}", t!("NOT_CHANGE_ALL")),
-                            Err(err) => {
+                            Err(e) => {
+                                log::error!("{e}");
                                 notify(&t!("ERROR_CHANGE_ALL"));
-                                write_log(err.to_string()).expect("Failed to write 'change all shortcuts icons' log")
                             }
                         }
                     },

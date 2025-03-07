@@ -14,8 +14,10 @@ dependencies = [
  "dioxus-desktop",
  "editpe",
  "embed-resource",
+ "fern",
  "glob",
  "image",
+ "log",
  "opener",
  "rayon",
  "regex",
@@ -1747,6 +1749,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e6853b52649d4ac5c0bd02320cddc5ba956bdb407c4b75a2c6b75bf51500f8c"
 dependencies = [
  "simd-adler32",
+]
+
+[[package]]
+name = "fern"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4316185f709b23713e41e3195f90edef7fb00c3ed4adc79769cf09cc762a3b29"
+dependencies = [
+ "log",
 ]
 
 [[package]]

@@ -1,9 +1,7 @@
-use crate::{
-    LinkProp, Path, PathBuf, Status, glob,
-    utils::{get_img_base64_by_path, write_log},
-};
-use anyhow::{Context, Result};
+use crate::{LinkProp, Path, PathBuf, Status, glob, utils::get_img_base64_by_path};
+use anyhow::{Context, Result, anyhow};
 use chrono::{DateTime, Local};
+use log::*;
 use std::{collections::HashMap, env, ffi::OsStr, time::SystemTime};
 use winsafe::{IPersistFile, co, prelude::*};
 
@@ -15,8 +13,6 @@ pub enum SystemLinkDirs {
 }
 impl SystemLinkDirs {
     pub fn get_path(&self) -> Result<Vec<PathBuf>> {
-        let mut path_vec = Vec::new();
-
         // Get the GUID of the shortcut's folder
         let know_folder_id_vec = match self {
             SystemLinkDirs::Desktop => vec![
@@ -34,48 +30,49 @@ impl SystemLinkDirs {
         };
 
         // Get the path to the shortcut's folder
-        for folder_id in know_folder_id_vec.iter() {
-            let path = winsafe::SHGetKnownFolderPath(
-                folder_id,
-                co::KF::NO_ALIAS, // 确保返回文件夹的物理路径，避免别名路径
-                None,
-            )
-            .with_context(|| format!("Failed to get the path from Folder Id: {folder_id}"))?;
-            path_vec.push(PathBuf::from(path));
-        }
+        let path = know_folder_id_vec
+            .into_iter()
+            .map(|id| {
+                winsafe::SHGetKnownFolderPath(id, co::KF::NO_ALIAS, None)
+                    .map(PathBuf::from)
+                    .with_context(|| format!("Failed to get the path from Folder Id: {id}"))
+            })
+            .collect::<Result<Vec<PathBuf>>>()?;
 
-        Ok(path_vec)
+        Ok(path)
     }
 }
 
 pub struct ManageLinkProp;
 impl ManageLinkProp {
     fn get_info(
-        path_buf: PathBuf,
+        path_buf: &Path,
         shell_link: &winsafe::IShellLink,
         persist_file: &IPersistFile,
     ) -> Result<LinkProp> {
-        let link_path = path_buf.to_string_lossy().into_owned();
+        let link_path = path_buf
+            .to_str()
+            .with_context(|| format!("Invalid Unicode: {path_buf:?}"))?;
 
         persist_file
-            .Load(&link_path, co::STGM::READ)
-            .context("Failed to load the shortcut by COM interface.")?;
+            .Load(link_path, co::STGM::READ)
+            .map_err(|e| anyhow!("Failed to load the link {path_buf:?} - {e}"))?;
 
         let link_name = path_buf
             .file_stem()
             .and_then(OsStr::to_str)
-            .map_or(String::from("unnamed_file"), str::to_owned);
+            .map(str::to_owned)
+            .with_context(|| format!("Invalid Unicode: {path_buf:?}"))?;
 
         let link_target_path = shell_link
             .GetPath(
-                // 注意：提供的路径可能不存在（比如UWP、APP、未提供路径的lnk）
-                Some(&mut winsafe::WIN32_FIND_DATA::default()),
-                co::SLGP::RAWPATH, // Absolute path - 绝对路径
+                Some(&mut winsafe::WIN32_FIND_DATA::default()), // 注意：提供的路径可能不存在（比如UWP、APP、未提供路径的lnk）
+                co::SLGP::RAWPATH,                              // Absolute path - 绝对路径
             )
-            .map_or(String::new(), ManageLinkProp::convert_env_to_path);
+            .map_or(String::new(), |s| ManageLinkProp::convert_env_to_path(&s));
 
         let link_target_dir = match shell_link.GetWorkingDirectory() {
-            Ok(p) if !p.is_empty() => ManageLinkProp::convert_env_to_path(p),
+            Ok(p) if !p.is_empty() => ManageLinkProp::convert_env_to_path(&p),
             _ => ManageLinkProp::get_parent_path(&link_target_path),
         };
 
@@ -137,19 +134,16 @@ impl ManageLinkProp {
         };
 
         // 不使用目标图标作为Base64是因为Base64内存占用大，性能差
-        let link_icon_base64 = get_img_base64_by_path(&link_path);
+        let link_icon_base64 = get_img_base64_by_path(link_path);
         let link_target_icon_base64 = get_img_base64_by_path(&link_target_path);
 
-        let mut unconverted_icon_path = String::new();
-
-        let (link_icon_path, link_icon_index) = shell_link
+        let (unconverted_icon_path, link_icon_path, link_icon_index) = shell_link
             .GetIconLocation()
             .map(|(icon_path, icon_index)| {
-                unconverted_icon_path = icon_path.clone();
-                let converted_icon_path = ManageLinkProp::convert_env_to_path(icon_path.clone());
+                let converted_icon_path = ManageLinkProp::convert_env_to_path(&icon_path);
                 match (Path::new(&icon_path).is_file(), icon_path.ends_with(".dll")) {
-                    (false, false) => (String::new(), String::new()),
-                    _ => (converted_icon_path, icon_index.to_string()),
+                    (false, false) => (String::new(), String::new(), String::new()),
+                    _ => (icon_path, converted_icon_path, icon_index.to_string()),
                 }
             })
             .with_context(|| format!("Failed get the shortcut icon location: {link_name}"))?;
@@ -173,15 +167,15 @@ impl ManageLinkProp {
             .GetArguments()
             .with_context(|| format!("Failed to get the shortcut's arguments: {link_name}"))?;
 
-        let metadata = std::fs::metadata(&link_path)
-            .with_context(|| format!("Failed to get the shortcut's metadata: {link_name}"))?;
-
-        let link_file_size = format!("{:.2} KB", metadata.len() as f64 / 1024.0);
-
         fn format_system_time(time: SystemTime) -> String {
             let datetime: DateTime<Local> = time.into();
             datetime.format("%Y-%m-%d %H:%M:%S").to_string()
         }
+
+        let metadata = std::fs::metadata(&link_path)
+            .with_context(|| format!("Failed to get the shortcut's metadata: {link_name}"))?;
+
+        let link_file_size = format!("{:.2} KB", metadata.len() as f64 / 1024.0);
 
         let link_created_at = metadata
             .created()
@@ -200,7 +194,7 @@ impl ManageLinkProp {
 
         Ok(LinkProp {
             name: link_name,
-            path: link_path,
+            path: link_path.to_owned(),
             status: link_icon_status,
             target_ext: link_target_ext,
             target_dir: link_target_dir,
@@ -217,7 +211,7 @@ impl ManageLinkProp {
         })
     }
 
-    fn get_parent_path(path: &String) -> String {
+    fn get_parent_path(path: &str) -> String {
         Path::new(path)
             .parent()
             .and_then(Path::to_str)
@@ -241,9 +235,9 @@ impl ManageLinkProp {
         }
     }
 
-    pub fn convert_env_to_path(env_path: String) -> String {
+    pub fn convert_env_to_path(env_path: &str) -> String {
         if !env_path.starts_with('%') {
-            return env_path;
+            return env_path.to_owned();
         }
         let envs: HashMap<&str, String> = [
             (
@@ -348,34 +342,32 @@ impl ManageLinkProp {
                     .starts_with(env)
                     .then(|| env_path_lowercase.replacen(env, root, 1))
             })
-            .unwrap_or(env_path)
+            .unwrap_or(env_path.to_owned())
     }
 
-    pub fn collect(dirs_vec: &Vec<impl AsRef<Path>>) -> Result<Vec<LinkProp>> {
-        let mut link_vec: Vec<LinkProp> = Vec::with_capacity(100);
-
+    pub fn collect(dirs_vec: &[impl AsRef<Path>]) -> Result<Vec<LinkProp>> {
         let (shell_link, persist_file) = initialize_com_and_create_shell_link()?;
 
-        // Iterate through directories
-        for dir in dirs_vec.iter() {
-            let directory = dir.as_ref().join("**\\*.lnk").to_string_lossy().to_string();
-            link_vec.extend(glob(&directory).unwrap().filter_map(Result::ok).filter_map(
-                |path_buf| match ManageLinkProp::get_info(path_buf, &shell_link, &persist_file) {
-                    Ok(link_prop) => Some(link_prop),
-                    Err(err) => {
-                        write_log(err.to_string()).ok();
-                        None
-                    }
-                },
-            ));
-        }
+        let mut link_vec = dirs_vec
+            .into_iter()
+            .filter_map(|p| p.as_ref().join("**\\*.lnk").to_str().map(str::to_owned))
+            // 使用 flat_map 合并两层迭代器
+            .flat_map(|pattern| {
+                glob(&pattern)
+                    .map_err(|e| error!("Glob failed for {pattern}: {e}"))
+                    .into_iter()
+                    .flatten() // 展开 Result 迭代器
+                    .filter_map(Result::ok)
+            })
+            .filter_map(|path| {
+                ManageLinkProp::get_info(&path, &shell_link, &persist_file)
+                    .map_err(|e| error!("Failed to get info:\n{path:?}\n{e}"))
+                    .ok()
+            })
+            .collect::<Vec<LinkProp>>();
 
-        // Sort `Vec<LinkProp>` by the first letter of `name` field
-        link_vec.sort_by(|a, b| {
-            let a_first_char = a.name.to_lowercase().chars().next().unwrap_or('\0');
-            let b_first_char = b.name.to_lowercase().chars().next().unwrap_or('\0');
-            a_first_char.cmp(&b_first_char)
-        });
+        // 首字母排序
+        link_vec.sort_by_key(|prop| prop.name.chars().next().map(|c| c.to_ascii_lowercase()));
 
         Ok(link_vec)
     }
