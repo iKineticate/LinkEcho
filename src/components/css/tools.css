@@ -52,6 +52,7 @@
     white-space: nowrap;        /* 防止文字换行 */
     overflow: hidden;           /* 隐藏超出部分的文字 */
     text-overflow: ellipsis;    /* 超出部分用省略号表示 */
+    font-family: "Consolas";
 }
 
 .tools button:hover {
@@ -112,7 +113,7 @@ input[type="range"] {
 
 .customize-icon-button-container button {
     text-align: center;
-    width: 80%;
+    width: 85%;
     height: 30px;
     display: inline-block;
     border-radius: 5px;
@@ -134,6 +135,8 @@ input[type="range"] {
     display: inline-block;
     position: relative;
     transition: 0.5s;
+    font-family: "Consolas", "Microsoft YaHei UI";
+    font-size: 0.875rem;
 }
 
 .customize-icon-button-container button span:after {

@@ -136,6 +136,7 @@ impl ManageLinkProp {
             }
         };
 
+        // 不使用目标图标作为Base64是因为Base64内存占用大，性能差
         let link_icon_base64 = get_img_base64_by_path(&link_path);
         let link_target_icon_base64 = get_img_base64_by_path(&link_target_path);
 

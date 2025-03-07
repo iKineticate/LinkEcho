@@ -13,7 +13,7 @@ use crate::{
         link_list::LinkProp,
     },
     t,
-    utils::{ensure_local_app_folder_exists, get_img_base64_by_path, notify, write_log},
+    utils::{ensure_local_app_folder_exists, get_img_base64_by_path, notify},
 };
 use anyhow::{Result, anyhow};
 use dioxus::prelude::*;
@@ -136,21 +136,6 @@ pub fn tools(
                 },
                 button {
                     onmousedown: |event| event.stop_propagation(),
-                    onclick: move |_| {
-                        *show_msgbox.write() = Some(Msgbox {
-                            messages: t!("WARN_MODIFY_ICON").into_owned(),
-                            icon: MsgIcon::Warn(Action::ModyfyExeIcon),
-                        });
-                    },
-                    svg {
-                        view_box: "0 0 1024 1024",
-                        path { d: MODYFY_EXE_ICON_1 },
-                        path { d: MODYFY_EXE_ICON_2 },
-                    },
-                    span { { t!("MODIFY_ICON") } }
-                },
-                button {
-                    onmousedown: |event| event.stop_propagation(),
                     onclick: move |_| { let _ = opener::open("shell:AppsFolder"); },
                     svg {
                         view_box: "0 0 1024 1024",
@@ -173,6 +158,21 @@ pub fn tools(
                         path { d: OPEN_ICON_DIR },
                     },
                     span { { t!("TOOL_OPEN_ICON_DIR") } }
+                },
+                button {
+                    onmousedown: |event| event.stop_propagation(),
+                    onclick: move |_| {
+                        *show_msgbox.write() = Some(Msgbox {
+                            messages: t!("WARN_MODIFY_ICON").into_owned(),
+                            icon: MsgIcon::Warn(Action::ModyfyExeIcon),
+                        });
+                    },
+                    svg {
+                        view_box: "0 0 1024 1024",
+                        path { d: MODYFY_EXE_ICON_1 },
+                        path { d: MODYFY_EXE_ICON_2 },
+                    },
+                    span { { t!("MODIFY_EXE_ICON") } }
                 },
             }
             // 右侧自定义图标区域
@@ -237,7 +237,7 @@ pub fn tools(
                             onmousedown: |event| event.stop_propagation(),
                             onclick: move |_| {
                                 if let Some(file_path) = FileDialog::new()
-                                    .set_title(t!("选择快捷方式或图标"))
+                                    .set_title(t!("SELECT_SHORTCUTS_OR_ICON"))
                                     .add_filter("LINK or ICON", &["lnk", "ico", "png", "bmp", "svg", "tiff", "exe"])
                                     .pick_file()
                                 {
@@ -279,7 +279,7 @@ pub fn tools(
 
                                 customize_icon.write().link = None;
                             },
-                            span { { t!("选择快捷方式或图标") } }
+                            span { { t!("SELECT_SHORTCUTS_OR_ICON") } }
                         }
                         // 选择快捷方式的新图标
                         button {
@@ -287,7 +287,7 @@ pub fn tools(
                             onmousedown: |event| event.stop_propagation(),
                             onclick: move |_| {
                                 if let Some(icon_path) = FileDialog::new()
-                                    .set_title(t!("选择图标"))
+                                    .set_title(t!("SELECT_ICON_FILE"))
                                     .add_filter("ICON", &["ico", "png", "bmp", "svg", "tiff", "exe"])
                                     .pick_file()
                                 {
@@ -311,7 +311,7 @@ pub fn tools(
                                     }
                                 };
                             },
-                            span { { t!("选择快捷方式新图标") } }
+                            span { { t!("SELECT_SHORTCUT_NEW_ICON") } }
                         }
                         // 更换快捷方式的图标或保存自定义的图标
                         button {
@@ -335,28 +335,40 @@ pub fn tools(
                                         let icon_name = Path::new(&icon_path)
                                             .file_stem()
                                             .and_then(OsStr::to_str)
-                                            .unwrap_or("(╯‵□′)╯︵┻━┻");
+                                            .unwrap_or(
+                                                Path::new(&link_path)
+                                                    .file_stem()
+                                                    .and_then(OsStr::to_str)
+                                                    .unwrap_or("(╯‵□′)╯︵┻━┻")
+                                            );
 
                                         match save_customize_icon(icon_image, background_image, icon_name) {
                                             Ok(customize_icon_path) => {
-                                                println!("保存图标到LinkEcho图标目录中");
-                                                if !Path::new(&link_path).exists() {
-                                                    return;
-                                                }
-                                                // 更换快捷方式图标
-                                                if let Err(e) = set_link_icon_path(&link_path, &customize_icon_path) {
-                                                    println!("{e}");
-                                                } else {
-                                                // 遍历当前快捷方式列表，如果找到同样的LinkPath则更新它所有的信息
-
+                                                // 更换列表中的快捷方式图标路径及Base64
+                                                match set_link_icon_path(&link_path, &customize_icon_path) {
+                                                    Ok(true) => {
+                                                        let mut link_list = link_list.write();
+                                                        let link = link_list.items.iter_mut().find(|l| l.path == link_path);
+                                                        if let Some(link) = link {
+                                                            link.icon_base64 = get_img_base64_by_path(&customize_icon_path);
+                                                            link.icon_path = customize_icon_path;
+                                                        }
+                                                        notify(&t!("SUCCESS_CHANGE_ONE"));
+                                                    },
+                                                    Ok(false) => {
+                                                        notify(&t!("SUCCESS_SAVE_ICON_TO_ICON_DIR"));
+                                                    },
+                                                    Err(e) => {
+                                                        notify(&format!("{e}"));
+                                                    }
                                                 }
                                             },
-                                            Err(e) => println!("{e}")
+                                            Err(e) => notify(&format!("{e}")),
                                         }
                                     }
                                 }
                             },
-                            span { { link_name.map_or(t!("保存图标到软件目录"), |_| t!("更换快捷方式的图标")) } }
+                            span { { link_name.map_or(t!("SAVE_ICON_TO_ICON_DIR"), |_| t!("CHANGE_SHORTCUT_ICON")) } }
                         }
                         // 输入框：添加背景
                         div {
@@ -364,12 +376,12 @@ pub fn tools(
                             label {
                                 class: "text",
                                 r#for: "input",
-                                { t!("背景颜色:") }
+                                { t!("BACKGROUND_COLOR") }
                             }
                             input {
                                 class: "input",
                                 name: "input",
-                                placeholder: "e.g. #FFFFFF",
+                                placeholder: "e.g. #FFFFFF linear-gradient(45deg, black, grey)",
                                 autocomplete: "off", // 关闭自动填充
                                 r#type: "text",
                                 onmousedown: |event| event.stop_propagation(),
@@ -388,6 +400,24 @@ pub fn tools(
                                 }
                             }
                         }
+                        // input {
+                        //     r#type: "color",
+                        //     onmousedown: |event| event.stop_propagation(),
+                        //     oninput: move |event| {
+                        //         let value = event.value();
+                        //         if value.trim().is_empty() {
+                        //             customize_icon.write().background = None;
+                        //         } else {
+                        //             println!("{value}");
+                        //             let bg = customize_icon.read().background.clone();
+                        //             if let Some(bg) = bg {
+                        //                 customize_icon.write().background = Some((value, bg.1, bg.2));
+                        //             } else {
+                        //                 customize_icon.write().background = Some((value, 100, 58));
+                        //             }
+                        //         };
+                        //     }
+                        // }
                     }
                 },
                 // 下方调节图标和背景区域
@@ -401,7 +431,7 @@ pub fn tools(
                     // 调节图标大小
                     div {
                         class: "range-input",
-                        span { { t!("调节图标大小") } }
+                        span { { t!("ADJUST_ICON_SIZE") } }
                         input {
                             onmousedown: |event| event.stop_propagation(),
                             type: "range",
@@ -413,30 +443,30 @@ pub fn tools(
                                 customize_icon.write().icon_scaling = value;
                             },
                         }
-                        span { width: "30px", { format!("{}%", customize_icon.read().icon_scaling) } }
+                        span { width: "10%", { format!("{}%", customize_icon.read().icon_scaling) } }
                     }
                     // 调节图标圆角
                     div {
                         class: "range-input",
-                        span { { t!("调节图标圆角") } }
+                        span { { t!("ADJUST_ICON_BORDER_RADIUS") } }
                         input {
                             onmousedown: |event| event.stop_propagation(),
                             type: "range",
                             min: "0",
-                            max: "100",
+                            max: "128",
                             value: customize_icon_read.icon_borders_radius.to_string(),
                             oninput: move |event| {
                                 let value = event.value().parse::<u32>().unwrap_or(0);
                                 customize_icon.write().icon_borders_radius = value;
                             },
                         }
-                        span { width: "30px", { format!("{}R", customize_icon.read().icon_borders_radius) } }
+                        span { width: "10%", { format!("{}R", customize_icon.read().icon_borders_radius) } }
                     }
                     if let Some(background) = customize_icon_read.background.clone() {
                         // 调节背景大小
                         div {
                             class: "range-input",
-                            span { { t!("调节背景大小") } }
+                            span { { t!("ADJUST_BACKGROUND_SIZE") } }
                             input {
                                 onmousedown: |event| event.stop_propagation(),
                                 type: "range",
@@ -452,24 +482,24 @@ pub fn tools(
                                     ));
                                 },
                             }
-                            span { width: "30px", { format!("{}%", background.1) } }
+                            span { width: "10%", { format!("{}%", background.1) } }
                         }
                         // 调节背景圆角
                         div {
                             class: "range-input",
-                            span { { t!("调节背景圆角") } }
+                            span { { t!("ADJUST_BACKGROUND_BORDER_RADIUS") } }
                             input {
                                 onmousedown: |event| event.stop_propagation(),
                                 type: "range",
                                 min: "0",
-                                max: "100",
+                                max: "128",
                                 value: background.2.to_string(),
                                 oninput: move |event| {
                                     let value = event.value().parse::<u32>().unwrap_or(0);
                                     customize_icon.write().background = Some((background.0.clone(), background.1, value));
                                 },
                             }
-                            span { width: "30px", { format!("{}R", background.2) } }
+                            span { width: "10%", { format!("{}R", background.2) } }
                         }
                     }
                 }
@@ -478,7 +508,11 @@ pub fn tools(
     }
 }
 
-fn set_link_icon_path(link_path: &str, icon_path: &str) -> Result<()> {
+fn set_link_icon_path(link_path: &str, icon_path: &str) -> Result<bool> {
+    if !Path::new(&link_path).exists() {
+        return Ok(false);
+    }
+
     if let Ok((shell_link, persist_file)) = initialize_com_and_create_shell_link() {
         persist_file
             .Load(&link_path, winsafe::co::STGM::WRITE)
@@ -491,9 +525,11 @@ fn set_link_icon_path(link_path: &str, icon_path: &str) -> Result<()> {
         persist_file
             .Save(None, true)
             .map_err(|e| anyhow!("Failed to save the shortcut by COM interface. {e}"))?;
+
+        return Ok(true);
     }
 
-    Ok(())
+    Ok(false)
 }
 
 fn get_link_icon_path(link_path: &str) -> Result<String> {
@@ -540,7 +576,6 @@ fn get_customize_icon_image(icon_path: &str, scaling: u32, radius: u32) -> Resul
         image::imageops::FilterType::Triangle,
     );
 
-    // 这里出现BUG，添加圆角出现问题........
     Ok(add_rounded_corners(&DynamicImage::from(icon_image), radius))
 }
 

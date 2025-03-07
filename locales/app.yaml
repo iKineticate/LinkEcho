@@ -27,7 +27,6 @@ ERROR_CHANGE_ALL:
   en: Failed to change icons of all shortcuts
   zh-CN: 无法更换所有已匹配的快捷方式图标
 
-
 RESTORE_ONE_TOOLTIP:
   en: Restore The Shortcut Icon As Default
   zh-CN: 恢复该快捷方式图标为默认图标
@@ -156,6 +155,10 @@ SETTING:
   zh-CN: 设置
 
 ## 修改区域
+CUSTOMIZE_ICON:
+  en: Customize
+  zh-CN: 图标自定
+
 CHANGE_ONE:
   en: Change
   zh-CN: 更换图标
@@ -302,7 +305,7 @@ SELECT_ICON_FILE:
   en: Please select an icon file
   zh-CN: 请选择一个图标文件
 
-MODIFY_ICON:
+MODIFY_EXE_ICON:
   en: Replace EXE icon
   zh-CN: 更换EXE程序图标
 
@@ -313,3 +316,44 @@ WARN_MODIFY_ICON:
 ERROR_MODIFY_ICON:
   en: Failed to replace the icon of the executable file
   zh-CN: 无法更换该可执行文件的图标
+
+# Tools
+SELECT_SHORTCUTS_OR_ICON:
+  en: Pick Shortcut/Icon
+  zh-CN: 选择快捷方式或图标
+
+SELECT_SHORTCUT_NEW_ICON:
+  en: New Shortcut Icon
+  zh-CN: 选择快捷方式新图标
+
+SAVE_ICON_TO_ICON_DIR:
+  en: Save Icon
+  zh-CN: 图标保存到软件目录
+
+CHANGE_SHORTCUT_ICON:
+  en: Change Icon
+  zh-CN: 更换快捷方式的图标
+
+BACKGROUND_COLOR:
+  en: 'Background Color:'
+  zh-CN: '背景颜色:'
+
+ADJUST_ICON_SIZE:
+  en: Icon Sz
+  zh-CN: 调整图标大小
+
+ADJUST_ICON_BORDER_RADIUS:
+  en: Icon Rad
+  zh-CN: 调整图标圆角
+
+ADJUST_BACKGROUND_SIZE:
+  en: BKGD Sz
+  zh-CN: 调整背景大小
+
+ADJUST_BACKGROUND_BORDER_RADIUS:
+  en: BKGD Rad
+  zh-CN: 调整背景圆角
+
+SUCCESS_SAVE_ICON_TO_ICON_DIR:
+  en: The icon has been saved to the LinkEcho directory
+  zh-CN: 图标已保存到软件目录

@@ -152,7 +152,7 @@ pub fn icon_modify(
                             *current_tab.write() = Tab::Tools;
                             
                         },
-                        span { { t!("自定义图标") } }
+                        span { { t!("CUSTOMIZE_ICON") } }
                     }
                     button {
                         class: "allowed",
