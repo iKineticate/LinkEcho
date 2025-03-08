@@ -1,12 +1,5 @@
 ![image](https://raw.githubusercontent.com/iKineticate/LinkEcho/refs/heads/master/screenshots/app.png)
 
-<div align="center">  
-  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-  [![Windows 11](https://img.shields.io/badge/Windows%2011-22H2+-blue.svg)](https://www.microsoft.com/windows/windows-11)
-  [![.NET](https://img.shields.io/badge/.NET-9.0-purple.svg)](https://dotnet.microsoft.com/download)
-  [![.NET Framework](https://img.shields.io/badge/.NET%20Framework-4.8.1-purple.svg)](https://dotnet.microsoft.com/download/dotnet-framework)
-</div>
-
 # LinkEcho
 
 一键批量更换、自定义或还原快捷方式图标，让您的桌面焕然一新。
@@ -64,12 +57,7 @@
 
 <p>
     <p align="center" >
-      <!-- <img src="./notes/header-light-updated.svg#gh-light-mode-only" >
-      <img src="./notes/header-dark-updated.svg#gh-dark-mode-only" > -->
-      <!-- <a href="https://dioxuslabs.com">
-          <img src="./notes/flat-splash.avif">
-      </a> -->
-      <img src="./notes/splash-header-darkmode.svg#gh-dark-mode-only" style="width: 80%; height: auto;">
+      <img src="https://raw.githubusercontent.com/DioxusLabs/dioxus/8b4ccb7817a98379eff2f348f55bbd84f9f12ea3/notes/splash-header-darkmode.svg" style="width: 80%; height: auto;">
       <br>
     </p>
 </p>
