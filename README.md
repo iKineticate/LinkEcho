@@ -1,29 +1,75 @@
 ![image](https://raw.githubusercontent.com/iKineticate/LinkEcho/refs/heads/master/screenshots/app.png)
 
+<div align="center">  
+  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+  [![Windows 11](https://img.shields.io/badge/Windows%2011-22H2+-blue.svg)](https://www.microsoft.com/windows/windows-11)
+  [![.NET](https://img.shields.io/badge/.NET-9.0-purple.svg)](https://dotnet.microsoft.com/download)
+  [![.NET Framework](https://img.shields.io/badge/.NET%20Framework-4.8.1-purple.svg)](https://dotnet.microsoft.com/download/dotnet-framework)
+</div>
+
 # LinkEcho
 
-LinkEcho 可以评估桌面、开始菜单及其他文件夹的快捷方式的安全风险，支持更换单个快捷方式的图标，甚至可以自动更换所有快捷方式的图标。同时，它也支持将这些图标恢复为默认状态。
+一键批量更换、自定义或还原快捷方式图标，让您的桌面焕然一新。
 
-LinkEcho can assess the security risks of shortcuts, allow the replacement of individual shortcut icons, and even automate the icon replacement for all shortcuts. It also supports restoring these icons to their default state and retrieving shortcut properties from the desktop, Start Menu, and other folders.
+- **极简操作**：选择匹配图标即可批量更换快捷方式图标，无需逐一手动设置  
+- **图标自定**: 自由调节快捷方式原图标/新图标尺寸与圆角，支持纯色/渐变色背景层，亦可调节其尺寸与圆角
+- **格式广泛**：支持 ICO/PNG/SVG/BMP/WEBP/TIFF/EXE 格式
+- **场景支持**：覆盖桌面、开始菜单及任意文件夹中的快捷方式  
+- **无损还原**：随时一键恢复快捷方式图标默认状态
+
+# 使用
+
+## 🔒 管理员权限说明
+
+**为何需要管理员权限？**  
+`所有用户文件夹`、`开始菜单`、`任务栏`等位置的快捷方式受Windows权限保护，Windows要求临时提升权限方可修改快捷方式属性。
+
+**安全承诺**  
+✅ 不收集任何数据  
+✅ 无网络传输行为  
+✅ 权限仅用于修改快捷方式图标路径
+
+## ✨ 功能介绍
+
+### 1. 一键更换所有图标
+
+#### 图标匹配规则
+- **格式支持**：`ICO` `PNG` `SVG` `BMP` `WEBP` `TIFF` `EXE`
+- **智能匹配**：图标文件需满足以下条件之一：
+  ```bash
+  # 精确匹配（最高优先级）
+  快捷方式名 = "Visual Studio" → 图标名 = "Visual Studio.png"
+  
+  # 包含匹配（次要优先级）
+  快捷方式名 = "Chrome" → 图标名 = "Chrome Beta.ico"
+  快捷方式名 = "Chrome Canary" -> 图标名 = "Chrome"
+  ```
+
+> [!WARNING]
+> **UWP/WSA 应用限制**：
+>  ```diff
+>  - 更换后无法通过本工具恢复默认图标
+>  + 恢复方法：需手动删除快捷方式并重新创建
+>  ```
 
 ---
 
-## 功能
+### 2. 图标还原
+- **普通快捷方式**：通过「恢复图标」按钮恢复 或「恢复所有图标」按钮一键恢复
+- **UWP/WSA 快捷方式**：需手动重建快捷方式（「工具」-「创建应用快捷方式」）
 
-* **安全风险评估**：橙色标记表示该快捷方式可能存在风险（某些木马可能通过向快捷方式写入命令来侵入）。
-* **快捷方式有效性检查**：红色标记表示快捷方式或其某一属性无效。
-* **更换指定快捷方式图标**：绿色标记表示快捷方式图标已被更换。
-* **批量自动更换快捷方式图标**：选择图标目录后，可以根据名称匹配来更换图标，如`Chrome Canary`可自动选择名为`Chrome`的图标；如`悟空`可自动选择名为`黑神话：悟空`的图标
-* **恢复快捷方式图标**：恢复指定或所有快捷方式的图标为默认状态。
-* **获取快捷方式属性**：工作目录、目标路径、启动参数等。
+### 3. 自定义图标
 
-## Features
-* **Security Risk Assessment**: Orange warning for shortcuts that may pose a risk (some malware may write commands to shortcuts to gain access).
-* **Shortcut Validation**: Red marking indicates that a shortcut or one of its properties is invalid.
-* **Replace Specific Shortcut Icon**: A green mark indicates that the shortcut icon has been replaced.
-* **Batch auto change shortcuts icons**: After selecting an icon directory, icons can be replaced based on name matching. For instance, `Chrome Canary` can automatically select the icon named `Chrome,` while `Edge` can also choose the icon named `Microsoft Edge`.
-* **Restore Shortcut Icon**: Restore specific or all shortcut icons to default.
+---
 
-建议使用**Windows 终端**（start.exe）启动该软件，目前无法可视化图标，如需更丰富的功能（如更换快捷方式图标、选择系统图标），建议使用[AHK-ChangeIcon](https://github.com/iKineticate/AHK-ChangeIcon)。
-
-It is recommended that the software be started using a **Windows terminal** (start.exe).The Windows terminal cannot display icons. For richer functionality like changing shortcut icons, it is recommended to use [AHK-ChangeIcon](https://github.com/iKineticate/AHK-ChangeIcon).
+<p>
+    <p align="center" >
+      <!-- <img src="./notes/header-light-updated.svg#gh-light-mode-only" >
+      <img src="./notes/header-dark-updated.svg#gh-dark-mode-only" > -->
+      <!-- <a href="https://dioxuslabs.com">
+          <img src="./notes/flat-splash.avif">
+      </a> -->
+      <img src="./notes/splash-header-darkmode.svg#gh-dark-mode-only" style="width: 80%; height: auto;">
+      <br>
+    </p>
+</p>
