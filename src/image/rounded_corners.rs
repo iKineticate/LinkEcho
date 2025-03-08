@@ -1,4 +1,5 @@
 use image::{DynamicImage, RgbaImage};
+use rayon::prelude::*;
 use std::cmp::min;
 
 pub fn add_rounded_corners(image: &DynamicImage, radius: u32) -> RgbaImage {
@@ -6,19 +7,18 @@ pub fn add_rounded_corners(image: &DynamicImage, radius: u32) -> RgbaImage {
     let radius = min(radius, min(width, height) / 2);
     let mut rounded_image = image.to_rgba8();
 
-    for y in 0..height {
-        for x in 0..width {
-            let original_alpha = rounded_image.get_pixel(x, y).0[3];
-            let alpha = calculate_alpha(x, y, width, height, radius, original_alpha);
-            let pixel = rounded_image.get_pixel_mut(x, y);
+    // 并行化处理
+    let pixels = rounded_image.enumerate_pixels_mut().par_bridge();
+    pixels.for_each(|(x, y, pixel)| {
+        let original_alpha = pixel.0[3];
+        let alpha = calculate_alpha(x, y, width, height, radius, original_alpha);
 
-            if alpha == 0 {
-                pixel.0 = [0, 0, 0, 0];
-            } else {
-                pixel.0[3] = alpha;
-            }
+        if alpha == 0 {
+            pixel.0 = [0, 0, 0, 0];
+        } else {
+            pixel.0[3] = alpha;
         }
-    }
+    });
 
     rounded_image
 }
@@ -64,7 +64,7 @@ fn calculate_alpha(x: u32, y: u32, width: u32, height: u32, radius: u32, origina
         smoothstep(0.0, 1.0, 1.0 - t) // 反向过渡
     };
 
-    (alpha * original_alpha as f32 / 255.0 * 255.0) as u8
+    (alpha * ( original_alpha as f32 / 255.0 )* 255.0) as u8
 }
 
 /// 平滑过渡函数（三阶插值消除锯齿）
