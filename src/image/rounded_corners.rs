@@ -64,7 +64,7 @@ fn calculate_alpha(x: u32, y: u32, width: u32, height: u32, radius: u32, origina
         smoothstep(0.0, 1.0, 1.0 - t) // 反向过渡
     };
 
-    (alpha * ( original_alpha as f32 / 255.0 )* 255.0) as u8
+    (alpha * (original_alpha as f32 / 255.0) * 255.0) as u8
 }
 
 /// 平滑过渡函数（三阶插值消除锯齿）

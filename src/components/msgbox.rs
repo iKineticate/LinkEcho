@@ -123,6 +123,8 @@ pub fn msgbox(
                                             Ok(resotre) => {
                                                 if let Some(name) = resotre {
                                                     notify(&format!("{name}: {}", t!("SUCCESS_RESTORE_ONE")));
+                                                } else {
+                                                    info!("Don't need to restore")
                                                 }
                                             },
                                             Err(e) => {

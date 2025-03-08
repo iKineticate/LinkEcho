@@ -11,7 +11,7 @@ use crate::{
     },
     link::{
         link_info::{ManageLinkProp, initialize_com_and_create_shell_link},
-        link_list::LinkProp,
+        link_list::{LinkProp, Status},
     },
     t,
     utils::{ensure_local_app_folder_exists, notify},
@@ -364,6 +364,7 @@ pub fn tools(
                                                         if let Some(link) = link {
                                                             link.icon_base64 = get_img_base64_by_path(&customize_icon_path);
                                                             link.icon_path = customize_icon_path.clone();
+                                                            link.status = Status::Changed;
                                                         }
                                                         info!("{}:\n{link_path}\n{customize_icon_path}", t!("SUCCESS_CHANGE_ONE"));
                                                         notify(&t!("SUCCESS_CHANGE_ONE"));
@@ -399,7 +400,7 @@ pub fn tools(
                             input {
                                 class: "input",
                                 name: "input",
-                                placeholder: "e.g. #FFFFFF linear-gradient(45deg, black, grey)",
+                                placeholder: "e.g. #FFFFFF",
                                 autocomplete: "off", // 关闭自动填充
                                 r#type: "text",
                                 onmousedown: |event| event.stop_propagation(),
