@@ -1,9 +1,8 @@
-use anyhow::{Ok, Result, anyhow};
+use anyhow::{anyhow, Result};
 use image::{DynamicImage, ImageBuffer, Rgba, RgbaImage};
 use regex::Regex;
 
 use super::rounded_corners::add_rounded_corners;
-// use csscolorparser::Color;
 
 #[derive(Debug, PartialEq, Clone)]
 enum GradientDirection {
@@ -51,7 +50,7 @@ fn parse_color_str(color_str: &str) -> Result<Rgba<u8>> {
 
 /// 解析渐变参数
 fn parse_gradient(gradient_str: &str) -> Result<(GradientDirection, Vec<(Rgba<u8>, f32)>)> {
-    let re = Regex::new(r"linear-gradient\(([^)]+)\)").unwrap();
+    let re = Regex::new(r"linear-gradient\(([^)]+)\)")?;
     let capstures = re
         .captures(gradient_str)
         .ok_or_else(|| anyhow!("Invalid gradient syntax"))?;
