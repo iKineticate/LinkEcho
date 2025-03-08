@@ -10,7 +10,7 @@ pub fn history() -> Element {
                 return rsx! {
                     style { { include_str!("css/log.css") } }
                     div {
-                        // onmousedown: |event| event.stop_propagation(),
+                        onmousedown: |event| event.stop_propagation(),
                         class: "histroy-container",
                         pre {
                             font_family: "Consolas",
