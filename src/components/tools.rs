@@ -404,7 +404,7 @@ pub fn tools(
                                 r#type: "text",
                                 onmousedown: |event| event.stop_propagation(),
                                 oninput: move |event| {
-                                    let value = event.value();
+                                    let value = event.value().trim().trim_end_matches(";").to_owned();
                                     if value.trim().is_empty() {
                                         customize_icon.write().background = None;
                                     } else {
