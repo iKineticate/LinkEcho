@@ -1,4 +1,4 @@
-use crate::{LinkProp, Path, PathBuf, Status, glob, utils::get_img_base64_by_path};
+use crate::{LinkProp, Path, PathBuf, Status, glob, image::base64::get_img_base64_by_path};
 use anyhow::{Context, Result, anyhow};
 use chrono::{DateTime, Local};
 use log::*;

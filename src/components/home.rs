@@ -1,8 +1,7 @@
 use crate::{
     Action, CustomizeIcon, LinkList, LinkProp, MsgIcon, Msgbox, Tab,
-    link_modify::change_single_shortcut_icon,
-    t,
-    utils::{get_img_base64_by_path, notify},
+    image::base64::get_img_base64_by_path, link_modify::change_single_shortcut_icon, t,
+    utils::notify,
 };
 use dioxus::prelude::*;
 use log::*;
@@ -164,7 +163,7 @@ pub fn icon_modify(
                         onmousedown: |event| event.stop_propagation(),
                         onclick: move |_| {
                             match change_single_shortcut_icon(link_list) {
-                                Ok(Some(name)) => notify(&format!("{}: {}", t!("SUCCESS_CHANGE_ONE"), name)),
+                                Ok(Some(name)) => notify(&format!("{}: {name}", t!("SUCCESS_CHANGE_ONE"))),
                                 Err(e) => error!("Failed to change the shortcut icon - {e}"),
                                 _ => (),
                             };

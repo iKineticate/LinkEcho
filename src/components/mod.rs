@@ -1,8 +1,8 @@
 pub mod header;
 
 pub mod about;
-pub mod log;
 pub mod home;
+pub mod log;
 pub mod properties;
 pub mod tabs;
 pub mod tools;

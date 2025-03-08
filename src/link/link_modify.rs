@@ -1,8 +1,7 @@
 use crate::{
     FileDialog, LinkList, LinkProp, PathBuf, Status, glob, icongen,
-    link::link_info::initialize_com_and_create_shell_link,
-    t,
-    utils::{ensure_local_app_folder_exists, get_img_base64_by_path},
+    image::base64::get_img_base64_by_path, link::link_info::initialize_com_and_create_shell_link,
+    t, utils::ensure_local_app_folder_exists,
 };
 use anyhow::{Context, Result, anyhow};
 use dioxus::signals::{Readable, Signal, Writable};
@@ -61,15 +60,15 @@ pub fn change_all_shortcuts_icons(mut link_list: Signal<LinkList>) -> Result<boo
                 }
 
                 // Load the shortcut file (LNK file) - 载入快捷方式的文件
-                if persist_file.Load(&link_prop.path, co::STGM::WRITE).is_err() {
-                    error!("{}: {}", t!("ERROR_LOAD_LNK_FILE"), link_prop.path);
+                if let Err(e) = persist_file.Load(&link_prop.path, co::STGM::WRITE) {
+                    error!("{}:\n{}\n{e}", t!("ERROR_LOAD_LNK_FILE"), link_prop.path);
                     continue;
                 }
 
                 // Set the icon location - 设置图标位置
-                if shell_link.SetIconLocation(&icon_path, 0).is_err() {
+                if let Err(e) = shell_link.SetIconLocation(&icon_path, 0) {
                     error!(
-                        "{}:\n{}\n{icon_path}",
+                        "{}:\n{}\n{icon_path}\n{e}",
                         t!("ERROR_SET_ICON_LOCATION"),
                         link_prop.path
                     );
@@ -78,7 +77,7 @@ pub fn change_all_shortcuts_icons(mut link_list: Signal<LinkList>) -> Result<boo
 
                 // Save a copy of the object to the specified file - 将对象的副本保存到指定文件
                 match persist_file.Save(None, true) {
-                    Ok(_) => {
+                    Ok(()) => {
                         let mut link_list_write = link_list.write();
                         link_list_write.items[index].icon_path = icon_path.clone();
                         link_list_write.items[index].status = Status::Changed;
@@ -103,7 +102,7 @@ pub fn change_all_shortcuts_icons(mut link_list: Signal<LinkList>) -> Result<boo
 }
 
 pub fn change_single_shortcut_icon(mut link_list: Signal<LinkList>) -> Result<Option<String>> {
-    let index = link_list.read().state.select.ok_or(anyhow::anyhow!(
+    let index = link_list.read().state.select.ok_or(anyhow!(
         "LinkList's State prompt does not have a selection icon"
     ))?;
     let link_prop = link_list.read().items[index].clone();
@@ -167,7 +166,7 @@ fn process_icon(path_buf: PathBuf) -> Result<Option<(String, String)>> {
             .file_stem()
             .and_then(OsStr::to_str)
             .map(str::to_lowercase)
-            .ok_or_else(|| anyhow::anyhow!("Failed to get icon name: {}", path_buf.display()))?;
+            .ok_or_else(|| anyhow!("Failed to get icon name: {}", path_buf.display()))?;
 
         // 若图标非ICO格式，且数据文件夹中无该名称图标，则将转换图片到数据文件夹中
         let icon_path = match ext.as_str() {
@@ -178,7 +177,10 @@ fn process_icon(path_buf: PathBuf) -> Result<Option<(String, String)>> {
                     icongen::image_to_ico(path_buf, logo_path.clone(), &icon_name)?;
                     info!("{}: {icon_name}.{ext}", t!("SUCCESS_IMG_TO_ICO"));
                 };
-                logo_path.to_string_lossy().to_string()
+                logo_path
+                    .to_str()
+                    .ok_or(anyhow!("Failed to get icon path"))?
+                    .to_string()
             }
         };
 

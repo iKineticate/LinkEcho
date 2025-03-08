@@ -8,9 +8,9 @@ pub fn history() -> Element {
         if log_path.exists() {
             if let Ok(history_content) = std::fs::read_to_string(&log_path) {
                 return rsx! {
-                    style { { include_str!("css/history.css") } }
+                    style { { include_str!("css/log.css") } }
                     div {
-                        onmousedown: |event| event.stop_propagation(),
+                        // onmousedown: |event| event.stop_propagation(),
                         class: "histroy-container",
                         pre {
                             font_family: "Consolas",

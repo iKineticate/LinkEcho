@@ -5,6 +5,7 @@ use crate::{
     components::msgbox::Action,
     image::{
         background::get_background_image,
+        base64::get_img_base64_by_path,
         icongen::{create_frames, load_svg, save_ico},
         rounded_corners::add_rounded_corners,
     },
@@ -13,7 +14,7 @@ use crate::{
         link_list::LinkProp,
     },
     t,
-    utils::{ensure_local_app_folder_exists, get_img_base64_by_path, notify},
+    utils::{ensure_local_app_folder_exists, notify},
 };
 
 use anyhow::{Result, anyhow};

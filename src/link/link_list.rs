@@ -1,5 +1,6 @@
 use crate::link::link_info::{ManageLinkProp, SystemLinkDirs};
 use crate::t;
+use log::*;
 use std::path::PathBuf;
 
 pub struct ListState {
@@ -46,9 +47,11 @@ impl LinkList {
     pub fn desktop() -> Self {
         let desktop_path = SystemLinkDirs::Desktop
             .get_path()
-            .expect("Failed to get desktops path");
+            .map_err(|e| error!("Failed to get Desktops path: {e}"))
+            .expect("Failed to get Desktops path");
         let link_vec = ManageLinkProp::collect(&desktop_path)
-            .expect("Failed to get properties of desktop shortcuts");
+            .map_err(|e| error!("Failed to get properties of Desktop shortcuts: {e}"))
+            .expect("Failed to get properties of Desktop shortcuts");
 
         Self {
             items: link_vec,
@@ -60,9 +63,11 @@ impl LinkList {
     pub fn start_menu() -> Self {
         let start_path = SystemLinkDirs::StartMenu
             .get_path()
+            .map_err(|e| error!("Failed to get Start Menu path: {e}"))
             .expect("Failed to get Start Menu path");
         let link_vec = ManageLinkProp::collect(&start_path)
-            .expect("Failed to get properties of start menu shortcuts");
+            .map_err(|e| error!("Failed to get properties of Start Menu shortcuts: {e}"))
+            .expect("Failed to get properties of Start Menu shortcuts");
 
         Self {
             items: link_vec,
@@ -73,6 +78,7 @@ impl LinkList {
 
     pub fn other(path: PathBuf) -> Self {
         let link_vec = ManageLinkProp::collect(&vec![path.clone()])
+            .map_err(|e| error!("Failed to get properties of desktop shortcuts: {e}"))
             .expect("Failed to get properties of desktop shortcuts");
 
         Self {

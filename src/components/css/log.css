@@ -14,8 +14,9 @@
 
 .histroy-container {
     user-select: none;
-    white-space: pre;
-    overflow: auto;
+    white-space: pre-wrap;
+    overflow-y: auto;
+    overflow-x: hidden;
     height: 100%;
     width: 100%;
 }
