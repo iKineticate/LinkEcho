@@ -1,14 +1,16 @@
-![image](https://raw.githubusercontent.com/iKineticate/LinkEcho/refs/heads/master/screenshots/app.png)
+![image](screenshots/app.png)
+
+<h3 align="center"> 简体中文 | <a href='./README-en_US.md'>English</a></h3>
 
 # LinkEcho
 
 一键批量更换、自定义或还原快捷方式图标，让您的桌面焕然一新。
 
-- **极简操作**：选择匹配图标即可批量更换快捷方式图标，无需逐一手动设置  
+- **极简操作**: 选择匹配图标即可批量更换快捷方式图标，无需逐一手动设置  
 - **图标自定**: 自由调节快捷方式原图标/新图标尺寸与圆角，支持纯色/渐变色背景层，亦可调节其尺寸与圆角
-- **格式广泛**：支持 ICO/PNG/SVG/BMP/WEBP/TIFF/EXE 格式
-- **场景支持**：覆盖桌面、开始菜单及任意文件夹中的快捷方式  
-- **无损还原**：随时一键恢复快捷方式图标默认状态
+- **格式广泛**: 支持 ICO/PNG/SVG/BMP/WEBP/TIFF/EXE 格式
+- **场景支持**: 覆盖桌面、开始菜单及任意文件夹中的快捷方式  
+- **还原图标**: 随时一键恢复快捷方式图标默认状态
 
 # 使用
 
@@ -22,8 +24,7 @@
 ✅ 无网络传输行为  
 ✅ 权限仅用于修改快捷方式图标路径（杀毒软件可能识别并阻止）
 
-## ✨ 功能介绍
-
+## ✨ 特点
 
 <details>
 <summary>📝 1.更换所有图标</summary>
@@ -46,6 +47,7 @@
 >  + 恢复方法：需手动删除快捷方式并重新创建
 >  ```
 
+![Change All](screenshots/change_all.gif)
 </details>
 
 
@@ -55,6 +57,7 @@
 - **普通快捷方式**：通过「恢复图标」按钮恢复 或「恢复所有图标」按钮一键恢复
 - **UWP/WSA 快捷方式**：需手动重建快捷方式（工具界面 -「创建应用快捷方式」 - 创建指定快捷方式）
 
+![Restore All](screenshots/restore_all.gif)
 </details>
 
 
@@ -72,7 +75,7 @@
 - **图标尺寸**：0~100%
 - **图标圆角**：0~128px  
 - **背景层**：
-  - 支持 CSS3 颜色语法（HEX/RGB/HSL）  
+  - 支持 CSS 颜色语法（HEX/RGB/HSL/linear-gradient）[渐变色学习](https://www.runoob.com/cssref/func-linear-gradient.html)
   - 支持调节背景层大小及圆角
   ```css
   /* 纯色示例 */
@@ -80,23 +83,20 @@
   background: rgb(255, 255, 255);
 
   /* 渐变示例 */
-  background: linear-gradient(135deg, #83a4d4 0%, #b6fbff 100%);
+  <!-- 黑色 -->
+  background: linear-gradient(45deg, #262626 40%, #444444);
+  <!-- 浅蓝色 -->
+  background: linear-gradient(to top, #83a4d4 10%, #b6fbff);
   ```
 
 #### 二、独立图标创作与保存  
-##### 操作路径：
-```bash
-工具界面 → "选择快捷方式或图标"
-```
+##### 操作路径：`工具界面` → `选择快捷方式或图标`
 
-##### 图标格式：
-`ICO` `PNG` `SVG` `BMP` `WEBP` `TIFF` `EXE`
+##### 图标格式：`ICO` `PNG` `SVG` `BMP` `WEBP` `TIFF` `EXE`
 
-#### 保存路径：
-```bash
-工具界面 → "打开转换图标目录"
-```
+#### 保存路径：`工具界面` → `打开转换图标目录`
 
+![Customize Icon](screenshots/customize_icon.gif)
 </details>
 
 
@@ -121,8 +121,7 @@
 <details>
 <summary>📂 6.打开图标目录</summary>
 
-- 存放自定义图标
-- 存放更换快捷方式图标为非.ico的图标时，目标图标转化为.ico的图标文件
+- 存放自定义图标，以及更换快捷方式图标为非.ico的图标时，目标图标转化为.ico的图标
 
 </details>
 
@@ -130,9 +129,8 @@
 <details>
 <summary>➕ 7.创建快捷方式</summary>
 
-- 打开应用快捷方式目录
+- 打开系统应用快捷方式目录
 - 支持创建UWP、APP等快捷方式
-- 右键选项并创建快捷方式
 
 </details>
 
@@ -141,10 +139,18 @@
 <summary>🧪 8.更换EXE图标</summary>
 
 - ⚠️目前为实验室功能，可更换.exe程序图标，但可能破坏程序清单导致程序异常，谨慎使用
-- 建议使用第三方软件更换
 
 </details>
 
+---
+
+## 下载
+
+Github: [LinkEcho](https://github.com/iKineticate/LinkEcho/releases)
+
+蓝奏云: [LinkEcho]() (密码: 6666)
+
+---
 
 ## 已知问题
 1. 调节窗口大小困难，目前为Dioxus框架问题，需等待[ISSUES](https://github.com/DioxusLabs/dioxus/issues/3128)解决
