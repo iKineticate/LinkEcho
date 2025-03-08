@@ -24,19 +24,19 @@
 
 ## ✨ 功能介绍
 
-### 1. 一键更换所有图标
-
+<details>
+<summary>1. 一键更换所有图标</summary>
 #### 图标匹配规则
 - **格式支持**：`ICO` `PNG` `SVG` `BMP` `WEBP` `TIFF` `EXE`
 - **智能匹配**：图标文件需满足以下条件之一：
-  ```bash
-  # 精确匹配（最高优先级）
-  快捷方式名 = "Visual Studio" → 图标名 = "Visual Studio.png"
-  
-  # 包含匹配（次要优先级）
-  快捷方式名 = "Chrome" → 图标名 = "Chrome Beta.ico"
-  快捷方式名 = "Chrome Canary" -> 图标名 = "Chrome"
-  ```
+```bash
+# 精确匹配（最高优先级）
+快捷方式名 = "Visual Studio" → 图标名 = "Visual Studio.png"
+
+# 包含匹配（次要优先级）
+快捷方式名 = "Chrome" → 图标名 = "Chrome Beta.ico"
+快捷方式名 = "Chrome Canary" -> 图标名 = "Chrome"
+```
 
 > [!WARNING]
 > **UWP/WSA 应用限制**：
@@ -44,6 +44,7 @@
 >  - 更换后无法通过本工具恢复默认图标
 >  + 恢复方法：需手动删除快捷方式并重新创建
 >  ```
+</details>
 
 ---
 
