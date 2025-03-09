@@ -1,5 +1,5 @@
 use crate::{t, utils::notify};
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use log::*;
 use std::env;
 use std::ffi::OsStr;
