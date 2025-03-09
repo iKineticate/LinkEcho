@@ -1,10 +1,10 @@
-use crate::env;
 use anyhow::{Context, Result};
-
+use std::env;
 use std::fs::OpenOptions;
 use std::io::{ErrorKind::AlreadyExists, Write};
 use std::path::{Path, PathBuf};
-use win_toast_notify::{CropCircle, WinToastNotify};
+use tauri_winrt_notification::{IconCrop, Toast};
+use log::error;
 
 pub const LOGO_IMAGE: &[u8] = include_bytes!("../resources/logo.png");
 
@@ -40,14 +40,15 @@ pub fn ensure_logo_exists() -> Result<PathBuf> {
 }
 
 pub fn notify(messages: &str) {
-    let logo_path = ensure_logo_exists().expect("The Logo file does not exist");
-    let logo_path = logo_path.to_string_lossy();
+    let logo_path = ensure_logo_exists()
+        .map_err(|e| error!("Logo file does not exist - {e}"))
+        .expect("Logo file does not exist");
 
-    WinToastNotify::new()
-        // .set_app_id("Link.Echo")
-        .set_title("LinkEcho")
-        .set_messages(vec![messages])
-        .set_logo(&logo_path, CropCircle::False)
+    Toast::new(Toast::POWERSHELL_APP_ID)
+        .icon(&logo_path, IconCrop::Square, "none")
+        .title("LinkEcho")
+        .text1(messages)
         .show()
-        .expect("Failed to show toast notification");
+        .map_err(|e| error!("Unable to toast: {e}"))
+        .expect("Unable to toast")
 }

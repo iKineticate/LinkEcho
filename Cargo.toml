@@ -4,7 +4,10 @@ version = "1.0.0"
 edition = "2024"
 authors = ["iKineticate"]
 license = "MIT License"
-description = "change the icon of shortcuts in batches as they wish"
+description = "Batch change or customize shortcut icons as you wish"
+homepage = "https://github.com/iKineticate/LinkEcho"
+repository = "https://github.com/iKineticate/LinkEcho"
+keywords = ["shortcut", "icon", "link", "change", "restore", "customize", "replace", "modify"]
 
 [dependencies]
 dioxus = { version = "0.6.3", features = ["desktop"] }
@@ -15,7 +18,7 @@ glob = "0.3.2" # 遍历文件夹
 rfd = "0.15.2" # 选择文件夹
 opener = "0.7.2" # 打开文件(夹)
 chrono = "0.4.40" # 获取系统时间
-win-toast-notify = "0.1.5"
+tauri-winrt-notification = "0.7.1"
 rust-i18n = "3.1.3" # 国际化文本
 anyhow = "1.0.97" # 错误处理
 editpe = "0.2.1" # 修改可执行程序图标
@@ -24,24 +27,12 @@ regex = "1.11.1" # 正则表达式
 log = "0.4"
 fern = "0.7.1"
 restart-explorer = { path = "libs/restart_explorer" } # 重启资源管理器
-# 以下是图标转换库相关库
+# 以下是图标转换相关库
 image = "0.25.5"
 base64 = "0.22.1"
 rayon = "1.10.0"
 resvg = "0.45.0"
 usvg = "0.45.0"
-
-[profile]
-
-[profile.wasm-dev]
-inherits = "dev"
-opt-level = 1
-
-[profile.server-dev]
-inherits = "dev"
-
-[profile.android-dev]
-inherits = "dev"
 
 [dependencies.windows]
 version = "0.60.0"
@@ -59,3 +50,13 @@ codegen-units = 1
 opt-level = "s"
 panic = "abort"
 strip = "debuginfo"
+
+[profile.wasm-dev]
+inherits = "dev"
+opt-level = 1
+
+[profile.server-dev]
+inherits = "dev"
+
+[profile.android-dev]
+inherits = "dev"

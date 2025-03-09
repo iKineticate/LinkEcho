@@ -21,10 +21,7 @@ use crate::{
     utils::ensure_local_app_folder_exists,
 };
 
-use std::{
-    env,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use config::desktop_config;

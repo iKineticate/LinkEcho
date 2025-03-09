@@ -3,6 +3,8 @@ name = "restart-explorer"
 version = "1.0.0"
 authors = ["P. Michalewicz <piotr.a.michalewicz@gmail.com>"]
 edition = "2021"
+homepage = "https://github.com/Hau-Hau/restart-explorer"
+repository = "https://github.com/Hau-Hau/restart-explorer"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

@@ -1,6 +1,6 @@
 ![image](screenshots/app.png)
 
-<h3 align="center"> 简体中文 | <a href='./README-en_US.md'>English</a></h3>
+<h3 align="center"> 简体中文 | <a href='./README-en.md'>English</a></h3>
 
 # LinkEcho
 
@@ -30,7 +30,7 @@
 <summary>📝 1.更换所有图标</summary>
 
 #### 图标匹配规则
-- **格式支持**：`ICO` `PNG` `SVG` `BMP` `WEBP` `TIFF` `EXE`
+- **格式支持**：`ICO`、`PNG`、`SVG`、`BMP`、`WEBP`、`TIFF`、`EXE`
 - **智能匹配**：图标文件需满足以下条件之一：
   ```bash
   # 精确匹配（最高优先级）
@@ -92,7 +92,7 @@
 #### 二、独立图标创作与保存  
 ##### 操作路径：`工具界面` → `选择快捷方式或图标`
 
-##### 图标格式：`ICO` `PNG` `SVG` `BMP` `WEBP` `TIFF` `EXE`
+##### 图标格式：`ICO`、`PNG`、`SVG`、`BMP`、`WEBP`、`TIFF`、`EXE`
 
 #### 保存路径：`工具界面` → `打开转换图标目录`
 
@@ -113,7 +113,7 @@
 <summary>🧹 5.清理图标缓存</summary>
 
 - 清理系统图标缓存，刷新图标
-- 安全办法：`Win+R` → `cleanmgr` → `C盘` → `缩略图` → `确认`
+- 系统磁盘清理：`Win+R` → `cleanmgr` → `C盘` → `缩略图` → `确认`
 
 </details>
 
