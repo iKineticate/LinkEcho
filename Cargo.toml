@@ -23,6 +23,7 @@ csscolorparser = "0.7.0" # CSS颜色解析
 regex = "1.11.1" # 正则表达式
 log = "0.4"
 fern = "0.7.1"
+restart-explorer = { path = "libs/restart_explorer" } # 重启资源管理器
 # 以下是图标转换库相关库
 image = "0.25.5"
 base64 = "0.22.1"
@@ -46,6 +47,7 @@ inherits = "dev"
 version = "0.60.0"
 features = [
     "Win32_Globalization",
+    "Win32_System_Com",
 ]
 
 [build-dependencies]
