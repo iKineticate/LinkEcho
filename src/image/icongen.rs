@@ -51,12 +51,10 @@ fn load_image(image_path: &PathBuf, sizes: &[u32]) -> Result<DynamicImage> {
 }
 
 pub fn load_svg<P: AsRef<Path>>(image_path: P, sizes: &[u32]) -> Result<DynamicImage> {
-    let mut opt = resvg::usvg::Options::default();
-    opt.resources_dir = std::fs::canonicalize(&image_path)
-        .ok()
-        .as_deref()
-        .and_then(Path::parent)
-        .map(Path::to_path_buf);
+    let mut opt = resvg::usvg::Options {
+        resources_dir: Some(image_path.as_ref().to_path_buf()),
+        ..Default::default()
+    };
 
     let mut fontdb = resvg::usvg::fontdb::Database::new();
     fontdb.load_system_fonts();

@@ -1,10 +1,10 @@
 use anyhow::{Context, Result};
+use log::error;
 use std::env;
 use std::fs::OpenOptions;
 use std::io::{ErrorKind::AlreadyExists, Write};
 use std::path::{Path, PathBuf};
 use tauri_winrt_notification::{IconCrop, Toast};
-use log::error;
 
 pub const LOGO_IMAGE: &[u8] = include_bytes!("../resources/logo.png");
 
@@ -26,7 +26,6 @@ pub fn ensure_logo_exists() -> Result<PathBuf> {
 
     match OpenOptions::new()
         .write(true)
-        .create(true)
         .create_new(true) // 如果文件已存在，返回错误(错误类型为AlreadyExists)
         .open(&logo_path)
     {

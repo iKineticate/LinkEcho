@@ -272,8 +272,8 @@ pub fn tools(
                                         };
 
                                         let link_prop = LinkProp {
-                                            name: is_lnk.then(|| name).unwrap_or_default(),
-                                            path: is_lnk.then(|| path).unwrap_or_default(),
+                                            name: is_lnk.then_some(name).unwrap_or_default(),
+                                            path: is_lnk.then_some(path).unwrap_or_default(),
                                             icon_base64: get_img_base64_by_path(&icon_path),
                                             icon_path,
                                             ..Default::default()
@@ -534,11 +534,11 @@ fn set_link_icon_path(link_path: &str, icon_path: &str) -> Result<bool> {
 
     if let Ok((shell_link, persist_file)) = initialize_com_and_create_shell_link() {
         persist_file
-            .Load(&link_path, winsafe::co::STGM::WRITE)
+            .Load(link_path, winsafe::co::STGM::WRITE)
             .map_err(|e| anyhow!("Failed to load the shortcut by COM interface. {e}"))?;
 
         shell_link
-            .SetIconLocation(&icon_path, 0)
+            .SetIconLocation(icon_path, 0)
             .map_err(|e| anyhow!("Failed to set the icon location. {e}"))?;
 
         persist_file
@@ -554,7 +554,7 @@ fn set_link_icon_path(link_path: &str, icon_path: &str) -> Result<bool> {
 fn get_link_icon_path(link_path: &str) -> Result<String> {
     if let Ok((shell_link, persist_file)) = initialize_com_and_create_shell_link() {
         persist_file
-            .Load(&link_path, winsafe::co::STGM::READ)
+            .Load(link_path, winsafe::co::STGM::READ)
             .map_err(|e| anyhow!("Failed to load the shortcut by COM interface. {e}"))?;
 
         let (link_icon_path, _) = shell_link

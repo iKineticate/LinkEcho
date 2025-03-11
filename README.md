@@ -142,7 +142,6 @@
 
 </details>
 
----
 
 ## 下载
 
@@ -150,7 +149,6 @@ Github: [LinkEcho](https://github.com/iKineticate/LinkEcho/releases)
 
 蓝奏云: [LinkEcho]() (密码: 6666)
 
----
 
 ## 已知问题
 1. 调节窗口大小困难，目前为Dioxus框架问题，需等待[ISSUES](https://github.com/DioxusLabs/dioxus/issues/3128)解决

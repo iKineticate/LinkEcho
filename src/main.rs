@@ -55,12 +55,12 @@ fn main() -> Result<()> {
 
 fn app() -> Element {
     let current_tab = use_signal(|| Tab::Home);
-    let link_list = use_signal(|| LinkList::default());
+    let link_list = use_signal(LinkList::default);
     let filter_name: Signal<Option<String>> = use_signal(|| None);
     let show_msgbox: Signal<Option<Msgbox>> = use_signal(|| None);
     let show_prop = use_signal(|| false);
     let read_tab = *current_tab.read();
-    let customize_icon = use_signal(|| CustomizeIcon::default());
+    let customize_icon = use_signal(CustomizeIcon::default);
 
     rsx! {
         div {

@@ -172,7 +172,7 @@ impl ManageLinkProp {
             datetime.format("%Y-%m-%d %H:%M:%S").to_string()
         }
 
-        let metadata = std::fs::metadata(&link_path)
+        let metadata = std::fs::metadata(link_path)
             .with_context(|| format!("Failed to get the shortcut's metadata: {link_name}"))?;
 
         let link_file_size = format!("{:.2} KB", metadata.len() as f64 / 1024.0);
@@ -349,7 +349,7 @@ impl ManageLinkProp {
         let (shell_link, persist_file) = initialize_com_and_create_shell_link()?;
 
         let mut link_vec = dirs_vec
-            .into_iter()
+            .iter()
             .filter_map(|p| p.as_ref().join("**\\*.lnk").to_str().map(str::to_owned))
             // 使用 flat_map 合并两层迭代器
             .flat_map(|pattern| {

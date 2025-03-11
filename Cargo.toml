@@ -13,7 +13,7 @@ keywords = ["shortcut", "icon", "link", "change", "restore", "customize", "repla
 dioxus = { version = "0.6.3", features = ["desktop"] }
 dioxus-desktop = "0.6.3"
 winsafe = { version = "0.0.23", features = ["advapi", "shell"] } # Windows's API
-windows-icons = "0.2.1" # 获取文件图标
+windows-icons = "0.3.0" # 获取文件图标
 glob = "0.3.2" # 遍历文件夹
 rfd = "0.15.2" # 选择文件夹
 opener = "0.7.2" # 打开文件(夹)

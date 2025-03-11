@@ -3,14 +3,9 @@ use crate::t;
 use log::*;
 use std::path::PathBuf;
 
+#[derive(Default)]
 pub struct ListState {
     pub select: Option<usize>,
-}
-
-impl Default for ListState {
-    fn default() -> Self {
-        Self { select: None }
-    }
 }
 
 pub enum ShortcutSource {
@@ -77,7 +72,7 @@ impl LinkList {
     }
 
     pub fn other(path: PathBuf) -> Self {
-        let link_vec = ManageLinkProp::collect(&vec![path.clone()])
+        let link_vec = ManageLinkProp::collect(&[path.clone()])
             .map_err(|e| error!("Failed to get properties of desktop shortcuts: {e}"))
             .expect("Failed to get properties of desktop shortcuts");
 

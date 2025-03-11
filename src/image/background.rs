@@ -12,6 +12,10 @@ enum GradientDirection {
     None,
 }
 
+type ColorStop = (Rgba<u8>, f32);
+
+type GradientDefinition = (GradientDirection, Vec<ColorStop>);
+
 pub fn get_background_image(bg: (String, u32, u32)) -> Result<RgbaImage> {
     let (color, scaling, radius) = bg;
 
@@ -49,7 +53,7 @@ fn parse_color_str(color_str: &str) -> Result<Rgba<u8>> {
 }
 
 /// 解析渐变参数
-fn parse_gradient(gradient_str: &str) -> Result<(GradientDirection, Vec<(Rgba<u8>, f32)>)> {
+fn parse_gradient(gradient_str: &str) -> Result<GradientDefinition> {
     let re = Regex::new(r"linear-gradient\(([^)]+)\)")?;
     let capstures = re
         .captures(gradient_str)
@@ -68,12 +72,7 @@ fn parse_gradient(gradient_str: &str) -> Result<(GradientDirection, Vec<(Rgba<u8
 
     // 解析颜色停止点
     let stops_str = if direction == GradientDirection::None {
-        parts
-            .into_iter()
-            .collect::<Vec<_>>()
-            .join(",")
-            .trim()
-            .to_owned()
+        parts.collect::<Vec<_>>().join(",").trim().to_owned()
     } else {
         parts
             .nth(1)

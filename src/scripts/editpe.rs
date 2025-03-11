@@ -55,7 +55,7 @@ pub fn modify_exe_icon() -> Result<Option<()>> {
 
             // set the icon file
             resources
-                .set_main_icon_file(&icon_path.to_string_lossy().into_owned())
+                .set_main_icon_file(&icon_path.to_string_lossy())
                 .map_err(|e| anyhow!("Failed to set the exe icon: {} - {e}", exe_path.display()))?;
 
             // set the resource directory in the image

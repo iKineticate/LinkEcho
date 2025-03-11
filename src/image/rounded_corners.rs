@@ -32,10 +32,7 @@ fn calculate_alpha(x: u32, y: u32, width: u32, height: u32, radius: u32, origina
     let height_f = height as f32;
 
     // 判断是否在圆角处理范围内
-    let is_in_corner = (x < radius && y < radius)
-        || (x >= width - radius && y < radius)
-        || (x < radius && y >= height - radius)
-        || (x >= width - radius && y >= height - radius);
+    let is_in_corner = (y >= height - radius || y < radius) && (x >= width - radius || x < radius);
 
     if !is_in_corner {
         return original_alpha;

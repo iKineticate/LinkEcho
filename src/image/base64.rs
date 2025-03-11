@@ -91,7 +91,7 @@ fn try_get_img_base64(path: &str) -> Result<String> {
             let mime = img_type.mime_type();
             read_and_encode(&path_buf, mime, |p| read_binary_file(p, img_type))
         }
-        None => handle_unknown_type(&path),
+        None => handle_unknown_type(path),
     }
 }
 

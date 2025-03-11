@@ -196,12 +196,11 @@ pub fn restore_all_shortcuts_icons(mut link_list: Signal<LinkList>) -> Result<()
     let items = link_list.read().items.clone();
     for (index, link_prop) in items.iter().enumerate() {
         // Skip shortcuts that are not replaced or extend to uwp|app - 跳过未被更换图标或扩展为uwp|app的快捷方式
-        if link_prop.status == Status::Unchanged || link_prop.target_ext == String::from("uwp|app")
-        {
+        if link_prop.status == Status::Unchanged || link_prop.target_ext == *"uwp|app" {
             continue;
         }
 
-        if let Err(e) = restore_shortcut_icon(&link_prop, &shell_link, &persist_file) {
+        if let Err(e) = restore_shortcut_icon(link_prop, &shell_link, &persist_file) {
             error!("{}: {e}", t!("ERROR_RESTORE_ONE"));
             continue;
         }
@@ -229,7 +228,7 @@ pub fn restore_single_shortcut_icon(mut link_list: Signal<LinkList>) -> Result<O
     let link_prop = link_list.read().items[index].clone();
     let link_name = link_prop.name.clone();
     let link_target_path = link_prop.target_path.clone();
-    if link_prop.status == Status::Unchanged || link_prop.target_ext == String::from("uwp|app") {
+    if link_prop.status == Status::Unchanged || link_prop.target_ext == *"uwp|app" {
         return Ok(None);
     };
 

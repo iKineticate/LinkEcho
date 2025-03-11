@@ -20,12 +20,10 @@ pub fn clear_icon_cache() {
     if let Ok(entries) = std::fs::read_dir(&explorer_path) {
         for entry in entries.flatten() {
             let path = entry.path();
-            if should_delete_file(&path) {
-                if std::fs::remove_file(&path).is_err() {
-                    let text = format!("{}\n{path:?}", t!("ERROR_DELETE_ICON_DB"));
-                    log::error!("{text}");
-                    return notify(&text);
-                }
+            if should_delete_file(&path) && std::fs::remove_file(&path).is_err() {
+                let text = format!("{}\n{path:?}", t!("ERROR_DELETE_ICON_DB"));
+                log::error!("{text}");
+                return notify(&text);
             }
         }
 
@@ -47,7 +45,7 @@ fn should_delete_file(path: &Path) -> bool {
         return false;
     }
 
-    if !path.extension().is_some_and(|e| e == "db") {
+    if path.extension().is_none_or(|e| e != "db") {
         return false;
     }
 
