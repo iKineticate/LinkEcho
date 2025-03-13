@@ -1,20 +1,15 @@
 use std::{ffi::OsStr, path::Path};
 
 use crate::{
-    LinkList, MsgIcon, Msgbox, Tab,
-    components::msgbox::Action,
-    image::{
+    components::msgbox::Action, image::{
         background::get_background_image,
         base64::get_img_base64_by_path,
         icongen::{create_frames, load_svg, save_ico},
         rounded_corners::add_rounded_corners,
-    },
-    link::{
-        link_info::{ManageLinkProp, initialize_com_and_create_shell_link},
+    }, link::{
+        link_info::{initialize_com_and_create_shell_link, ManageLinkProp},
         link_list::{LinkProp, Status},
-    },
-    t,
-    utils::{ensure_local_app_folder_exists, notify},
+    }, t, utils::{ensure_local_app_folder_exists, notify, notify_open_folder}, LinkList, MsgIcon, Msgbox, Tab
 };
 
 use anyhow::{Result, anyhow};
@@ -72,12 +67,18 @@ pub fn tools(
         .link
         .as_ref()
         .and_then(|l| {
-            Path::new(&l.icon_path)
-                .exists()
-                .then_some(Path::new(&l.icon_path))
+            let icon_path = Path::new(&l.icon_path);
+            icon_path.exists().then_some(icon_path)
         })
         .map(|p| p.file_name().and_then(OsStr::to_str).unwrap_or_default());
     let background_clone = customize_icon_read.background.clone();
+    let mut customize_icons_dir_path = use_signal(|| None);
+    use_effect(move || {
+        if let Ok(local_path) = ensure_local_app_folder_exists() {
+            let path = local_path.join("icons");
+            customize_icons_dir_path.set(Some(path));
+        }
+    });
 
     rsx! {
         style { {include_str!("css/tools.css")} },
@@ -86,6 +87,7 @@ pub fn tools(
             user_select: "none",
             div {
                 class: "tools",
+                // 载入桌面
                 button {
                     onmousedown: |event| event.stop_propagation(),
                     onclick: move |_| {
@@ -98,6 +100,7 @@ pub fn tools(
                     },
                     span { { t!("TOOL_LOAD_DESKTOP") } }
                 },
+                // 载入开始菜单
                 button {
                     onmousedown: |event| event.stop_propagation(),
                     onclick: move |_| {
@@ -110,6 +113,7 @@ pub fn tools(
                     },
                     span { { t!("TOOL_LOAD_START_MENU") } }
                 },
+                // 载入其他文件夹
                 button {
                     onmousedown: |event| event.stop_propagation(),
                     onclick: move |_| {
@@ -127,6 +131,7 @@ pub fn tools(
                     },
                     span { { t!("TOOL_LOAD_OTHER") } }
                 },
+                // 清理图标缓存
                 button {
                     onmousedown: |event| event.stop_propagation(),
                     onclick: move |_| {
@@ -141,6 +146,7 @@ pub fn tools(
                     },
                     span { { t!("TOOL_CLEAN_ICON_CACHE") } }
                 },
+                // 创建快捷方式
                 button {
                     onmousedown: |event| event.stop_propagation(),
                     onclick: move |_| { let _ = opener::open("shell:AppsFolder"); },
@@ -150,11 +156,11 @@ pub fn tools(
                     },
                     span { { t!("TOOL_CREATE_SHORTCUT") } }
                 },
+                // 打开转换图标目录
                 button {
                     onmousedown: |event| event.stop_propagation(),
                     onclick: move |_| {
-                        if let Ok(path) = ensure_local_app_folder_exists() {
-                            let path = path.join("icons");
+                        if let Some(path) = customize_icons_dir_path.read().as_ref() {
                             if let Err(e) = opener::open(path) {
                                 error!("{e}");
                                 notify(&format!("{e}"));
@@ -167,6 +173,7 @@ pub fn tools(
                     },
                     span { { t!("TOOL_OPEN_ICON_DIR") } }
                 },
+                // 修改.exe图标
                 button {
                     onmousedown: |event| event.stop_propagation(),
                     onclick: move |_| {
@@ -367,11 +374,15 @@ pub fn tools(
                                                             link.status = Status::Changed;
                                                         }
                                                         info!("{}:\n{link_path}\n{customize_icon_path}", t!("SUCCESS_CHANGE_ONE"));
-                                                        notify(&t!("SUCCESS_CHANGE_ONE"));
                                                     },
                                                     Ok(false) => {
+                                                        if let Some(path) = customize_icons_dir_path.read().as_ref() {
+                                                            let path = path.to_string_lossy().into_owned();
+                                                            notify_open_folder(&t!("SUCCESS_SAVE_ICON_TO_ICON_DIR"), &path);
+                                                        } else {
+                                                            notify(&t!("SUCCESS_SAVE_ICON_TO_ICON_DIR"));
+                                                        }
                                                         info!("{}", t!("SUCCESS_SAVE_ICON_TO_ICON_DIR"));
-                                                        notify(&t!("SUCCESS_SAVE_ICON_TO_ICON_DIR"));
                                                     },
                                                     Err(e) => {
                                                         error!("{e}");

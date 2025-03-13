@@ -1,10 +1,13 @@
+use crate::t;
+
 use anyhow::{Context, Result};
-use log::error;
+use log::{info, error};
+use tauri_winrt_notification::{IconCrop, Toast};
+
 use std::env;
 use std::fs::OpenOptions;
 use std::io::{ErrorKind::AlreadyExists, Write};
 use std::path::{Path, PathBuf};
-use tauri_winrt_notification::{IconCrop, Toast};
 
 pub const LOGO_IMAGE: &[u8] = include_bytes!("../resources/logo.png");
 
@@ -47,6 +50,31 @@ pub fn notify(messages: &str) {
         .icon(&logo_path, IconCrop::Square, "none")
         .title("LinkEcho")
         .text1(messages)
+        .show()
+        .map_err(|e| error!("Unable to toast: {e}"))
+        .expect("Unable to toast")
+}
+
+pub fn notify_open_folder(messages: &str, path: &str) {
+    let logo_path = ensure_logo_exists()
+        .map_err(|e| error!("Logo file does not exist - {e}"))
+        .expect("Logo file does not exist");
+
+    Toast::new(Toast::POWERSHELL_APP_ID)
+        .icon(&logo_path, IconCrop::Square, "none")
+        .title("LinkEcho")
+        .text1(messages)
+        .add_button(&t!("OPEN_DIR"), path)
+        .on_activated(move |path| {
+            if let Some(p) = path {
+                if opener::open(&p).is_err() {
+                    info!("Failed to open {p}")
+                };
+            } else {
+                info!("Windows Toast Notify no have action");
+            }
+            Ok(())
+        })
         .show()
         .map_err(|e| error!("Unable to toast: {e}"))
         .expect("Unable to toast")

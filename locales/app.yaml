@@ -357,3 +357,7 @@ ADJUST_BACKGROUND_BORDER_RADIUS:
 SUCCESS_SAVE_ICON_TO_ICON_DIR:
   en: The icon has been saved to the LinkEcho directory
   zh-CN: 图标已保存到软件目录
+
+OPEN_DIR:
+  en: Directory
+  zh-CN: 打开目录

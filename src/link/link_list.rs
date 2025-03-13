@@ -90,7 +90,13 @@ pub enum Status {
     Changed,
 }
 
-#[derive(Clone, PartialEq)]
+impl Default for Status {
+    fn default() -> Self {
+        Status::Unchanged
+    }
+}
+
+#[derive(Default, Clone, PartialEq)]
 pub struct LinkProp {
     pub name: String,
     pub path: String,
@@ -107,26 +113,4 @@ pub struct LinkProp {
     pub created_at: String,
     pub updated_at: String,
     pub accessed_at: String,
-}
-
-impl Default for LinkProp {
-    fn default() -> Self {
-        Self {
-            name: String::new(),
-            path: String::new(),
-            status: Status::Unchanged,
-            target_ext: String::new(),
-            target_dir: String::new(),
-            target_path: String::new(),
-            icon_base64: String::new(),
-            target_icon_base64: String::new(),
-            icon_path: String::new(),
-            icon_index: String::new(),
-            arguments: String::new(),
-            file_size: String::new(),
-            created_at: String::new(),
-            updated_at: String::new(),
-            accessed_at: String::new(),
-        }
-    }
 }

@@ -81,7 +81,7 @@ fn app() -> Element {
                 } else if read_tab == Tab::Tools {
                     components::tools::tools { link_list, current_tab, customize_icon, show_msgbox }
                 } else if read_tab == Tab::Log {
-                    components::log::history {}
+                    components::log::log {}
                 } else if read_tab == Tab::About {
                     components::about::about {}
                 }
