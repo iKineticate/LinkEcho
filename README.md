@@ -31,6 +31,9 @@
 
 #### 图标匹配规则
 - **格式支持**：`ICO`、`PNG`、`SVG`、`BMP`、`WEBP`、`TIFF`、`EXE`
+
+  非.ico的图标会转换为.ico图标，并存储在应用目录
+
 - **智能匹配**：图标文件需满足以下条件之一：
   ```bash
   # 精确匹配（最高优先级）
@@ -83,7 +86,7 @@
   background: rgb(255, 255, 255);
 
   /* 渐变示例 */
-  <!-- 黑色 -->
+  <!-- 渐变黑色 -->
   background: linear-gradient(45deg, #262626 40%, #444444);
   <!-- 浅蓝色 -->
   background: linear-gradient(to top, #83a4d4 10%, #b6fbff);
