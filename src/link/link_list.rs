@@ -42,10 +42,10 @@ impl LinkList {
     pub fn desktop() -> Self {
         let desktop_path = SystemLinkDirs::Desktop
             .get_path()
-            .map_err(|e| error!("Failed to get Desktops path: {e}"))
+            .inspect_err(|e| error!("Failed to get Desktops path: {e}"))
             .expect("Failed to get Desktops path");
         let link_vec = ManageLinkProp::collect(&desktop_path)
-            .map_err(|e| error!("Failed to get properties of Desktop shortcuts: {e}"))
+            .inspect_err(|e| error!("Failed to get properties of Desktop shortcuts: {e}"))
             .expect("Failed to get properties of Desktop shortcuts");
 
         Self {
@@ -58,10 +58,10 @@ impl LinkList {
     pub fn start_menu() -> Self {
         let start_path = SystemLinkDirs::StartMenu
             .get_path()
-            .map_err(|e| error!("Failed to get Start Menu path: {e}"))
+            .inspect_err(|e| error!("Failed to get Start Menu path: {e}"))
             .expect("Failed to get Start Menu path");
         let link_vec = ManageLinkProp::collect(&start_path)
-            .map_err(|e| error!("Failed to get properties of Start Menu shortcuts: {e}"))
+            .inspect_err(|e| error!("Failed to get properties of Start Menu shortcuts: {e}"))
             .expect("Failed to get properties of Start Menu shortcuts");
 
         Self {
@@ -73,7 +73,7 @@ impl LinkList {
 
     pub fn other(path: PathBuf) -> Self {
         let link_vec = ManageLinkProp::collect(&[path.clone()])
-            .map_err(|e| error!("Failed to get properties of desktop shortcuts: {e}"))
+            .inspect_err(|e| error!("Failed to get properties of desktop shortcuts: {e}"))
             .expect("Failed to get properties of desktop shortcuts");
 
         Self {
