@@ -1,5 +1,8 @@
 use crate::{
-    link::{link_info::{initialize_com_and_create_shell_link, ManageLinkProp}, link_list::LinkList},
+    link::{
+        link_info::{ManageLinkProp, initialize_com_and_create_shell_link},
+        link_list::LinkList,
+    },
     link_modify::process_icon,
     t,
 };
@@ -16,12 +19,15 @@ pub fn change_all_shortcuts_icons(links_path: Option<PathBuf>, icons_path: &Path
 
     let mut match_same_vec: Vec<String> = Vec::new();
 
-    let select_icons_folder_path = icons_path.join("**\\*.*")
+    let select_icons_folder_path = icons_path
+        .join("**\\*.*")
         .to_str()
         .map(str::to_owned)
         .ok_or(anyhow!("Failed to get the path"))?;
 
-    let link_list = links_path.map(|p| LinkList::other(p)).unwrap_or_else(LinkList::default);
+    let link_list = links_path
+        .map(|p| LinkList::other(p))
+        .unwrap_or_else(LinkList::default);
 
     for path_buf in glob(&select_icons_folder_path)
         .map_err(|e| anyhow!("Glob failed for {select_icons_folder_path}: {e}"))?

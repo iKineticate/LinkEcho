@@ -1,7 +1,7 @@
 use crate::t;
 
 use anyhow::{Context, Result};
-use log::{info, error};
+use log::{error, info};
 use tauri_winrt_notification::{IconCrop, Toast};
 
 use std::env;

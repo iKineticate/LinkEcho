@@ -1,6 +1,9 @@
-use crate::{t, utils::{ensure_local_app_folder_exists, notify}};
-use dioxus::prelude::*;
+use crate::{
+    t,
+    utils::{ensure_local_app_folder_exists, notify},
+};
 use ::log::error;
+use dioxus::prelude::*;
 
 #[component]
 pub fn log() -> Element {

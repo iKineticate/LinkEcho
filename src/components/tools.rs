@@ -1,15 +1,20 @@
 use std::{ffi::OsStr, path::Path};
 
 use crate::{
-    components::msgbox::Action, image::{
+    LinkList, MsgIcon, Msgbox, Tab,
+    components::msgbox::Action,
+    image::{
         background::get_background_image,
         base64::get_img_base64_by_path,
         icongen::{create_frames, load_svg, save_ico},
         rounded_corners::add_rounded_corners,
-    }, link::{
-        link_info::{initialize_com_and_create_shell_link, ManageLinkProp},
+    },
+    link::{
+        link_info::{ManageLinkProp, initialize_com_and_create_shell_link},
         link_list::{LinkProp, Status},
-    }, t, utils::{ensure_local_app_folder_exists, notify, notify_open_folder}, LinkList, MsgIcon, Msgbox, Tab
+    },
+    t,
+    utils::{ensure_local_app_folder_exists, notify, notify_open_folder},
 };
 
 use anyhow::{Result, anyhow};

@@ -45,13 +45,14 @@ pub enum Tab {
 fn main() -> Result<()> {
     setup_logger()?;
 
-    let args: Vec<String> = std::env::args().collect();
-
-    if args.len() > 1 {
-        return handle_cli(args).map(|_| ()).inspect_err(|e| log::error!("{e}"));
-    }
-
     language::set_locale();
+
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() > 1 {
+        return handle_cli(args)
+            .map(|_| ())
+            .inspect_err(|e| log::error!("{e}"));
+    }
 
     LaunchBuilder::desktop()
         .with_cfg(desktop_config())
@@ -157,7 +158,7 @@ fn handle_cli(args: Vec<String>) -> Result<bool> {
                 (Some(icons_path), None) => {
                     let icons_path = Path::new(&icons_path);
                     cli::change_all_shortcuts_icons(None, icons_path)
-                },
+                }
                 (Some(links_path), Some(icons_path)) => {
                     let links_path = PathBuf::from(links_path);
                     let icons_path = Path::new(&icons_path);
@@ -166,6 +167,6 @@ fn handle_cli(args: Vec<String>) -> Result<bool> {
                 _ => std::process::exit(1),
             }
         }
-        _ => std::process::exit(1)
+        _ => std::process::exit(1),
     }
 }

@@ -113,7 +113,10 @@ pub fn change_single_shortcut_icon(mut link_list: Signal<LinkList>) -> Result<Op
 
     let icon_path_buf = match FileDialog::new()
         .set_title(t!("SELECT_ONE_ICON"))
-        .add_filter("ICONs", &["ico", "png", "bmp", "svg", "tiff", "exe", "webp"])
+        .add_filter(
+            "ICONs",
+            &["ico", "png", "bmp", "svg", "tiff", "exe", "webp"],
+        )
         .pick_file()
     {
         Some(path_buf) => path_buf,
