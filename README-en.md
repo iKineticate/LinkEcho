@@ -4,7 +4,7 @@
 
 # LinkEcho
 
-One-click batch replacement, customization, or restoration of shortcut icons to refresh your desktop.
+One-click batch replace/restore shortcut icons, personalized custom icon design, and make your desktop look brand new!
 
 - **Simplified Operation**: Batch replace shortcut icons by matching patterns - no manual adjustments required  
 - **Custom Design**: Freely adjust original/new icon dimensions & corner radius. Supports solid/gradient background layers with adjustable sizes
