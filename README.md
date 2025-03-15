@@ -6,6 +6,8 @@
 
 一键批量更换、自定义或还原快捷方式图标，让您的桌面焕然一新。
 
+One-click batch replacement, customization, or restoration of shortcut icons to refresh your desktop.
+
 - **极简操作**: 选择匹配图标即可批量更换快捷方式图标，无需逐一手动设置  
 - **图标自定**: 自由调节快捷方式原图标/新图标尺寸与圆角，支持纯色/渐变色背景层，亦可调节其尺寸与圆角
 - **格式广泛**: 支持 ICO/PNG/SVG/BMP/WEBP/TIFF/EXE 格式
