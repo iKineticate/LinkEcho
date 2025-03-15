@@ -97,10 +97,6 @@ ERROR_ITERTATOR_EXPLORER:
   en: Failed iterator to return entries in the explorer directory
   zh-CN: 迭代器返回资源管理器目录中的条目失败
 
-EXPLORER_NOT_EXIST:
-  en: Explorer directory does not exist
-  zh-CN: 资源管理器目录不存在
-
 ERROR_GET_EXPLORER:
   en: Failed to get the Explorer directory
   zh-CN: 获取资源管理器目录失败

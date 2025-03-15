@@ -30,6 +30,7 @@ use dioxus::prelude::*;
 use glob::glob;
 use rfd::FileDialog;
 use rust_i18n::t;
+use scripts::cli;
 rust_i18n::i18n!("locales");
 
 #[derive(PartialEq, Clone, Copy)]
@@ -43,6 +44,12 @@ pub enum Tab {
 
 fn main() -> Result<()> {
     setup_logger()?;
+
+    let args: Vec<String> = std::env::args().collect();
+
+    if args.len() > 1 {
+        return handle_cli(args).map(|_| ()).inspect_err(|e| log::error!("{e}"));
+    }
 
     language::set_locale();
 
@@ -130,4 +137,35 @@ fn setup_logger() -> Result<()> {
         .chain(fern::log_file(app_log_path)?)
         .apply()?;
     Ok(())
+}
+
+fn handle_cli(args: Vec<String>) -> Result<bool> {
+    match args[1].as_str() {
+        "-c" => {
+            let link_path = args.get(2).map(|s| s.to_lowercase()).unwrap();
+            let icon_path = args.get(3).map(|s| s.to_lowercase()).unwrap();
+            let link_path = Path::new(&link_path);
+            let icon_path = Path::new(&icon_path);
+            cli::change_single_shortcut_icon(link_path, icon_path)
+        }
+        "-C" => {
+            let links_path = args.get(2).map(|s| s.to_lowercase());
+            let icons_path = args.get(3).map(|s| s.to_lowercase());
+
+            match (links_path, icons_path) {
+                // 如无第二个参数，则默认为桌面
+                (Some(icons_path), None) => {
+                    let icons_path = Path::new(&icons_path);
+                    cli::change_all_shortcuts_icons(None, icons_path)
+                },
+                (Some(links_path), Some(icons_path)) => {
+                    let links_path = PathBuf::from(links_path);
+                    let icons_path = Path::new(&icons_path);
+                    cli::change_all_shortcuts_icons(Some(links_path), icons_path)
+                }
+                _ => std::process::exit(1),
+            }
+        }
+        _ => std::process::exit(1)
+    }
 }

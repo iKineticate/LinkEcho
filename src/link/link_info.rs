@@ -45,7 +45,7 @@ impl SystemLinkDirs {
 
 pub struct ManageLinkProp;
 impl ManageLinkProp {
-    fn get_info(
+    pub fn get_info(
         path_buf: &Path,
         shell_link: &winsafe::IShellLink,
         persist_file: &IPersistFile,
@@ -354,14 +354,14 @@ impl ManageLinkProp {
             // 使用 flat_map 合并两层迭代器
             .flat_map(|pattern| {
                 glob(&pattern)
-                    .map_err(|e| error!("Glob failed for {pattern}: {e}"))
+                    .inspect_err(|e| error!("Glob failed for {pattern}: {e}"))
                     .into_iter()
                     .flatten() // 展开 Result 迭代器
                     .filter_map(Result::ok)
             })
             .filter_map(|path| {
                 ManageLinkProp::get_info(&path, &shell_link, &persist_file)
-                    .map_err(|e| error!("Failed to get info:\n{path:?}\n{e}"))
+                    .inspect_err(|e| error!("Failed to get info:\n{path:?}\n{e}"))
                     .ok()
             })
             .collect::<Vec<LinkProp>>();

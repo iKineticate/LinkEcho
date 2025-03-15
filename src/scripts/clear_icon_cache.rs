@@ -9,10 +9,6 @@ pub fn clear_icon_cache() {
     let local_app_data = env::var("LOCALAPPDATA").expect("Failed to get the local app data path");
     let explorer_path = Path::new(&local_app_data).join("Microsoft\\Windows\\Explorer");
 
-    if !explorer_path.exists() {
-        return notify(&t!("EXPLORER_NOT_EXIST"));
-    }
-
     if !explorer_path.is_dir() {
         return notify(&t!("ERROR_ITERTATOR_EXPLORER"));
     }

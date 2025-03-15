@@ -43,7 +43,7 @@ pub fn ensure_logo_exists() -> Result<PathBuf> {
 
 pub fn notify(messages: &str) {
     let logo_path = ensure_logo_exists()
-        .map_err(|e| error!("Logo file does not exist - {e}"))
+        .inspect_err(|e| error!("Logo file does not exist - {e}"))
         .expect("Logo file does not exist");
 
     Toast::new(Toast::POWERSHELL_APP_ID)
@@ -51,13 +51,13 @@ pub fn notify(messages: &str) {
         .title("LinkEcho")
         .text1(messages)
         .show()
-        .map_err(|e| error!("Unable to toast: {e}"))
+        .inspect_err(|e| error!("Unable to toast: {e}"))
         .expect("Unable to toast")
 }
 
 pub fn notify_open_folder(messages: &str, path: &str) {
     let logo_path = ensure_logo_exists()
-        .map_err(|e| error!("Logo file does not exist - {e}"))
+        .inspect_err(|e| error!("Logo file does not exist - {e}"))
         .expect("Logo file does not exist");
 
     Toast::new(Toast::POWERSHELL_APP_ID)
@@ -76,6 +76,6 @@ pub fn notify_open_folder(messages: &str, path: &str) {
             Ok(())
         })
         .show()
-        .map_err(|e| error!("Unable to toast: {e}"))
+        .inspect_err(|e| error!("Unable to toast: {e}"))
         .expect("Unable to toast")
 }

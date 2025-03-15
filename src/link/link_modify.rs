@@ -113,7 +113,7 @@ pub fn change_single_shortcut_icon(mut link_list: Signal<LinkList>) -> Result<Op
 
     let icon_path_buf = match FileDialog::new()
         .set_title(t!("SELECT_ONE_ICON"))
-        .add_filter("ICONs", &["ico", "png", "bmp", "svg", "tiff", "exe"])
+        .add_filter("ICONs", &["ico", "png", "bmp", "svg", "tiff", "exe", "webp"])
         .pick_file()
     {
         Some(path_buf) => path_buf,
@@ -148,7 +148,7 @@ pub fn change_single_shortcut_icon(mut link_list: Signal<LinkList>) -> Result<Op
     Ok(Some(link_name))
 }
 
-fn process_icon(path_buf: PathBuf) -> Result<Option<(String, String)>> {
+pub fn process_icon(path_buf: PathBuf) -> Result<Option<(String, String)>> {
     // Get data folder path - 获取软件的图标目录路径
     let app_data_path = ensure_local_app_folder_exists().expect("Failed to get the app data path");
     let icon_data_path = app_data_path.join("icons");
@@ -159,14 +159,14 @@ fn process_icon(path_buf: PathBuf) -> Result<Option<(String, String)>> {
         .extension()
         .and_then(OsStr::to_str)
         .map(str::to_lowercase)
-        .filter(|ext| ["ico", "png", "bmp", "svg", "tiff", "exe"].contains(&ext.as_str()));
+        .filter(|ext| ["ico", "png", "bmp", "svg", "tiff", "exe", "webp"].contains(&ext.as_str()));
 
     if let Some(ext) = ext {
         let icon_name = path_buf
             .file_stem()
             .and_then(OsStr::to_str)
             .map(str::to_lowercase)
-            .ok_or_else(|| anyhow!("Failed to get icon name: {}", path_buf.display()))?;
+            .ok_or_else(|| anyhow!("Failed to get icon name: {path_buf:?}"))?;
 
         // 若图标非ICO格式，且数据文件夹中无该名称图标，则将转换图片到数据文件夹中
         let icon_path = match ext.as_str() {
