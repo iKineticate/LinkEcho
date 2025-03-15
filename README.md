@@ -148,6 +148,34 @@ One-click batch replacement, customization, or restoration of shortcut icons to 
 </details>
 
 
+<details>
+<summary>⌨️ 9.命令行支持</summary>
+
+#### 支持通过命令行操作（需要管理员权限）：
+```bash
+# 更换单个快捷方式图标（参数顺序不可调换，-c是小写）
+LinkEcho.exe -c "快捷方式路径" "图标路径"
+
+# 批量更换图标（参数顺序不可调换，-C是大写）
+LinkEcho.exe -C "快捷方式目录" "图标目录"
+
+# 当仅指定一个参数时（默认处理桌面快捷方式）
+LinkEcho.exe -C "图标目录"
+```
+
+> **⚠️ 注意**  
+> - 命令行操作仍需要管理员权限  
+> - 参数严格区分大小写（-c 和 -C 功能不同）  
+> - 路径包含空格时需使用双引号包裹
+
+#### 桌面深浅主题切换方案：
+1. 准备浅色/深色两套主题图标包
+2. 配合[AutoDarkMode](https://github.com/AutoDarkMode/Windows-Auto-Night-Mode)软件
+3. 在AutoDarkMode的脚本中调用对应命令
+
+</details>
+
+
 ## 下载
 
 Github: [LinkEcho](https://github.com/iKineticate/LinkEcho/releases)
