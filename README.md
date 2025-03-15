@@ -180,7 +180,7 @@ LinkEcho.exe -C "图标目录"
 
 Github: [LinkEcho](https://github.com/iKineticate/LinkEcho/releases)
 
-蓝奏云: [LinkEcho]() (密码: 6666)
+蓝奏云: [LinkEcho](https://wwxv.lanzoul.com/b009gzw4dg) (密码: 6666)
 
 
 ## 已知问题
