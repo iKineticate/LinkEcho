@@ -78,7 +78,7 @@ One-click batch replacement, customization, or restoration of shortcut icons to 
 
 ##### 调节项：  
 - **图标尺寸**：0~100%
-- **图标圆角**：0~128px  
+- **图标圆角**：0~128px(IOS图标圆角：58px)
 - **背景层**：
   - 支持 CSS 颜色语法（HEX/RGB/HSL/linear-gradient）[渐变色网页](https://cssgradient.io/)
   - 支持调节背景层大小及圆角
