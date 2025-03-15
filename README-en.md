@@ -157,6 +157,13 @@ Github: [LinkEcho](https://github.com/iKineticate/LinkEcho/releases)
 
 3. Start Menu UWP shortcuts cannot be loaded for modification - Create new shortcuts via tool instead
 
+## Thanks
+
+ICON: [IconFont](https://www.iconfont.cn)
+
+LOGO: [Freepik](https://www.flaticon.com/authors/freepik)
+
+CSS UI: [UIVERSE](https://uiverse.io/)
 
 ## GUI based on Dioxus
 

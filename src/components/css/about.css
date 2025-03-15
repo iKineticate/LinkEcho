@@ -1,0 +1,60 @@
+.about {
+    user-select: none;
+    padding: 1.5rem;
+    margin: 0.5rem;
+    width: 100%;
+    font-family: "System-UI", "Segoe UI"、"Sans-Serif";
+    background-color: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    color: #e0e0e0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    overflow: hidden;
+}
+
+.about a.github {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.8rem;
+    background: linear-gradient(145deg, #6EDF8F 0%, #4EBF6F 100%);
+    color: #111;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: all 0.15s ease;
+}
+
+.about a:hover {
+    text-decoration: underline;
+}
+
+.about .thanks {
+    padding-top: 0.8rem;
+    border-top: 1px solid #333;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    font-size: 0.6rem;
+    line-height: 1.3;
+    color: #888;
+    word-wrap: break-word;
+}
+
+.about .thanks p {
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.about .thanks a {
+    padding-left: 0.3rem;
+    color: #6EDF8F;
+    text-decoration: none;
+}
+
+.about .thanks a:hover {
+    text-decoration: underline;
+}

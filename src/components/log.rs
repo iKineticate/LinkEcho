@@ -24,9 +24,8 @@ pub fn log() -> Element {
     });
 
     rsx! {
-        style { { include_str!("css/log.css") } }
-        div {
-            class: "log-container",
+        style { {include_str!("css/log.css")} }
+        div { class: "log-container",
             div {
                 height: "35px",
                 display: "flex",
@@ -35,7 +34,7 @@ pub fn log() -> Element {
                 border_bottom: "1px solid #2B2B2B",
                 gap: "10px",
                 button {
-                    onmousedown: move |event|  event.stop_propagation(),
+                    onmousedown: move |event| event.stop_propagation(),
                     onclick: move |_| {
                         log.set(String::new());
                         if let Some(path) = log_path.read().as_ref() {
@@ -43,7 +42,7 @@ pub fn log() -> Element {
                         }
                     },
                     class: "animated-button",
-                    { t!("清理日志") }
+                    {t!("CLEAR_LOG")}
                 }
                 button {
                     onmousedown: |event| event.stop_propagation(),
@@ -56,7 +55,7 @@ pub fn log() -> Element {
                         }
                     },
                     class: "animated-button",
-                    { t!("打开日志目录") }
+                    {t!("OPEN_LOG_DIR")}
                 }
             }
             pre {
@@ -65,7 +64,7 @@ pub fn log() -> Element {
                 font_family: "Consolas",
                 font_size: "16px",
                 padding_left: "10px",
-                { log.read().clone() }
+                {log.read().clone()}
             }
         }
     }

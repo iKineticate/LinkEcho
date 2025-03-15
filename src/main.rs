@@ -37,7 +37,7 @@ pub enum Tab {
     Home,
     Tools,
     Log,
-    Setting,
+    Help,
     About,
 }
 
@@ -69,26 +69,45 @@ fn app() -> Element {
             display: "flex",
             flex_direction: "column",
             onmousedown: move |_| window().drag(),
-            components::header::header{ link_list, filter_name, current_tab, show_msgbox},
+            components::header::header {
+                link_list,
+                filter_name,
+                current_tab,
+                show_msgbox,
+            }
             div {
                 display: "flex",
                 flex_direction: "row",
                 overflow: "hidden",
                 height: "100vh",
-                components::tabs::tabs { current_tab },
+                components::tabs::tabs { current_tab }
                 if read_tab == Tab::Home {
-                    components::home::home{ filter_name, link_list, current_tab, customize_icon, show_msgbox, show_prop }
+                    components::home::home {
+                        filter_name,
+                        link_list,
+                        current_tab,
+                        customize_icon,
+                        show_msgbox,
+                        show_prop,
+                    }
                 } else if read_tab == Tab::Tools {
-                    components::tools::tools { link_list, current_tab, customize_icon, show_msgbox }
+                    components::tools::tools {
+                        link_list,
+                        current_tab,
+                        customize_icon,
+                        show_msgbox,
+                    }
                 } else if read_tab == Tab::Log {
                     components::log::log {}
+                } else if read_tab == Tab::Help {
+                    components::help::help {}
                 } else if read_tab == Tab::About {
                     components::about::about {}
                 }
             }
-            components::status::status{ link_list },
-            components::msgbox::msgbox{ show_msgbox, link_list, current_tab },
-            components::properties::properties{ show_prop, link_list },
+            components::status::status { link_list }
+            components::msgbox::msgbox { show_msgbox, link_list, current_tab }
+            components::properties::properties { show_prop, link_list }
         }
     }
 }

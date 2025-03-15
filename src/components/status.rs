@@ -16,19 +16,12 @@ pub fn status(link_list: Signal<LinkList>) -> Element {
     ];
 
     rsx! {
-        style { {include_str!("css/status.css")} },
-        div {
-            class: "status-container",
-            for (index, text) in status_texts.iter().enumerate() {
-                span {
-                    onmousedown: |event| event.stop_propagation(),
-                    { text.clone() }
-                },
+        style { {include_str!("css/status.css")} }
+        div { class: "status-container",
+            for (index , text) in status_texts.iter().enumerate() {
+                span { onmousedown: |event| event.stop_propagation(), {text.clone()} }
                 if index != status_texts.len() - 1 {
-                    span {
-                        onmousedown: |event| event.stop_propagation(),
-                        "〡"
-                    },
+                    span { onmousedown: |event| event.stop_propagation(), "〡" }
                 }
             }
         }

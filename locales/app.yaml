@@ -361,3 +361,69 @@ SUCCESS_SAVE_ICON_TO_ICON_DIR:
 OPEN_DIR:
   en: Directory
   zh-CN: 打开目录
+
+# Log
+CLEAR_LOG:
+  en: Clean Log
+  zh-CN: 清理日志
+
+OPEN_LOG_DIR:
+  en: Open the log directory
+  zh-CN: 打开日志目录
+
+# Help
+HELP:
+  en: Help
+  zh-CN: 常见问题解答
+
+HELP_ICON_MATCHING_RULE:
+  en: |
+    Icons must match one of these rules:
+  zh-CN: |
+    图标需要符合以下匹配规则：
+HELP_ICON_EXACT_MATCH:
+  en: "• Exact match:"
+  zh-CN: • 精确匹配：
+HELP_ICON_PARTIAL_MATCH:
+  en: "• Partial match:"
+  zh-CN: • 包含匹配：
+
+HELP_RESTORE_UWP:
+  en: "To restore UWP/WSA icons:"
+  zh-CN: "恢复UWP/WSA图标步骤:"
+HELP_RESTORE_UWP_STEPS_1:
+  en: Use "Create Shortcuts" feature
+  zh-CN: 打开「创建应用快捷方式」功能
+HELP_RESTORE_UWP_STEPS_2:
+  en: Delete original shortcut
+  zh-CN: 删除原有快捷方式
+HELP_RESTORE_UWP_STEPS_3:
+  en: Re-create new shortcut
+  zh-CN: 重新创建新的快捷方式
+
+HELP_GRADIENT_TOOL:
+  en: "Recommended gradient tool:"
+  zh-CN: 推荐使用以下工具生成渐变背景：
+
+HELP_UWP_LIMITATION:
+  en: Due to system restrictions, UWP shortcuts in Start Menu cannot be modified directly.
+  zh-CN: 由于系统限制，无法直接修改开始菜单中的UWP快捷方式。
+HELP_START_MENU_ALTERNATIVE:
+  en: "Alternative:"
+  zh-CN: 替代方案：
+HELP_START_MENU_UWP_CREATE:
+  en: Generate a new shortcut and change the icon via "Create Shortcut", then pin it to the Start Menu.
+  zh-CN: 通过「创建快捷方式」生成新快捷方式并更改图标，然后固定到开始菜单
+
+HELP_FAQ_TITLES_1:
+    en: "1. Why aren't shortcuts changing after bulk replacement?"
+    zh-CN: "1. 为什么使用「更换所有图标」后，快捷方式没有更换图标？"
+HELP_FAQ_TITLES_2:
+    en: "2. How to restore UWP/WSA shortcuts to default?"
+    zh-CN: "2. 如何恢复UWP/WSA的快捷方式图标？"
+HELP_FAQ_TITLES_3:
+    en: "3. How to get gradient colors?"
+    zh-CN: "3. 如何获取渐变配色方案？"
+HELP_FAQ_TITLES_4:
+    en: "4. Can't modify UWP shortcuts in Start Menu?"
+    zh-CN: "4. 如何更换开始菜单的UWP快捷方式图标？"

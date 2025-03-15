@@ -78,7 +78,7 @@
 - **图标尺寸**：0~100%
 - **图标圆角**：0~128px  
 - **背景层**：
-  - 支持 CSS 颜色语法（HEX/RGB/HSL/linear-gradient）[渐变色学习](https://www.runoob.com/cssref/func-linear-gradient.html)
+  - 支持 CSS 颜色语法（HEX/RGB/HSL/linear-gradient）[渐变色网页](https://cssgradient.io/)
   - 支持调节背景层大小及圆角
   ```css
   /* 纯色示例 */
@@ -160,6 +160,13 @@ Github: [LinkEcho](https://github.com/iKineticate/LinkEcho/releases)
 
 3. 无法载入开始菜单中的UWP快捷方式以进一步更换图标，可创建该快捷方式并移至开始菜单即可代替
 
+## 感谢
+
+图标: [IconFont](https://www.iconfont.cn)
+
+LOGO: [Freepik](https://www.flaticon.com/authors/freepik)
+
+CSS UI: [UIVERSE](https://uiverse.io/)
 
 ## GUI based on Dioxus
 
@@ -169,3 +176,4 @@ Github: [LinkEcho](https://github.com/iKineticate/LinkEcho/releases)
       <br>
     </p>
 </p>
+
