@@ -146,6 +146,34 @@ Tab(Tool) → "Select shortcut or icon"
 </details>
 
 
+<details>
+<summary>⌨️ 9. Command Line Support</summary>
+
+#### Supported command line operations (requires administrator privileges):
+```bash command.sh
+# Change single shortcut icon (parameter order is strict, -c is lowercase)
+LinkEcho.exe -c "shortcut_path" "icon_path"
+
+# Batch change icons (parameter order is strict, -C is uppercase)
+LinkEcho.exe -C "shortcut_directory" "icon_directory"
+
+# When only one parameter is specified (default processes desktop shortcuts)
+LinkEcho.exe -C "icon_directory"
+```
+
+> **⚠️ Note**  
+> - Command line operations still require administrator privileges  
+> - Parameters are case-sensitive (-c and -C have different functions)  
+> - Use double quotes around paths containing spaces
+
+#### Desktop light/dark theme switching solution:
+1. Prepare two icon sets for light/dark themes
+2. Integrate with [AutoDarkMode](https://github.com/AutoDarkMode/Windows-Auto-Night-Mode) software
+3. Call corresponding commands in AutoDarkMode's scripts
+
+</details>
+
+
 ## Download
 
 Github: [LinkEcho](https://github.com/iKineticate/LinkEcho/releases)
