@@ -1,5 +1,6 @@
-use crate::link::link_info::{ManageLinkProp, SystemLinkDirs};
+use super::info::{ManageLinkProp, SystemLinkDirs};
 use crate::t;
+
 use log::*;
 use std::path::PathBuf;
 

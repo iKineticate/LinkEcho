@@ -1,8 +1,21 @@
-use crate::{LinkProp, Path, PathBuf, Status, glob, image::base64::get_img_base64_by_path};
+use super::{
+    list::{LinkProp, Status},
+    utils::initialize_com_and_create_shell_link,
+};
+use crate::image::base64::get_img_base64_by_path;
+
+use std::{
+    collections::HashMap,
+    env,
+    ffi::OsStr,
+    path::{Path, PathBuf},
+    time::SystemTime,
+};
+
 use anyhow::{Context, Result, anyhow};
 use chrono::{DateTime, Local};
+use glob::glob;
 use log::*;
-use std::{collections::HashMap, env, ffi::OsStr, time::SystemTime};
 use winsafe::{IPersistFile, co, prelude::*};
 
 #[allow(unused)]
@@ -371,23 +384,4 @@ impl ManageLinkProp {
 
         Ok(link_vec)
     }
-}
-
-pub fn initialize_com_and_create_shell_link() -> Result<(winsafe::IShellLink, IPersistFile)> {
-    let _com_lib =
-        winsafe::CoInitializeEx(co::COINIT::APARTMENTTHREADED | co::COINIT::DISABLE_OLE1DDE)
-            .context("Failed to initialize com library")?;
-
-    let shell_link = winsafe::CoCreateInstance::<winsafe::IShellLink>(
-        &co::CLSID::ShellLink,
-        None,
-        co::CLSCTX::INPROC_SERVER,
-    )
-    .context("Failed to create an IUnknown-derived COM object - ShellLink")?;
-
-    let persist_file: IPersistFile = shell_link
-        .QueryInterface()
-        .context("Failed to query for ShellLink's IPersistFile interface")?;
-
-    Ok((shell_link, persist_file))
 }
