@@ -4,9 +4,6 @@ SELECT_ONE_ICON:
   en: Please select an icon file, supported formats':' .ico | .png | .svg | .webp | .tiff
   zh-CN: 请选择一个图标文件，支持  .ico | .png | .svg | .webp | .tiff  格式文件
 
-ERROR_SET_ICON_LOCATION:
-  en: Failed to replace this shortcut icon
-  zh-CN: 无法设置该快捷方式图标
 SUCCESS_CHANGE_ONE:
   en: Successfully replaced the shortcut icon
   zh-CN: 成功更换该快捷方式的图标
@@ -52,10 +49,6 @@ ERROR_RESTORE_ALL:
 WARN_RESTORE_ALL:
   en: Are you sure you want to restore all shortcut icons to their default icons? This action cannot be undone.
   zh-CN: 是否确定要将所有快捷方式图标恢复为默认图标？此操作无法撤销。
-
-ERROR_SAVE_OBJECT_COPY_TO_FILE:
-  en: Failed to save a copy of the object to the specified file
-  zh-CN: 无法将对象的副本保存到指定文件
 
 CONFIRM:
   en: Confirm
