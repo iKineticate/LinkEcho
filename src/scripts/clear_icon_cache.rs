@@ -1,9 +1,10 @@
-use crate::{t, utils::notify};
+use crate::utils::notify;
+
+use std::{env, ffi::OsStr, path::Path};
+
 use anyhow::Result;
 use log::*;
-use std::env;
-use std::ffi::OsStr;
-use std::path::Path;
+use rust_i18n::t;
 
 pub fn clear_icon_cache() {
     let local_app_data = env::var("LOCALAPPDATA").expect("Failed to get the local app data path");

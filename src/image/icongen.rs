@@ -15,15 +15,16 @@
 //
 // Note: This file has been modified from the original version.
 
+use std::ffi::OsStr;
+use std::path::{Path, PathBuf};
+
 use anyhow::{Context, Result};
 use image::codecs::ico::{IcoEncoder, IcoFrame};
 use image::{DynamicImage, Rgba, RgbaImage};
 use rayon::prelude::*;
 use resvg::tiny_skia;
-use std::ffi::OsStr;
-use std::path::{Path, PathBuf};
 
-pub fn image_to_ico(image_path: PathBuf, output_path: PathBuf, name: &str) -> Result<()> {
+pub fn image_to_ico(image_path: &Path, output_path: PathBuf, name: &str) -> Result<()> {
     let sizes = vec![16, 32, 48, 64, 128, 256];
     let filter = image::imageops::FilterType::CatmullRom;
 
@@ -36,7 +37,7 @@ pub fn image_to_ico(image_path: PathBuf, output_path: PathBuf, name: &str) -> Re
     Ok(())
 }
 
-fn load_image(image_path: &PathBuf, sizes: &[u32]) -> Result<DynamicImage> {
+fn load_image(image_path: &Path, sizes: &[u32]) -> Result<DynamicImage> {
     if image_path
         .extension()
         .and_then(OsStr::to_str)

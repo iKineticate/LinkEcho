@@ -1,5 +1,5 @@
-use crate::t;
 use dioxus::prelude::*;
+use rust_i18n::t;
 
 #[component]
 pub fn help() -> Element {

@@ -1,5 +1,7 @@
-use crate::{LinkList, Status, t};
+use crate::link::list::{LinkList, Status};
+
 use dioxus::prelude::*;
+use rust_i18n::t;
 
 #[component]
 pub fn status(link_list: Signal<LinkList>) -> Element {

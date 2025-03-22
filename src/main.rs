@@ -12,35 +12,21 @@ mod scripts;
 mod utils;
 
 use crate::{
-    components::{
-        msgbox::{Action, MsgIcon, Msgbox},
-        tools::CustomizeIcon,
-    },
-    image::icongen,
-    link::{link_list::*, link_modify},
+    components::{msgbox::Msgbox, tools::CustomizeIcon},
+    link::list::LinkList,
     utils::ensure_local_app_folder_exists,
 };
 
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
+use components::tabs::Tab;
 use config::desktop_config;
 use dioxus::desktop::window;
 use dioxus::prelude::*;
-use glob::glob;
-use rfd::FileDialog;
 use rust_i18n::t;
 use scripts::cli;
 rust_i18n::i18n!("locales");
-
-#[derive(PartialEq, Clone, Copy)]
-pub enum Tab {
-    Home,
-    Tools,
-    Log,
-    Help,
-    About,
-}
 
 fn main() -> Result<()> {
     setup_logger()?;
@@ -143,26 +129,26 @@ fn setup_logger() -> Result<()> {
 fn handle_cli(args: Vec<String>) -> Result<bool> {
     match args[1].as_str() {
         "-c" => {
-            let link_path = args.get(2).map(|s| s.to_lowercase()).unwrap();
-            let icon_path = args.get(3).map(|s| s.to_lowercase()).unwrap();
+            let link_path = args.get(2).map(|s| s).unwrap();
+            let icon_path = args.get(3).map(|s| s).unwrap();
             let link_path = Path::new(&link_path);
             let icon_path = Path::new(&icon_path);
             cli::change_single_shortcut_icon(link_path, icon_path)
         }
         "-C" => {
-            let links_path = args.get(2).map(|s| s.to_lowercase());
-            let icons_path = args.get(3).map(|s| s.to_lowercase());
+            let link_folder_path = args.get(2).map(|s| s);
+            let icon_folder_path = args.get(3).map(|s| s);
 
-            match (links_path, icons_path) {
+            match (link_folder_path, icon_folder_path) {
                 // 如无第二个参数，则默认为桌面
-                (Some(icons_path), None) => {
-                    let icons_path = Path::new(&icons_path);
-                    cli::change_all_shortcuts_icons(None, icons_path)
+                (Some(icon_folder_path), None) => {
+                    let icon_folder_path = Path::new(&icon_folder_path);
+                    cli::change_all_shortcuts_icons(None, icon_folder_path)
                 }
-                (Some(links_path), Some(icons_path)) => {
-                    let links_path = PathBuf::from(links_path);
-                    let icons_path = Path::new(&icons_path);
-                    cli::change_all_shortcuts_icons(Some(links_path), icons_path)
+                (Some(link_folder_path), Some(icon_folder_path)) => {
+                    let link_folder_path = PathBuf::from(link_folder_path);
+                    let icon_folder_path = Path::new(&icon_folder_path);
+                    cli::change_all_shortcuts_icons(Some(link_folder_path), icon_folder_path)
                 }
                 _ => std::process::exit(1),
             }

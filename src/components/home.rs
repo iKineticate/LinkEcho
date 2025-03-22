@@ -1,11 +1,22 @@
+use super::{
+    msgbox::{Action, MsgIcon, Msgbox},
+    tabs::Tab,
+    tools::CustomizeIcon,
+};
 use crate::{
-    Action, CustomizeIcon, LinkList, LinkProp, MsgIcon, Msgbox, Tab,
-    image::base64::get_img_base64_by_path, link_modify::change_single_shortcut_icon, t,
+    image::base64::get_img_base64_by_path,
+    link::{
+        list::{LinkList, LinkProp},
+        modify::change_single_shortcut_icon,
+    },
     utils::notify,
 };
+
+use std::path::Path;
+
 use dioxus::prelude::*;
 use log::*;
-use std::path::Path;
+use rust_i18n::t;
 
 const RIGHT_ARROW1: &str = "M755.2 510.2L405.7 174.3c-13.7-16.4-16.4-41 0-57.3 16.4-19.1 41-19.1 57.3-2.7l379.6 365.9c8.2 8.2 13.7 19.1 13.7 30 0 10.9-5.5 21.8-13.7 30L463 906.1c-8.2 8.2-16.4 10.9-27.3 10.9-10.9 0-21.8-5.5-30-13.7-16.4-16.4-16.4-41 0-57.3l349.5-335.8zM405.7 846";
 const RIGHT_ARROW2: &str = "M483.8 510.1L242.9 278.7c-9.4-11.3-11.3-28.2 0-39.5 11.3-13.2 28.2-13.2 39.5-1.9L544 489.5c5.6 5.6 9.4 13.2 9.4 20.7s-3.8 15.1-9.4 20.7L282.5 783c-5.6 5.6-11.3 7.5-18.8 7.5s-15.1-3.8-20.7-9.4c-11.3-11.3-11.3-28.2 0-39.5l240.8-231.5zM242.9 741.6";

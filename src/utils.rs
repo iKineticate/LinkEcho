@@ -1,13 +1,12 @@
-use crate::t;
-
-use anyhow::{Context, Result};
-use log::{error, info};
-use tauri_winrt_notification::{IconCrop, Toast};
-
 use std::env;
 use std::fs::OpenOptions;
 use std::io::{ErrorKind::AlreadyExists, Write};
 use std::path::{Path, PathBuf};
+
+use anyhow::{Context, Result};
+use log::{error, info};
+use rust_i18n::t;
+use tauri_winrt_notification::{IconCrop, Toast};
 
 pub const LOGO_IMAGE: &[u8] = include_bytes!("../resources/logo.png");
 

@@ -1,8 +1,9 @@
-use crate::t;
+use std::ffi::OsStr;
+
 use anyhow::{Result, anyhow};
 use editpe::Image;
 use rfd::FileDialog;
-use std::ffi::OsStr;
+use rust_i18n::t;
 
 pub fn modify_exe_icon() -> Result<Option<()>> {
     let exe_path = match FileDialog::new()

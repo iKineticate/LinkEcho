@@ -1,8 +1,8 @@
+use super::rounded_corners::add_rounded_corners;
+
 use anyhow::{Result, anyhow};
 use image::{DynamicImage, ImageBuffer, Rgba, RgbaImage};
 use regex::Regex;
-
-use super::rounded_corners::add_rounded_corners;
 
 #[derive(Debug, PartialEq, Clone)]
 enum GradientDirection {

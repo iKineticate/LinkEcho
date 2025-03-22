@@ -1,8 +1,8 @@
-use std::{ffi::OsStr, path::Path};
-
+use super::{
+    msgbox::{Action, MsgIcon, Msgbox},
+    tabs::Tab,
+};
 use crate::{
-    LinkList, MsgIcon, Msgbox, Tab,
-    components::msgbox::Action,
     image::{
         background::get_background_image,
         base64::get_img_base64_by_path,
@@ -10,18 +10,21 @@ use crate::{
         rounded_corners::add_rounded_corners,
     },
     link::{
-        link_info::{ManageLinkProp, initialize_com_and_create_shell_link},
-        link_list::{LinkProp, Status},
+        info::ManageLinkProp,
+        list::{LinkList, LinkProp, Status},
+        utils::initialize_com_and_create_shell_link,
     },
-    t,
     utils::{ensure_local_app_folder_exists, notify, notify_open_folder},
 };
+
+use std::{ffi::OsStr, path::Path};
 
 use anyhow::{Result, anyhow};
 use dioxus::prelude::*;
 use image::{DynamicImage, RgbaImage};
 use log::*;
 use rfd::FileDialog;
+use rust_i18n::t;
 use windows_icons::get_icon_by_path;
 use winsafe::prelude::{ole_IPersistFile, shell_IShellLink};
 
@@ -424,7 +427,7 @@ pub fn tools(
                                 },
                             }
                         }
-                                        // input {
+                    // input {
                     //     r#type: "color",
                     //     onmousedown: |event| event.stop_propagation(),
                     //     oninput: move |event| {

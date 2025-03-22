@@ -1,5 +1,7 @@
-use crate::{LinkList, t};
+use crate::link::list::LinkList;
+
 use dioxus::prelude::*;
+use rust_i18n::t;
 
 #[component]
 pub fn properties(mut show_prop: Signal<bool>, mut link_list: Signal<LinkList>) -> Element {
