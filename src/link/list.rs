@@ -85,16 +85,11 @@ impl LinkList {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Default, Clone, PartialEq)]
 pub enum Status {
+    #[default]
     Unchanged,
     Changed,
-}
-
-impl Default for Status {
-    fn default() -> Self {
-        Status::Unchanged
-    }
 }
 
 #[derive(Default, Clone, PartialEq)]

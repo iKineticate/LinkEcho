@@ -129,15 +129,15 @@ fn setup_logger() -> Result<()> {
 fn handle_cli(args: Vec<String>) -> Result<bool> {
     match args[1].as_str() {
         "-c" => {
-            let link_path = args.get(2).map(|s| s).unwrap();
-            let icon_path = args.get(3).map(|s| s).unwrap();
+            let link_path = args.get(2).unwrap();
+            let icon_path = args.get(3).unwrap();
             let link_path = Path::new(&link_path);
             let icon_path = Path::new(&icon_path);
             cli::change_single_shortcut_icon(link_path, icon_path)
         }
         "-C" => {
-            let link_folder_path = args.get(2).map(|s| s);
-            let icon_folder_path = args.get(3).map(|s| s);
+            let link_folder_path = args.get(2);
+            let icon_folder_path = args.get(3);
 
             match (link_folder_path, icon_folder_path) {
                 // 如无第二个参数，则默认为桌面

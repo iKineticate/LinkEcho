@@ -15,8 +15,7 @@
 //
 // Note: This file has been modified from the original version.
 
-use std::ffi::OsStr;
-use std::path::{Path, PathBuf};
+use std::{ffi::OsStr, path::Path};
 
 use anyhow::{Context, Result};
 use image::codecs::ico::{IcoEncoder, IcoFrame};
@@ -24,15 +23,15 @@ use image::{DynamicImage, Rgba, RgbaImage};
 use rayon::prelude::*;
 use resvg::tiny_skia;
 
-pub fn image_to_ico(image_path: &Path, output_path: PathBuf, name: &str) -> Result<()> {
+pub fn image_to_ico(image_path: &Path, output_path: &Path, name: &str) -> Result<()> {
     let sizes = vec![16, 32, 48, 64, 128, 256];
     let filter = image::imageops::FilterType::CatmullRom;
 
-    let image = load_image(&image_path, &sizes)?;
+    let image = load_image(image_path, &sizes)?;
     check_image_dimensions(&image, name);
 
     let frames = create_frames(&image, sizes, filter)?;
-    save_ico(frames, &output_path)?;
+    save_ico(frames, output_path)?;
 
     Ok(())
 }
@@ -125,7 +124,7 @@ pub fn create_frames(
         .collect()
 }
 
-pub fn save_ico(frames: Vec<IcoFrame>, output_path: &PathBuf) -> Result<()> {
+pub fn save_ico(frames: Vec<IcoFrame>, output_path: &Path) -> Result<()> {
     let file = std::fs::File::create(output_path)
         .with_context(|| format!("Failed to create file '{}'", output_path.display()))?;
     let encoder = IcoEncoder::new(file);

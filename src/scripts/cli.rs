@@ -28,24 +28,29 @@ pub fn change_all_shortcuts_icons(links_path: Option<PathBuf>, icons_path: &Path
     let mut icon_map = glob(&select_icons_folder_path)
         .map_err(|e| anyhow!("Glob failed for {select_icons_folder_path}: {e}"))?
         .filter_map(Result::ok)
-        .fold(HashMap::<String, PathBuf>::new(), |mut icon_map, p| {
-            let has_icon = p
-                .extension()
+        .fold(HashMap::new(), |mut icon_map, file_path| {
+            if let Some((name, ext)) = file_path
+                .file_stem()
                 .and_then(OsStr::to_str)
-                .map(str::to_lowercase)
-                .filter(|ext| match_icon_ext.contains(&ext.as_str()));
-
-            if let Some(name) = has_icon.and_then(|_| p.file_stem().and_then(OsStr::to_str)) {
-                icon_map.insert(name.trim().to_lowercase(), p);
-            };
+                .zip(file_path.extension().and_then(OsStr::to_str))
+                .map(|(stem, ext)| (stem.trim().to_lowercase(), ext.to_lowercase()))
+                .filter(|(_, ext)| match_icon_ext.contains(&ext.as_str()))
+            {
+                icon_map
+                    .entry(name)
+                    .and_modify(|existing| {
+                        if ext == "ico" {
+                            *existing = file_path.clone();
+                        }
+                    })
+                    .or_insert(file_path);
+            }
 
             icon_map
         });
 
     let (shell_link, persist_file) = initialize_com_and_create_shell_link()?;
-    let link_list = links_path
-        .map(|p| LinkList::other(p))
-        .unwrap_or_else(LinkList::default);
+    let link_list = links_path.map(LinkList::other).unwrap_or_default();
     for link_prop in link_list.items.iter() {
         let link_name = link_prop.name.trim().to_lowercase();
         let link_path = &link_prop.path;
@@ -90,13 +95,13 @@ pub fn change_all_shortcuts_icons(links_path: Option<PathBuf>, icons_path: &Path
 }
 
 pub fn change_single_shortcut_icon(link_path: &Path, icon_path: &Path) -> Result<bool> {
-    let icon_ext = ["ico", "png", "svg", "bmp", "webp", "tiff", "exe"];
+    let match_icon_ext = ["ico", "png", "svg", "bmp", "webp", "tiff", "exe"];
 
     let _is_icon = icon_path
         .extension()
         .and_then(OsStr::to_str)
         .map(str::to_lowercase)
-        .filter(|ext| icon_ext.contains(&ext.as_str()))
+        .filter(|ext| match_icon_ext.contains(&ext.as_str()))
         .with_context(|| anyhow!("the file is not an icon: {icon_path:?}"))?;
 
     let (shell_link, persist_file) = initialize_com_and_create_shell_link()?;
@@ -113,9 +118,9 @@ pub fn change_single_shortcut_icon(link_path: &Path, icon_path: &Path) -> Result
         };
     }
 
-    let icon_path = process_icon(&icon_path)?;
+    let icon_path = process_icon(icon_path)?;
 
-    persist_file.Load(&link_path, co::STGM::WRITE)?;
+    persist_file.Load(link_path, co::STGM::WRITE)?;
     shell_link.SetIconLocation(&icon_path.to_string_lossy(), 0)?;
     persist_file.Save(None, true)?;
 

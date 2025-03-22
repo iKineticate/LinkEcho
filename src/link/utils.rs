@@ -47,7 +47,7 @@ pub fn process_icon(icon_path: &Path) -> Result<PathBuf> {
                 .with_context(|| anyhow!("Failed to get icon name: {icon_path:?}"))?;
             let convert_icon_path = icon_data_path.join(format!("{icon_name}.ico"));
             if !convert_icon_path.is_file() {
-                image_to_ico(icon_path, convert_icon_path.clone(), &icon_name)?;
+                image_to_ico(icon_path, &convert_icon_path, icon_name)?;
                 info!("{}: {icon_name}.{ext}", t!("SUCCESS_IMG_TO_ICO"));
             };
             convert_icon_path

@@ -34,28 +34,26 @@ pub fn partial_match_icon(icon_map: &HashMap<String, PathBuf>, link_name: &str) 
     let mut candidates: Vec<MatchScore> = icon_map
         .iter()
         .filter_map(|(icon_name, icon_path)| {
-            let (priority, diff) = match (
-                link_name.contains(icon_name),
-                icon_name.contains(&link_name),
-            ) {
-                (true, _) => (
-                    MatchPriority::FullContains,
-                    link_name.len() - icon_name.len(),
-                ),
-                (_, true) => (
-                    MatchPriority::FullContains,
-                    icon_name.len() - link_name.len(),
-                ),
-                _ => {
-                    // 部分重叠检测，仅检查名称重叠差1个字符
-                    let overlap = calculate_overlap(&link_name, &icon_name);
-                    if overlap >= link_name.len() - 1 {
-                        (MatchPriority::PartialOverlap, overlap)
-                    } else {
-                        return None;
+            let (priority, diff) =
+                match (link_name.contains(icon_name), icon_name.contains(link_name)) {
+                    (true, _) => (
+                        MatchPriority::FullContains,
+                        link_name.len() - icon_name.len(),
+                    ),
+                    (_, true) => (
+                        MatchPriority::FullContains,
+                        icon_name.len() - link_name.len(),
+                    ),
+                    _ => {
+                        // 部分重叠检测，仅检查名称重叠差1个字符
+                        let overlap = calculate_overlap(link_name, icon_name);
+                        if overlap >= link_name.len() - 1 {
+                            (MatchPriority::PartialOverlap, overlap)
+                        } else {
+                            return None;
+                        }
                     }
-                }
-            };
+                };
 
             Some(MatchScore {
                 path: icon_path.clone(),
@@ -113,6 +111,7 @@ pub fn change_all_shortcuts_icons(mut link_list: Signal<LinkList>) -> Result<boo
                 icon_map
                     .entry(name)
                     .and_modify(|existing| {
+                        // 图标同名时优先添加'.ico'至'icon_map'
                         if ext == "ico" {
                             *existing = file_path.clone();
                         }
@@ -134,7 +133,7 @@ pub fn change_all_shortcuts_icons(mut link_list: Signal<LinkList>) -> Result<boo
         let matched_icon = icon_map
             .remove(&link_name) // 完全匹配
             .or(partial_match_icon(&icon_map, &link_name)) // 部分匹配
-            .and_then(|p| process_icon(&p).ok());
+            .and_then(|p| process_icon(&p).inspect_err(|e| error!("{e}")).ok());
 
         let icon_path = match matched_icon {
             Some(p) => {
@@ -215,7 +214,7 @@ pub fn change_single_shortcut_icon(mut link_list: Signal<LinkList>) -> Result<Op
     let icon_path = icon_path.to_string_lossy().into_owned();
 
     let (shell_link, persist_file) = initialize_com_and_create_shell_link()?;
-    persist_file.Load(&link_path, co::STGM::WRITE)?;
+    persist_file.Load(link_path, co::STGM::WRITE)?;
     shell_link.SetIconLocation(&icon_path, 0)?;
     persist_file.Save(None, true)?;
 
@@ -250,7 +249,7 @@ pub fn restore_all_shortcuts_icons(mut link_list: Signal<LinkList>) -> Result<()
         let mut link_list_write = link_list.write();
         link_list_write.items[index].icon_path = link_target_path.clone();
         link_list_write.items[index].status = Status::Unchanged;
-        link_list_write.items[index].icon_base64 = get_img_base64_by_path(&link_target_path);
+        link_list_write.items[index].icon_base64 = get_img_base64_by_path(link_target_path);
 
         info!(
             "{}:\n{link_path}\n{link_target_path}",
