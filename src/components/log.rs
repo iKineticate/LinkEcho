@@ -1,9 +1,8 @@
-use crate::{
-    t,
-    utils::{ensure_local_app_folder_exists, notify},
-};
+use crate::utils::{ensure_local_app_folder_exists, notify};
+
 use ::log::error;
 use dioxus::prelude::*;
+use rust_i18n::t;
 
 #[component]
 pub fn log() -> Element {
@@ -28,7 +27,9 @@ pub fn log() -> Element {
 
     rsx! {
         style { {include_str!("css/log.css")} }
-        div { class: "log-container",
+        div {
+            class: "log-container",
+            onmousedown: |event| event.stop_propagation(),
             div {
                 height: "35px",
                 display: "flex",
@@ -37,7 +38,6 @@ pub fn log() -> Element {
                 border_bottom: "1px solid #2B2B2B",
                 gap: "10px",
                 button {
-                    onmousedown: move |event| event.stop_propagation(),
                     onclick: move |_| {
                         log.set(String::new());
                         if let Some(path) = log_path.read().as_ref() {
@@ -48,7 +48,6 @@ pub fn log() -> Element {
                     {t!("CLEAR_LOG")}
                 }
                 button {
-                    onmousedown: |event| event.stop_propagation(),
                     onclick: move |_| {
                         if let Some(path) = log_path.read().as_ref().and_then(|p| p.parent()) {
                             if let Err(e) = opener::open(path) {
@@ -62,7 +61,6 @@ pub fn log() -> Element {
                 }
             }
             pre {
-                onmousedown: |event| event.stop_propagation(),
                 width: "100%",
                 font_family: "Consolas",
                 font_size: "16px",
