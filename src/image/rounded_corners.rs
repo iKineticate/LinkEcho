@@ -1,6 +1,7 @@
+use std::cmp::min;
+
 use image::{DynamicImage, RgbaImage};
 use rayon::prelude::*;
-use std::cmp::min;
 
 pub fn add_rounded_corners(image: &DynamicImage, radius: u32) -> RgbaImage {
     let (width, height) = (image.width(), image.height());
