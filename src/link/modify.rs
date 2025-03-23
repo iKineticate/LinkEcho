@@ -45,7 +45,7 @@ pub fn partial_match_icon(icon_map: &HashMap<String, PathBuf>, link_name: &str) 
                         icon_name.len() - link_name.len(),
                     ),
                     _ => {
-                        // 部分重叠检测，仅检查名称重叠差1个字符
+                        // 无完全包含关系，进行部分重叠检测，仅检查重叠差1个字符的名称
                         let overlap = calculate_overlap(link_name, icon_name);
                         if overlap >= link_name.len() - 1 {
                             (MatchPriority::PartialOverlap, overlap)
@@ -73,7 +73,6 @@ pub fn partial_match_icon(icon_map: &HashMap<String, PathBuf>, link_name: &str) 
     candidates.first().map(|m| m.path.clone())
 }
 
-// 重叠计算
 fn calculate_overlap(a: &str, b: &str) -> usize {
     let min_len = std::cmp::min(a.len(), b.len());
     (0..min_len)
@@ -82,8 +81,6 @@ fn calculate_overlap(a: &str, b: &str) -> usize {
 }
 
 pub fn change_all_shortcuts_icons(mut link_list: Signal<LinkList>) -> Result<bool> {
-    let start = std::time::Instant::now();
-
     let select_icons_folder_path = match FileDialog::new()
         .set_title(t!("SELECT_ICONS_FOLDER"))
         .pick_folder()
@@ -111,7 +108,7 @@ pub fn change_all_shortcuts_icons(mut link_list: Signal<LinkList>) -> Result<boo
                 icon_map
                     .entry(name)
                     .and_modify(|existing| {
-                        // 图标同名时优先添加'.ico'至'icon_map'
+                        // 图标同名时优先添加'*.ico'的图标至'icon_map'
                         if ext == "ico" {
                             *existing = file_path.clone();
                         }
@@ -172,9 +169,6 @@ pub fn change_all_shortcuts_icons(mut link_list: Signal<LinkList>) -> Result<boo
         }
     }
 
-    let end = std::time::Instant::now();
-    let duration = end.duration_since(start);
-    info!("Duration: {:?}", duration);
     Ok(true)
 }
 

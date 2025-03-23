@@ -26,6 +26,7 @@ use dioxus::desktop::window;
 use dioxus::prelude::*;
 use rust_i18n::t;
 use scripts::cli;
+
 rust_i18n::i18n!("locales");
 
 fn main() -> Result<()> {

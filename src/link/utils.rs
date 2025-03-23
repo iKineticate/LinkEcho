@@ -38,9 +38,12 @@ pub fn process_icon(icon_path: &Path) -> Result<PathBuf> {
     let icon_path = match ext {
         "ico" | "exe" => icon_path.to_path_buf(),
         _ => {
+            // 配置文件
+            // 1.保存到软件转换图标目录（默认）
+            // 2.保存到图标目录```if let Some(convert_icon_path) = icon_path.with_extension("ico")```
             let app_data_path = ensure_local_app_folder_exists()?;
             let icon_data_path = app_data_path.join("icons");
-            std::fs::create_dir_all(&icon_data_path)?;
+            let _ = std::fs::create_dir_all(&icon_data_path)?;
             let icon_name = icon_path
                 .file_stem()
                 .and_then(OsStr::to_str)

@@ -67,7 +67,7 @@ impl ManageLinkProp {
             .to_str()
             .with_context(|| format!("Invalid Unicode: {path_buf:?}"))?;
 
-        persist_file
+        let _load_file = persist_file
             .Load(link_path, co::STGM::READ)
             .map_err(|e| anyhow!("Failed to load the link {path_buf:?} - {e}"))?;
 
@@ -169,7 +169,7 @@ impl ManageLinkProp {
             || link_target_ext == "uwp" // Universal Windows Platform - UWP应用
             || unconverted_icon_path.starts_with("%")  // Icon From System icon - 系统图标 (%windir%/.../powershell.exe  ,  %windir%/.../imageres.dll)
             || (link_icon_dir == link_target_dir && Path::new(&link_target_dir).is_dir())
-        // Icons come from the target file's (sub)directory - 图标来源于目标目录
+        // Icons come from the target file's (sub)dir - 图标来源于目标目录
         {
             Status::Unchanged
         } else {
