@@ -67,7 +67,7 @@ impl ManageLinkProp {
             .to_str()
             .with_context(|| format!("Invalid Unicode: {path_buf:?}"))?;
 
-        let _load_file = persist_file
+        persist_file
             .Load(link_path, co::STGM::READ)
             .map_err(|e| anyhow!("Failed to load the link {path_buf:?} - {e}"))?;
 
@@ -75,20 +75,26 @@ impl ManageLinkProp {
             .file_stem()
             .and_then(OsStr::to_str)
             .map(str::to_owned)
-            .with_context(|| format!("Invalid Unicode: {path_buf:?}"))?;
+            .with_context(|| format!("Failed to get the lnk name {path_buf:?}"))?;
 
         let link_target_path = shell_link
             .GetPath(
                 Some(&mut winsafe::WIN32_FIND_DATA::default()), // 注意：提供的路径可能不存在（比如UWP、APP、未提供路径的lnk）
                 co::SLGP::RAWPATH,                              // Absolute path - 绝对路径
             )
-            .map_or(String::new(), |s| ManageLinkProp::convert_env_to_path(&s));
+            .as_deref()
+            .map_or(String::new(), ManageLinkProp::convert_env_to_path);
 
-        let link_target_dir = match shell_link.GetWorkingDirectory() {
-            Ok(p) if !p.is_empty() => ManageLinkProp::convert_env_to_path(&p),
-            _ => ManageLinkProp::get_parent_path(&link_target_path),
-        };
-
+        let link_target_dir = shell_link
+            .GetWorkingDirectory()
+            .ok()
+            .filter(|p| !p.is_empty())
+            .as_deref()
+            .map_or(
+                ManageLinkProp::get_parent_path(&link_target_path),
+                ManageLinkProp::convert_env_to_path,
+            );
+            
         let link_target_ext = if link_target_path.is_empty() {
             String::from("uwp|app")
         } else {

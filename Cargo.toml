@@ -13,23 +13,24 @@ keywords = ["shortcut", "icon", "link", "change", "restore", "customize", "repla
 dioxus = { version = "0.6.3", features = ["desktop"] }
 dioxus-desktop = "0.6.3"
 winsafe = { version = "0.0.23", features = ["advapi", "shell"] } # Windows's API
-windows-icons = "0.3.0" # 获取文件图标
-glob = "0.3.2" # 遍历文件夹
-rfd = "0.15.2" # 选择文件夹
-opener = "0.7.2" # 打开文件(夹)
-chrono = "0.4.40" # 获取系统时间
-tauri-winrt-notification = "0.7.1"
-rust-i18n = "3.1.3" # 国际化文本
-anyhow = "1.0.97" # 错误处理
-editpe = "0.2.1" # 修改可执行程序图标
-csscolorparser = "0.7.0" # CSS颜色解析
-regex = "1.11.1" # 正则表达式
-log = "0.4"
-fern = "0.7.1"
+windows-icons = "0.3" # 获取文件图标
+glob = "0.3" # 遍历文件夹
+rfd = "0.15" # 选择文件夹
+opener = "0.7" # 打开文件(夹)
+chrono = "0.4" # 获取系统时间
+tauri-winrt-notification = "0.7"
+rust-i18n = "3" # 国际化文本
+anyhow = "1" # 错误处理
+editpe = "0.2" # 修改可执行程序图标
+csscolorparser = "0.7" # CSS颜色解析
+regex = "1.11" # 正则表达式
+log = "0.4" # 日志
+
+fern = "0.7" # 记录日志至文件
 restart-explorer = { path = "libs/restart_explorer" } # 重启资源管理器
 # 以下是图标转换相关库
-image = "0.25.5"
-base64 = "0.22.1"
+image = "0.25"
+base64 = "0.22"
 rayon = "1.10.0"
 resvg = "0.45.0"
 usvg = "0.45.0"
@@ -42,7 +43,7 @@ features = [
 ]
 
 [build-dependencies]
-embed-resource = "3.0.2" # 载入清单
+embed-resource = "3" # 载入清单
 
 [profile.release]
 lto = "fat"

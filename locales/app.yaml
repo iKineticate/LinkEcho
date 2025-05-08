@@ -351,6 +351,10 @@ OPEN_DIR:
   en: Directory
   zh-CN: 打开目录
 
+FAILED_GET_CUSTOMIZE_ICON_IMAGE:
+  en: Failed to get the customized icon image
+  zh-CN: 无法获取自定义图标图片
+
 # Log
 CLEAR_LOG:
   en: Clean Log

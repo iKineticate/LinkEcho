@@ -1,6 +1,11 @@
 use crate::utils::notify;
 
-use std::{env, ffi::OsStr, path::Path};
+use std::{
+    env,
+    ffi::OsStr,
+    fs::{read_dir, remove_file},
+    path::Path,
+};
 
 use anyhow::Result;
 use log::*;
@@ -14,12 +19,12 @@ pub fn clear_icon_cache() {
         return notify(&t!("ERROR_ITERTATOR_EXPLORER"));
     }
 
-    if let Ok(entries) = std::fs::read_dir(&explorer_path) {
+    if let Ok(entries) = read_dir(&explorer_path) {
         for entry in entries.flatten() {
             let path = entry.path();
-            if should_delete_file(&path) && std::fs::remove_file(&path).is_err() {
+            if should_delete_file(&path) && remove_file(&path).is_err() {
                 let text = format!("{}\n{path:?}", t!("ERROR_DELETE_ICON_DB"));
-                log::error!("{text}");
+                error!("{text}");
                 return notify(&text);
             }
         }
@@ -46,9 +51,9 @@ fn should_delete_file(path: &Path) -> bool {
         return false;
     }
 
-    path.file_name()
-        .and_then(OsStr::to_str)
-        .is_some_and(|n| n.starts_with("iconcache_") || n.starts_with("thumbcache_"))
+    path.file_name().and_then(OsStr::to_str).is_some_and(|n| {
+        n.to_lowercase().starts_with("iconcache_") || n.to_lowercase().starts_with("thumbcache_")
+    })
 }
 
 fn restart_explorer() -> Result<()> {

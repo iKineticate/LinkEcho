@@ -17,11 +17,17 @@ use crate::{
     utils::{ensure_local_app_folder_exists, notify, notify_open_folder},
 };
 
-use std::{ffi::OsStr, path::Path};
+use std::{
+    ffi::OsStr,
+    path::{Path, PathBuf},
+};
 
 use anyhow::{Result, anyhow};
 use dioxus::prelude::*;
-use image::{DynamicImage, RgbaImage};
+use image::{
+    DynamicImage, RgbaImage,
+    imageops::{FilterType, overlay, resize},
+};
 use log::*;
 use rfd::FileDialog;
 use rust_i18n::t;
@@ -71,14 +77,17 @@ pub fn tools(
     let link_name = customize_icon_read
         .link
         .as_ref() // 避免复制整个结构，只需克隆的 name 字段
-        .and_then(|l| Path::new(&l.path).exists().then_some(Path::new(&l.path)))
+        .and_then(|l| {
+            let link_path = Path::new(&l.path);
+            link_path.is_file().then_some(link_path)
+        })
         .map(|p| p.file_name().and_then(OsStr::to_str).unwrap_or_default());
     let icon_name = customize_icon_read
         .link
         .as_ref()
         .and_then(|l| {
             let icon_path = Path::new(&l.icon_path);
-            icon_path.exists().then_some(icon_path)
+            icon_path.is_file().then_some(icon_path)
         })
         .map(|p| p.file_name().and_then(OsStr::to_str).unwrap_or_default());
     let background_clone = customize_icon_read.background.clone();
@@ -262,19 +271,22 @@ pub fn tools(
                                         .file_stem()
                                         .and_then(OsStr::to_str)
                                         .map(str::to_owned);
-                                    let file_ext = file_path.extension().and_then(OsStr::to_str);
+                                    let file_ext = file_path
+                                        .extension()
+                                        .and_then(OsStr::to_str)
+                                        .map(str::to_lowercase);
                                     let file_path = file_path.to_str().map(str::to_owned);
+
                                     if let (Some(name), Some(ext), Some(path)) = (
                                         file_name,
                                         file_ext,
                                         file_path,
                                     ) {
                                         let is_lnk = ext == "lnk";
-                                        let icon_path = if is_lnk {
-                                            get_link_icon_path(&path).unwrap_or(path.to_owned())
-                                        } else {
-                                            path.to_owned()
-                                        };
+                                        let icon_path = is_lnk
+                                            .then_some(get_link_icon_path(&path).ok())
+                                            .flatten()
+                                            .unwrap_or(path.to_owned());
                                         let link_prop = LinkProp {
                                             name: is_lnk.then_some(name).unwrap_or_default(),
                                             path: is_lnk.then_some(path).unwrap_or_default(),
@@ -283,10 +295,10 @@ pub fn tools(
                                             ..Default::default()
                                         };
                                         customize_icon.write().link = Some(link_prop);
-                                        return;
                                     }
+                                } else {
+                                    customize_icon.write().link = None;
                                 }
-                                customize_icon.write().link = None;
                             },
                             span { {t!("SELECT_SHORTCUTS_OR_ICON")} }
                         }
@@ -302,17 +314,21 @@ pub fn tools(
                                 {
                                     if let Some(ref mut link_prop) = customize_icon.write().link {
                                         let icon_path = get_link_icon_path(&link_prop.path)
-                                            .unwrap_or(icon_path.to_string_lossy().to_string());
+                                            .unwrap_or(icon_path.to_string_lossy().into_owned());
                                         link_prop.icon_base64 = get_img_base64_by_path(&icon_path);
                                         link_prop.icon_path = icon_path;
                                     } else {
                                         let mut link_prop = LinkProp::default();
-                                        let icon_path = if icon_path.ends_with(".lnk") {
-                                            get_link_icon_path(&icon_path.to_string_lossy())
-                                                .unwrap_or(icon_path.to_string_lossy().to_string())
-                                        } else {
-                                            icon_path.to_string_lossy().to_string()
-                                        };
+                                        let icon_ext = icon_path
+                                            .extension()
+                                            .and_then(OsStr::to_str)
+                                            .map(str::to_lowercase);
+                                        let icon_path_string = icon_path.to_string_lossy().to_string();
+                                        let icon_path = icon_ext
+                                            .is_some_and(|e| e.to_lowercase().eq("lnk"))
+                                            .then_some(get_link_icon_path(&icon_path_string).ok())
+                                            .flatten()
+                                            .unwrap_or(icon_path_string);
                                         link_prop.icon_base64 = get_img_base64_by_path(&icon_path);
                                         link_prop.icon_path = icon_path;
                                         customize_icon.write().link = Some(link_prop);
@@ -326,75 +342,81 @@ pub fn tools(
                             display: customize_icon.read().link.clone().map_or("none", |_| "inline-block"),
                             onmousedown: |event| event.stop_propagation(),
                             onclick: move |_| {
+                                let customize_icon_read = customize_icon.read().clone();
                                 if let Some(link_prop) = &customize_icon_read.link {
                                     let link_path = link_prop.path.clone();
                                     let icon_path = link_prop.icon_path.clone();
-                                    if let Ok(icon_image) = get_customize_icon_image(
+                                    match get_customize_icon_image(
                                         &icon_path,
                                         customize_icon_read.icon_scaling,
                                         customize_icon_read.icon_borders_radius,
                                     ) {
-                                        let background_image = customize_icon_read
-                                            .background
-                                            .clone()
-                                            .map(get_background_image)
-                                            .and_then(Result::ok);
-                                        let icon_name = Path::new(&icon_path)
-                                            .file_stem()
-                                            .and_then(OsStr::to_str)
-                                            .unwrap_or_else(|| {
-                                                warn!("Icon name is invalid unicode:\n{icon_path}");
-                                                Path::new(&link_path)
-                                                    .file_stem()
-                                                    .and_then(OsStr::to_str)
-                                                    .unwrap_or_else(|| {
-                                                        warn!("Icon name is invalid unicode:\n{link_path}");
-                                                        "(╯‵□′)╯︵┻━┻"
-                                                    })
-                                            });
-                                        match save_customize_icon(icon_image, background_image, icon_name) {
-                                            Ok(customize_icon_path) => {
-                                                match set_link_icon_path(&link_path, &customize_icon_path) {
-                                                    Ok(true) => {
-                                                        let mut link_list = link_list.write();
-                                                        let link = link_list
-                                                            .items
-                                                            .iter_mut()
-                                                            .find(|l| l.path == link_path);
-                                                        if let Some(link) = link {
-                                                            link.icon_base64 = get_img_base64_by_path(
-                                                                &customize_icon_path,
-                                                            );
-                                                            link.icon_path = customize_icon_path.clone();
-                                                            link.status = Status::Changed;
+                                        Err(e) => {
+                                            error!("Failed to get customize icon image - {e}");
+                                            notify(&t!("FAILED_GET_CUSTOMIZE_ICON_IMAGE"));
+                                        }
+                                        Ok(icon_image) => {
+                                            let background_image = customize_icon_read
+                                                .background
+                                                .clone()
+                                                .map(get_background_image)
+                                                .and_then(Result::ok);
+                                            let icon_name = Path::new(&icon_path)
+                                                .file_stem()
+                                                .and_then(OsStr::to_str)
+                                                .unwrap_or_else(|| {
+                                                    warn!("Icon name is invalid unicode:\n{icon_path}");
+                                                    Path::new(&link_path)
+                                                        .file_stem()
+                                                        .and_then(OsStr::to_str)
+                                                        .unwrap_or_else(|| {
+                                                            warn!("Icon name is invalid unicode:\n{link_path}");
+                                                            "(╯‵□′)╯︵┻━┻"
+                                                        })
+                                                });
+                                            match save_customize_icon(icon_image, background_image, icon_name) {
+                                                Err(e) => {
+                                                    error!("{e}");
+                                                    notify(&format!("{e}"))
+                                                }
+                                                Ok(customize_icon_path) => {
+                                                    match set_link_icon_path(&link_path, &customize_icon_path) {
+                                                        Err(e) => {
+                                                            error!("{e}");
+                                                            notify(&format!("{e}"));
                                                         }
-                                                        info!(
-                                                            "{}:\n{link_path}\n{customize_icon_path}",
-                                                            t!("SUCCESS_CHANGE_ONE")
-                                                        );
-                                                    }
-                                                    Ok(false) => {
-                                                        if let Some(path) = customize_icons_dir_path.read().as_ref()
-                                                        {
-                                                            let path = path.to_string_lossy().into_owned();
-                                                            notify_open_folder(
-                                                                &t!("SUCCESS_SAVE_ICON_TO_ICON_DIR"),
-                                                                &path,
+                                                        Ok(true) => {
+                                                            let mut link_list = link_list.write();
+                                                            let link = link_list
+                                                                .items
+                                                                .iter_mut()
+                                                                .find(|l| l.path == link_path);
+                                                            if let Some(link) = link {
+                                                                link.icon_base64 = get_img_base64_by_path(
+                                                                    &customize_icon_path,
+                                                                );
+                                                                link.icon_path = customize_icon_path.clone();
+                                                                link.status = Status::Changed;
+                                                            }
+                                                            info!(
+                                                                "{}:\n{link_path}\n{customize_icon_path}",
+                                                                t!("SUCCESS_CHANGE_ONE")
                                                             );
-                                                        } else {
-                                                            notify(&t!("SUCCESS_SAVE_ICON_TO_ICON_DIR"));
                                                         }
-                                                        info!("{}", t!("SUCCESS_SAVE_ICON_TO_ICON_DIR"));
-                                                    }
-                                                    Err(e) => {
-                                                        error!("{e}");
-                                                        notify(&format!("{e}"));
+                                                        Ok(false) => {
+                                                            if let Some(path) = customize_icons_dir_path.read().as_ref() {
+                                                                let path = path.to_string_lossy().into_owned();
+                                                                notify_open_folder(
+                                                                    &t!("SUCCESS_SAVE_ICON_TO_ICON_DIR"),
+                                                                    &path,
+                                                                );
+                                                            } else {
+                                                                notify(&t!("SUCCESS_SAVE_ICON_TO_ICON_DIR"));
+                                                            }
+                                                            info!("{}", t!("SUCCESS_SAVE_ICON_TO_ICON_DIR"));
+                                                        }
                                                     }
                                                 }
-                                            }
-                                            Err(e) => {
-                                                error!("{e}");
-                                                notify(&format!("{e}"))
                                             }
                                         }
                                     }
@@ -506,7 +528,7 @@ pub fn tools(
                                     customize_icon.write().background = Some((
                                         background_clone
                                             .as_ref()
-                                            .map_or("#ffffff".into(), |(c, _, _)| c.to_string()),
+                                            .map_or("#ffffff".into(), |(c, _, _)| c.clone()),
                                         value,
                                         background.2,
                                     ));
@@ -571,14 +593,21 @@ fn get_link_icon_path(link_path: &str) -> Result<String> {
             .Load(link_path, winsafe::co::STGM::READ)
             .map_err(|e| anyhow!("Failed to load the shortcut by COM interface. {e}"))?;
 
-        let (link_icon_path, _) = shell_link
+        let icon_path = shell_link
             .GetIconLocation()
+            .map(|(p, _i)| ManageLinkProp::convert_env_to_path(&p))
             .map_err(|e| anyhow!("Failed to get the icon location. {e}"))?;
+        let link_icon_path = PathBuf::from(&icon_path);
+        let link_icon_ext = link_icon_path
+            .extension()
+            .and_then(OsStr::to_str)
+            .map(str::to_lowercase);
 
-        let link_icon_path = ManageLinkProp::convert_env_to_path(&link_icon_path);
-
-        if std::path::Path::new(&link_icon_path).is_file() && !link_icon_path.ends_with(".dll") {
-            return Ok(link_icon_path);
+        if link_icon_path.is_file() && link_icon_ext.is_some_and(|e| e.to_lowercase() != "dll") {
+            return Ok(icon_path);
+        } else {
+            warn!("Icon path is not a file or a dll:\n{icon_path}");
+            return Err(anyhow!("Icon path is not a file or a dll."));
         }
     }
 
@@ -591,23 +620,19 @@ fn get_customize_icon_image(icon_path: &str, scaling: u32, radius: u32) -> Resul
     let icon_image_ext = Path::new(icon_path)
         .extension()
         .and_then(OsStr::to_str)
+        .map(str::to_lowercase)
         .unwrap_or_default();
 
-    let icon_image = match icon_image_ext {
+    let icon_image = match icon_image_ext.as_str() {
         "svg" => load_svg(icon_path, &[256])?.to_rgba8(),
         "ico" | "png" | "bmp" | "tiff" | "webp " => image::open(icon_path)?.to_rgba8(),
         "exe" | "lnk" => {
             get_icon_by_path(icon_path).map_err(|e| anyhow!("Failed to get the icon image. {e}"))?
         }
-        _ => return Err(anyhow!("the icon is not an image 、lnk or exe.")),
+        _ => return Err(anyhow!("The customize icon is not an image、lnk or exe.")),
     };
 
-    let icon_image = image::imageops::resize(
-        &icon_image,
-        icon_sizes,
-        icon_sizes,
-        image::imageops::FilterType::Triangle,
-    );
+    let icon_image = resize(&icon_image, icon_sizes, icon_sizes, FilterType::Triangle);
 
     Ok(add_rounded_corners(&DynamicImage::from(icon_image), radius))
 }
@@ -623,19 +648,19 @@ fn save_customize_icon(
         let (bg_width, bg_height) = bg_image.dimensions();
         let bg_x = (256 - bg_width) as i64 / 2;
         let bg_y = (256 - bg_height) as i64 / 2;
-        image::imageops::overlay(&mut combined_image, &bg_image, bg_x, bg_y);
+        overlay(&mut combined_image, &bg_image, bg_x, bg_y);
     }
 
     let (icon_width, icon_height) = icon_image.dimensions();
     let icon_x = (256 - icon_width) as i64 / 2;
     let icon_y = (256 - icon_height) as i64 / 2;
-    image::imageops::overlay(&mut combined_image, &icon_image, icon_x, icon_y);
+    overlay(&mut combined_image, &icon_image, icon_x, icon_y);
 
     let dyn_combined_image = DynamicImage::from(combined_image);
     let frames = create_frames(
         &dyn_combined_image,
         vec![16, 32, 48, 64, 128, 256],
-        image::imageops::FilterType::Triangle,
+        FilterType::Triangle,
     )?;
 
     let app_data_path = ensure_local_app_folder_exists().expect("Failed to get the app data path");

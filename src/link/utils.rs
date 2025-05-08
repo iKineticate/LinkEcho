@@ -43,7 +43,7 @@ pub fn process_icon(icon_path: &Path) -> Result<PathBuf> {
             // 2.保存到图标目录```if let Some(convert_icon_path) = icon_path.with_extension("ico")```
             let app_data_path = ensure_local_app_folder_exists()?;
             let icon_data_path = app_data_path.join("icons");
-            let _ = std::fs::create_dir_all(&icon_data_path)?;
+            std::fs::create_dir_all(&icon_data_path)?;
             let icon_name = icon_path
                 .file_stem()
                 .and_then(OsStr::to_str)
