@@ -1,10 +1,9 @@
-extern crate embed_resource;
-
 fn main() {
-    embed_resource::compile("resources/logo.rc", embed_resource::NONE)
-        .manifest_optional()
-        .unwrap();
-    embed_resource::compile("resources/app.manifest.rc", embed_resource::NONE)
-        .manifest_optional()
-        .unwrap();
+    if !cfg!(debug_assertions) {
+        embed_resource::compile("assets/app.manifest.rc", embed_resource::NONE)
+            .manifest_optional()
+            .unwrap();
+    }
+
+    windows_reactor_setup::as_framework_dependent();
 }

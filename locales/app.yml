@@ -1,0 +1,54 @@
+_version: 2
+
+HOME:
+  en: Home
+  zh: 主页
+EDIT:
+  en: Edit
+  zh: 编辑
+MANAGE:
+  en: Manage
+  zh: 管理
+HELP:
+  en: Help
+  zh: 帮助
+SETTINGS:
+  en: Setting
+  zh: 设置
+
+DESKTOP:
+  en: Desktop
+  zh: 桌面
+START_MENU:
+  en: Start Menu
+  zh: 开始菜单
+START_UP:
+  en: Start Up
+  zh: 启动
+OTHER:
+  en: Other
+  zh: 其他
+
+OPEN:
+  en: Open
+  zh: 打开
+OPEN_TOOLTIP:
+  en: Open the shortcut's folder
+  zh: 打开快捷方式文件夹
+SEARCH:
+  en: Search
+  zh: 搜索
+
+CHANGE:
+  en: Change
+  zh: 更换
+CHANGE_TOOLTIP:
+  en: Auto replace the icons of all shortcuts with matching names
+  zh: 自动更换所有名称匹配的快捷方式的图标
+
+RESTORE:
+  en: Restore
+  zh: 还原
+RESTORE_TOOLTIP:
+  en: Restore the default icons of all shortcuts
+  zh: 还原所有快捷方式的默认图标

@@ -2,158 +2,107 @@
 #![cfg(target_os = "windows")]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod components;
-mod config;
 mod image;
-#[path = "../locales/language.rs"]
 mod language;
 mod link;
-mod scripts;
-mod utils;
+mod script;
+mod window;
 
 use crate::{
-    components::{msgbox::Msgbox, tools::CustomizeIcon},
-    link::list::LinkList,
-    utils::ensure_local_app_folder_exists,
+    link::{LinkInfo, info::get_link_info_map_from_dirs, shell_folders::SystemLinkDirs},
+    window::{
+        edit::CustomIcon,
+        head::head_view,
+        navigation::{Tag, navigation_view},
+    },
 };
 
-use std::path::{Path, PathBuf};
-
-use anyhow::Result;
-use components::tabs::Tab;
-use config::desktop_config;
-use dioxus::desktop::window;
-use dioxus::prelude::*;
-use rust_i18n::t;
-use scripts::cli;
+use getset::CloneGetters;
+use indexmap::IndexMap;
+use windows_reactor::*;
 
 rust_i18n::i18n!("locales");
 
+#[derive(Clone, CloneGetters)]
+#[getset(get_clone = "pub")]
+pub struct AppState {
+    link_info_map: HookRef<IndexMap<String, LinkInfo>>,
+    link_folder_path: (Vec<String>, SetState<Vec<String>>),
+    custom_icon: (CustomIcon, SetState<CustomIcon>),
+    select_list_index: HookRef<usize>,
+    version: (usize, SetState<usize>),
+    selected_tag: (Tag, SetState<Tag>),
+    last_selected_tag: HookRef<Tag>,
+}
+
+impl AppState {
+    fn new(cx: &mut RenderCx) -> Self {
+        let version = cx.use_state(0_usize);
+        let select_list_index = cx.use_ref(0_usize);
+        let selected_tag = cx.use_state(Tag::default());
+
+        let last_selected_tag = cx.use_ref(Tag::default());
+        let last_selected_tag_for_effect = last_selected_tag.clone();
+        cx.use_effect(selected_tag.0, move || {
+            last_selected_tag_for_effect.set(selected_tag.0)
+        });
+
+        let link_info_map = cx.use_ref(IndexMap::with_capacity(60));
+        let link_folder_path = cx.use_state(Vec::new());
+        if link_info_map.borrow().is_empty() {
+            let desktop_dir_paths = SystemLinkDirs::default()
+                .get_path()
+                .expect("failed to get system links desktop dirs path");
+
+            link_folder_path.1.call(desktop_dir_paths.clone());
+
+            let link_info = get_link_info_map_from_dirs(desktop_dir_paths);
+
+            link_info_map.set(link_info);
+        }
+
+        let custom_icon = cx.use_state(CustomIcon::default());
+
+        Self {
+            link_info_map,
+            link_folder_path,
+            custom_icon,
+            version,
+            selected_tag,
+            last_selected_tag,
+            select_list_index,
+        }
+    }
+}
+
+fn app(cx: &mut RenderCx) -> Element {
+    log::info!("Re-render");
+
+    let app_state = AppState::new(cx);
+
+    let head_view = head_view(cx, app_state.clone());
+
+    let navigation_view = navigation_view(cx, app_state);
+
+    grid((head_view.grid_row(0), navigation_view.grid_row(1)))
+        .rows([GridLength::Auto, GridLength::Star(1.0)])
+        .columns([GridLength::Star(1.0)])
+        .into()
+}
+
 fn main() -> Result<()> {
-    setup_logger()?;
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
     language::set_locale();
 
-    let args: Vec<String> = std::env::args().collect();
-    if args.len() > 1 {
-        return handle_cli(args)
-            .map(|_| ())
-            .inspect_err(|e| log::error!("{e}"));
-    }
+    windows_reactor::bootstrap()?;
 
-    LaunchBuilder::desktop()
-        .with_cfg(desktop_config())
-        .launch(app);
-
-    Ok(())
-}
-
-fn app() -> Element {
-    let current_tab = use_signal(|| Tab::Home);
-    let link_list = use_signal(LinkList::default);
-    let filter_name: Signal<Option<String>> = use_signal(|| None);
-    let show_msgbox: Signal<Option<Msgbox>> = use_signal(|| None);
-    let show_prop = use_signal(|| false);
-    let read_tab = *current_tab.read();
-    let customize_icon = use_signal(CustomizeIcon::default);
-
-    rsx! {
-        div {
-            width: "100wh",
-            height: "100vh",
-            display: "flex",
-            flex_direction: "column",
-            onmousedown: move |_| window().drag(),
-            components::header::header {
-                link_list,
-                filter_name,
-                current_tab,
-                show_msgbox,
-            }
-            div {
-                display: "flex",
-                flex_direction: "row",
-                overflow: "hidden",
-                height: "100vh",
-                components::tabs::tabs { current_tab }
-                if read_tab == Tab::Home {
-                    components::home::home {
-                        filter_name,
-                        link_list,
-                        current_tab,
-                        customize_icon,
-                        show_msgbox,
-                        show_prop,
-                    }
-                } else if read_tab == Tab::Tools {
-                    components::tools::tools {
-                        link_list,
-                        current_tab,
-                        customize_icon,
-                        show_msgbox,
-                    }
-                } else if read_tab == Tab::Log {
-                    components::log::log {}
-                } else if read_tab == Tab::Help {
-                    components::help::help {}
-                } else if read_tab == Tab::About {
-                    components::about::about {}
-                }
-            }
-            components::status::status { link_list }
-            components::msgbox::msgbox { show_msgbox, link_list, current_tab }
-            components::properties::properties { show_prop, link_list }
-        }
-    }
-}
-
-fn setup_logger() -> Result<()> {
-    let local_app_path = ensure_local_app_folder_exists()?;
-    let app_log_path = local_app_path.join("LinkEcho.log");
-
-    fern::Dispatch::new()
-        .format(|out, message, record| {
-            out.finish(format_args!(
-                "[{}][{}] {}\n",
-                chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
-                record.level(),
-                message
-            ))
+    App::new()
+        .backdrop(Backdrop::Mica)
+        .inner_constraints(InnerConstraints {
+            min_width: Some(750.0),
+            min_height: Some(400.0),
+            ..Default::default()
         })
-        .level(log::LevelFilter::Debug)
-        .chain(std::io::stdout())
-        .chain(fern::log_file(app_log_path)?)
-        .apply()?;
-    Ok(())
-}
-
-fn handle_cli(args: Vec<String>) -> Result<bool> {
-    match args[1].as_str() {
-        "-c" => {
-            let link_path = args.get(2).unwrap();
-            let icon_path = args.get(3).unwrap();
-            let link_path = Path::new(&link_path);
-            let icon_path = Path::new(&icon_path);
-            cli::change_single_shortcut_icon(link_path, icon_path)
-        }
-        "-C" => {
-            let link_folder_path = args.get(2);
-            let icon_folder_path = args.get(3);
-
-            match (link_folder_path, icon_folder_path) {
-                // 如无第二个参数，则默认为桌面
-                (Some(icon_folder_path), None) => {
-                    let icon_folder_path = Path::new(&icon_folder_path);
-                    cli::change_all_shortcuts_icons(None, icon_folder_path)
-                }
-                (Some(link_folder_path), Some(icon_folder_path)) => {
-                    let link_folder_path = PathBuf::from(link_folder_path);
-                    let icon_folder_path = Path::new(&icon_folder_path);
-                    cli::change_all_shortcuts_icons(Some(link_folder_path), icon_folder_path)
-                }
-                _ => std::process::exit(1),
-            }
-        }
-        _ => std::process::exit(1),
-    }
+        .render(app)
 }
