@@ -125,6 +125,8 @@ fn grid_view_item(
     select_list_index: HookRef<usize>,
     set_version: SetState<usize>,
 ) -> RelativePanel {
+    let link_name = link_info.name();
+
     let image_source = link_info
         .icon_surface()
         .clone()
@@ -136,8 +138,9 @@ fn grid_view_item(
         .width(40.0);
 
     let text = TextBlock {
-        text: link_info.name().to_owned(),
+        text: link_name.to_owned(),
         text_wrapping: TextWrapping::NoWrap,
+        text_trimming: Some(TextTrimming::CharacterEllipsis),
         ..Default::default()
     }
     .vertical_alignment(VerticalAlignment::Stretch)
@@ -200,6 +203,7 @@ fn grid_view_item(
             .relative_align_h_center()
             .relative_align_v_center(),
     ))
+    .tooltip(link_name)
     .width(100.0)
     .height(100.0)
 }
