@@ -22,17 +22,13 @@ pub struct IconImage {
 }
 
 impl IconImage {
-    pub fn default(input_path: &str) -> Result<Self> {
-        Self::new(input_path.to_owned(), SIZES.to_vec())
-    }
-
-    pub fn new(input_path: String, sizes: Vec<u32>) -> Result<Self> {
+    pub fn new(input_path: &str, sizes: Option<Vec<u32>>) -> Result<Self> {
         let image = Self::open_image(&input_path)?;
         let (width, height) = image.dimensions();
 
         Ok(Self {
-            input_path,
-            sizes,
+            input_path: input_path.to_owned(),
+            sizes: sizes.unwrap_or_else(|| SIZES.to_vec()),
             image,
             width,
             height,

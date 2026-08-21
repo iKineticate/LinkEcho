@@ -1,3 +1,4 @@
+pub mod content_dialog;
 pub mod edit;
 pub mod head;
 pub mod home;

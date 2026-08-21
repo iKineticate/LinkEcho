@@ -98,3 +98,28 @@ impl ImageSurfaceContext {
         Ok(surface)
     }
 }
+
+// fn premultiply_rgba(rgba: &[u8]) -> Vec<u8> {
+//     let mut out = vec![0u8; rgba.len()];
+
+//     for (src, dst) in rgba.chunks_exact(4).zip(out.chunks_exact_mut(4)) {
+//         let a = src[3];
+
+//         if a == 255 {
+//             dst.copy_from_slice(src);
+//             continue;
+//         }
+
+//         if a == 0 {
+//             continue;
+//         }
+
+//         let a = a as u32;
+//         dst[0] = (((src[0] as u32 * a + 128) * 257) >> 16) as u8;
+//         dst[1] = (((src[1] as u32 * a + 128) * 257) >> 16) as u8;
+//         dst[2] = (((src[2] as u32 * a + 128) * 257) >> 16) as u8;
+//         dst[3] = a as u8;
+//     }
+
+//     out
+// }

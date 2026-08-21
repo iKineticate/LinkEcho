@@ -10,7 +10,7 @@ log = { version = "0.4.33", features = ["release_max_level_off"] }
 
 indexmap = "2.14.0" # 带序列的哈希库
 strum = { version = "0.28.0", features = ["derive"] } # 枚举：字段转化文本，文本找到枚举
-getset = "0.1.6" # 结构体：字段获取和设置
+getset = "0.1.7" # 结构体：字段获取和设置
 
 glob = "0.3.4" # 遍历文件夹
 rfd = "0.17.2" # 选择文件夹
@@ -19,20 +19,23 @@ infer = "0.22.0" # 推断文件类型
 
 image = { version = "0.25.10"} # 图片处理
 smooth-frame = "0.2.0" # 圆角路径计算
-windows-icons = "0.3.0" # 获取系统文件图标Buffer
+windows-icons = "0.4.0" # 获取系统文件图标Buffer
 rayon = "1.12.0" # 并行处理
-resvg = "0.47.0" # svg和2D渲染
+resvg = "0.48.1" # svg和2D渲染
+
+fastrand = "2.5.0"
 
 strsim = "0.11.1" # 测量文本相似（快捷方式和图标的名称模糊匹配）
 
 rust-i18n = "4.2.1"
 
 winsafe = { version = "0.0.28", features = ["advapi", "shell"] }
-windows-numerics = { git = "https://github.com/microsoft/windows-rs.git" }
-windows-reactor = { git = "https://github.com/microsoft/windows-rs.git" }
+windows-numerics = { git = "https://github.com/microsoft/windows-rs.git", branch = "master" }
+windows-reactor = { git = "https://github.com/microsoft/windows-rs.git", branch = "master" }
 
 [dependencies.windows]
 git = "https://github.com/microsoft/windows-rs.git"
+branch = "master" 
 features = [
     "shlobj_core",
     "shlguid",
@@ -46,7 +49,7 @@ features = [
 ]
 
 [build-dependencies]
-windows-reactor-setup = { git = "https://github.com/microsoft/windows-rs.git" }
+windows-reactor-setup = { git = "https://github.com/microsoft/windows-rs.git", branch = "master" }
 embed-resource = "3.0.11"
 
 [profile.release]

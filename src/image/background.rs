@@ -287,8 +287,29 @@ fn add_corners_background() {
 #[test]
 fn test_save_ico() {
     let icon_image =
-        super::icon::IconImage::default(r"C:\Users\11593\Downloads\test3.png").unwrap();
+        super::icon::IconImage::new(r"C:\Users\11593\Downloads\test3.png", None).unwrap();
     icon_image
         .save_to_ico(r"C:\Users\11593\Downloads\test3.ico")
         .unwrap();
+}
+
+
+#[test]
+fn test_save_png() {
+    use image::GenericImageView;
+
+    let start = std::time::Instant::now();
+
+    let image = image::open(r"C:\Users\11593\Downloads\adobe_acrobat_reader.png").unwrap();
+
+    let (width, height) = image.dimensions();
+    
+    let buffer = super::corner::add_corners(width, height, &image.to_rgba8(), 32.0, 0.6).unwrap();
+
+    image::RgbaImage::from_vec(width, height, buffer)
+        .unwrap()
+        .save(r"C:\Users\11593\Downloads\adobe_acrobat_reader_1.png")
+        .unwrap();
+
+    println!("Time: {:?}", start.elapsed().as_secs_f64());
 }

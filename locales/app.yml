@@ -1,5 +1,6 @@
 _version: 2
 
+# Navigation
 HOME:
   en: Home
   zh: 主页
@@ -16,6 +17,20 @@ SETTINGS:
   en: Setting
   zh: 设置
 
+# Head Search Box
+SEARCH:
+  en: Search
+  zh: 搜索
+
+# Open Action
+OPEN:
+  en: Open
+  zh: 打开
+OPEN_TOOLTIP:
+  en: Open the shortcut's folder
+  zh: 打开快捷方式文件夹
+
+# Open Shortcut's Folder
 DESKTOP:
   en: Desktop
   zh: 桌面
@@ -28,27 +43,51 @@ START_UP:
 OTHER:
   en: Other
   zh: 其他
+OPEN_SHORTCUT_FOLDER:
+  en: Open Shortcut's Folder
+  zh: 打开快捷方式的文件夹
 
-OPEN:
-  en: Open
-  zh: 打开
-OPEN_TOOLTIP:
-  en: Open the shortcut's folder
-  zh: 打开快捷方式文件夹
-SEARCH:
-  en: Search
-  zh: 搜索
-
+# Change Action
 CHANGE:
   en: Change
   zh: 更换
+CHANGE_ALL:
+  en: Change All
+  zh: 全部更换
 CHANGE_TOOLTIP:
   en: Auto replace the icons of all shortcuts with matching names
   zh: 自动更换所有名称匹配的快捷方式的图标
 
+# Restore Action
 RESTORE:
   en: Restore
   zh: 还原
+RESTORE_ALL:
+  en: Restore All
+  zh: 全部还原
 RESTORE_TOOLTIP:
   en: Restore the default icons of all shortcuts
   zh: 还原所有快捷方式的默认图标
+
+# Custom
+CUSTOM:
+  en: Custom
+  zh: 自定义
+
+# Icon Prop
+TARGET:
+  en: Target
+  zh: 目标
+ICON:
+  en: Icon
+  zh: 图标
+ICON_PATH:
+  en: Icon Path
+  zh: 图标路径
+ICON_FILE:
+  en: Icon File
+  zh: 图标文件
+ICON_FILE_PATH:
+  en: Icon File Path
+  zh: 图标文件路径
+ICON_FILE_NAME:

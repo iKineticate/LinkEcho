@@ -7,7 +7,7 @@ use windows_reactor::*;
 pub fn head_view(cx: &mut RenderCx, app_state: AppState) -> TitleBar {
     let is_dark = matches!(cx.use_color_scheme(), ColorScheme::Dark);
 
-    let (version, set_version) = app_state.version();
+    let (_, set_version) = app_state.version();
     let (selected_tag, set_selected_tag) = app_state.selected_tag();
     let last_selected_tag = app_state.last_selected_tag().get_cloned();
 
@@ -47,23 +47,22 @@ pub fn head_view(cx: &mut RenderCx, app_state: AppState) -> TitleBar {
                 }
 
                 if index.ne(&last_select_list_index) {
-                    log::info!("{version:#?}");
-                    set_version.call(version + 1);
+                    set_version.call(fastrand::usize(..));
                 }
             }
         }
     };
 
-    let search_box: Element = AutoSuggestBox::new(query)
+    let search_box = AutoSuggestBox::new(query)
         .placeholder_text(t!("SEARCH")) // TODO: Localize
         .items(suggestions)
         .on_text_changed(move |text| set_query.call(text))
         .on_query_submitted(on_query_submitted)
-        .into();
+        .min_width(150.0);
 
     TitleBar::new("LinkEcho")
         .tall(true)
-        .content(search_box.min_width(150.0))
+        .content(search_box)
         .footer({
             let glyph = if is_dark { "\u{E706}" } else { "\u{E708}" };
             button(glyph)
