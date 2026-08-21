@@ -84,7 +84,7 @@ fn home_head_view_item(
         .into();
 
     let restore_shortcuts_btn = button(t!("RESTORE_ALL"))
-        .icon(Symbol::Redo)
+        .icon(Symbol::Rotate)
         .tooltip(t!("RESTORE_TOOLTIP"))
         .into();
 
@@ -145,7 +145,7 @@ fn grid_view_item(
 
     let button_secondary_map: IndexMap</* Name */String, /* ID, Symbol */ (&str, Symbol)> = IndexMap::from([
             (CHANGE, Symbol::RepeatOne),
-            (RESTORE, Symbol::Redo),
+            (RESTORE, Symbol::Rotate),
             (CUSTOM, Symbol::Edit)
         ].map(|(id, icon)| (t!(id).to_string(), (id, icon)))
     );
