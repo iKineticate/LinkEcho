@@ -181,7 +181,8 @@ fn grid_view_item(
             if let Some((id, _)) = button_map.get(&name) {
 
             };
-
+        })
+        .on_tapped(move || {
             select_list_index.set(index);
             set_version.call(fastrand::usize(..));
         });
